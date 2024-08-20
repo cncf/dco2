@@ -1,0 +1,43 @@
+[package]
+name = "dco2"
+version = "0.1.0"
+edition = "2021"
+license = "Apache-2.0"
+description = "GitHub App that enforces the Developer Certificate of Origin (DCO) on Pull Requests"
+
+[dependencies]
+anyhow = "1.0.86"
+askama = "0.12.1"
+axum = { version = "0.7.5", features = ["macros"] }
+base64 = "0.22.1"
+cached = { version = "0.53.1", features = ["async"] }
+clap = { version = "4.5.16", features = ["derive"] }
+config = "0.13.4"
+futures = "0.3.30"
+hmac = "0.12.1"
+hex = "0.4.3"
+octorust = "0.8.0-rc.1"
+pem = "3.0.4"
+regex = "1.10.6"
+serde = { version = "1.0.208", features = ["derive"] }
+serde_json = "1.0.125"
+serde_yaml = "0.9.34"
+sha2 = "0.10.8"
+time = { version = "0.3.36", features = [
+    "formatting",
+    "macros",
+    "parsing",
+    "serde",
+] }
+tokio = { version = "1.39.3", features = [
+    "macros",
+    "process",
+    "rt-multi-thread",
+    "signal",
+    "sync",
+    "time",
+] }
+tower = "0.5.0"
+tower-http = { version = "0.5.2", features = ["auth", "fs", "set-header", "trace"] }
+tracing = "0.1.40"
+tracing-subscriber = { version = "0.3.18", features = ["env-filter", "json"] }
