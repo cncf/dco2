@@ -2,6 +2,10 @@
 
 **DCO2** is a GitHub App that enforces the [Developer Certificate of Origin](https://developercertificate.org/) (DCO) on Pull Requests.
 
+## Usage
+
+To start using DCO2, you need to [configure the application](https://github.com/apps/dco-2) for your organization or repositories. To enforce the DCO check, you can enable [required status checks](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-protected-branches/about-protected-branches) in your branch protection settings.
+
 ## How it works
 
 The Developer Certificate of Origin (DCO) is a lightweight way for contributors to certify that they wrote or otherwise have the right to submit the code they are contributing to the project.
@@ -33,10 +37,6 @@ Git includes a `-s` command line option to append this automatically to your com
 ```
 
 Once installed, this application will create a check indicating whether or not commits in a Pull Request contain a valid `Signed-off-by` line.
-
-## Usage
-
-To start using DCO2, you need to [configure the application](https://github.com/apps/dco-2) for your organization or repositories. To enforce the DCO check, you can enable [required status checks](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-protected-branches/about-protected-branches) in your branch protection settings.
 
 ## Contributing
 
