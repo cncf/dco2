@@ -17,7 +17,7 @@ use hmac::{Hmac, Mac};
 use sha2::Sha256;
 use tower::ServiceBuilder;
 use tower_http::trace::TraceLayer;
-use tracing::{debug, error, instrument};
+use tracing::{error, info, instrument};
 
 /// Router's state.
 #[derive(Clone, FromRef)]
@@ -82,12 +82,13 @@ async fn event(
         error!(?err, "error processing event");
         return Err((StatusCode::INTERNAL_SERVER_ERROR, String::new()));
     }
-    debug!("event processed successfully");
+    info!("event processed successfully");
 
     Ok(())
 }
 
 /// Verify that the signature provided in the webhook request is valid.
+#[allow(clippy::missing_errors_doc)]
 pub fn verify_signature(secret: &[u8], headers: &HeaderMap, body: &[u8]) -> Result<()> {
     if let Some(signature) = headers
         .get(SIGNATURE_HEADER)
