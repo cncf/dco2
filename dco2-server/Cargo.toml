@@ -1,0 +1,23 @@
+[package]
+name = "dco2-server"
+description = "DCO2 HTTP server"
+version.workspace = true
+license.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+anyhow = { workspace = true }
+axum = { workspace = true }
+clap = { workspace = true }
+dco2 = { path = "../dco2" }
+figment = { workspace = true }
+hex = { workspace = true }
+hmac = { workspace = true }
+serde = { workspace = true }
+sha2 = { workspace = true }
+tokio = { workspace = true }
+tower = { workspace = true }
+tower-http = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }

@@ -1,0 +1,9 @@
+[package]
+name = "dco2-aws-lambda"
+description = "DCO2 AWS Lambda"
+version.workspace = true
+license.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+
+[dependencies]
