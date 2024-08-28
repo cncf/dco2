@@ -1,34 +1,37 @@
-[package]
-name = "dco2"
+[workspace]
+resolver = "2"
+members = [
+    "dco2",
+    "dco2-aws-lambda",
+    "dco2-server"
+]
+
+[workspace.package]
 version = "0.1.0"
 edition = "2021"
 license = "Apache-2.0"
-description = "GitHub App that enforces the Developer Certificate of Origin (DCO) on Pull Requests"
+rust-version = "1.80"
 
-[dependencies]
+[workspace.dependencies]
 anyhow = "1.0.86"
 askama = "0.12.1"
+async-trait = "0.1.81"
 axum = { version = "0.7.5", features = ["macros"] }
 base64 = "0.22.1"
+bytes = "1.7.1"
 cached = { version = "0.53.1", features = ["async"] }
 clap = { version = "4.5.16", features = ["derive"] }
-config = "0.13.4"
-futures = "0.3.30"
+chrono = "0.4.38"
+figment = { version = "0.10.19", features = ["yaml", "env"] }
 hmac = "0.12.1"
 hex = "0.4.3"
+http = "1.1.0"
 octorust = "0.8.0-rc.1"
 pem = "3.0.4"
-regex = "1.10.6"
-serde = { version = "1.0.208", features = ["derive"] }
-serde_json = "1.0.125"
-serde_yaml = "0.9.34"
+serde = { version = "1.0.209", features = ["derive"] }
+serde_json = "1.0.127"
 sha2 = "0.10.8"
-time = { version = "0.3.36", features = [
-    "formatting",
-    "macros",
-    "parsing",
-    "serde",
-] }
+thiserror = "1.0.63"
 tokio = { version = "1.39.3", features = [
     "macros",
     "process",
