@@ -5,14 +5,13 @@ use anyhow::{Context, Result};
 use clap::Parser;
 use config::{Config, LogFormat};
 use dco2::github::GHClientOctorust;
-use handlers::setup_router;
+use dco2_server::handlers::setup_router;
 use std::{path::PathBuf, sync::Arc};
 use tokio::{net::TcpListener, signal};
 use tracing::{error, info};
 use tracing_subscriber::EnvFilter;
 
 mod config;
-mod handlers;
 
 #[derive(Debug, Parser)]
 #[clap(author, version, about)]
@@ -39,7 +38,8 @@ async fn main() -> Result<()> {
     };
 
     // Setup GitHub client
-    let gh_client = Arc::new(GHClientOctorust::new(&cfg.github_app)?);
+    let gh_client = GHClientOctorust::new(&cfg.github_app).context("error setting up github client")?;
+    let gh_client = Arc::new(gh_client);
 
     // Setup and launch HTTP server
     let router = setup_router(gh_client, &cfg.github_app.webhook_secret);

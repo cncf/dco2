@@ -26,6 +26,7 @@ figment = { version = "0.10.19", features = ["yaml", "env"] }
 hmac = "0.12.1"
 hex = "0.4.3"
 http = "1.1.0"
+lambda_http = "0.13.0"
 octorust = "0.8.0-rc.1"
 pem = "3.0.4"
 serde = { version = "1.0.209", features = ["derive"] }

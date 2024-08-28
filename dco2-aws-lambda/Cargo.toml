@@ -7,3 +7,9 @@ edition.workspace = true
 rust-version.workspace = true
 
 [dependencies]
+anyhow = { workspace = true }
+dco2 = { path = "../dco2" }
+dco2-server = { path = "../dco2-server" }
+figment = { workspace = true }
+lambda_http = { workspace = true }
+tokio = { workspace = true }
