@@ -12,9 +12,11 @@ askama = { workspace = true }
 async-trait = { workspace = true }
 bytes = { workspace = true }
 chrono = { workspace = true }
+email_address = { workspace = true }
 http = { workspace = true }
 octorust = { workspace = true }
 pem = { workspace = true }
+regex = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 thiserror = { workspace = true }

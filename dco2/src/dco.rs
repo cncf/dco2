@@ -7,7 +7,64 @@ use crate::{
 use anyhow::{Context, Result};
 use askama::Template;
 use chrono::Utc;
+use email_address::EmailAddress;
+use regex::Regex;
 use serde::{Deserialize, Serialize};
+use std::sync::LazyLock;
+use thiserror::Error;
+
+/// Sign-off line regular expression.
+static SIGN_OFF: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(r"(?mi)^Signed-off-by: (.*) <(.*)>\s*$").expect("expr in SIGN_OFF to be valid")
+});
+
+/// Check input.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct CheckInput {
+    pub commits: Vec<Commit>,
+}
+
+/// Check output.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Template)]
+#[template(path = "output.md")]
+pub struct CheckOutput {
+    pub check_passed: bool,
+    pub commits: Vec<CommitCheckOutput>,
+}
+
+/// Commit check output.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct CommitCheckOutput {
+    pub commit: Commit,
+    pub errors: Vec<CommitError>,
+}
+
+/// Errors that may occur on a given commit during the check.
+#[derive(Error, Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub enum CommitError {
+    #[error("invalid author email")]
+    InvalidAuthorEmail,
+    #[error("invalid committer email")]
+    InvalidCommitterEmail,
+    #[error("no sign-off matches the author or committer email")]
+    SignOffMismatch,
+    #[error("sign-off not found")]
+    SignOffNotFound,
+}
+
+/// Sign-off details.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+struct SignOff {
+    name: String,
+    email: String,
+    kind: SignOffKind,
+}
+
+/// Sign-off kind.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+enum SignOffKind {
+    Explicit,
+}
 
 /// Process the GitHub webhook event provided.
 pub async fn process_event(gh_client: DynGHClient, event: &Event) -> Result<()> {
@@ -49,20 +106,85 @@ pub async fn process_event(gh_client: DynGHClient, event: &Event) -> Result<()> 
     Ok(())
 }
 
-/// DCO check input.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub struct CheckInput {
-    pub commits: Vec<Commit>,
-}
-
-/// DCO check output.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Template)]
-#[template(path = "output.md")]
-pub struct CheckOutput {
-    pub check_passed: bool,
-}
-
 /// Run DCO check.
-pub fn check(_input: &CheckInput) -> Result<CheckOutput> {
-    Ok(CheckOutput { check_passed: true })
+pub fn check(input: &CheckInput) -> Result<CheckOutput> {
+    let mut output = CheckOutput {
+        check_passed: false,
+        commits: Vec::new(),
+    };
+
+    // Check each commit
+    for commit in &input.commits {
+        let mut commit_output = CommitCheckOutput {
+            commit: commit.clone(),
+            errors: Vec::new(),
+        };
+
+        // Validate author and committer emails
+        if let Err(err) = validate_emails(commit) {
+            commit_output.errors.push(err);
+        }
+
+        // Check if sign-off is present
+        let signoffs = get_signoffs(commit);
+        if signoffs.is_empty() {
+            commit_output.errors.push(CommitError::SignOffNotFound);
+        } else {
+            // Check if any of the sign-offs matches the author's or committer's email
+            if !signoffs_match(&signoffs, commit) {
+                commit_output.errors.push(CommitError::SignOffMismatch);
+            }
+        }
+
+        output.commits.push(commit_output);
+    }
+
+    // The check passes if none of the commits have errors
+    output.check_passed = output.commits.iter().any(|c| !c.errors.is_empty());
+
+    Ok(output)
+}
+
+/// Validate author and committer emails.
+fn validate_emails(commit: &Commit) -> Result<(), CommitError> {
+    // Author
+    if let Some(author) = &commit.author {
+        if !EmailAddress::is_valid(&author.email) {
+            return Err(CommitError::InvalidAuthorEmail);
+        }
+    }
+
+    // Committer
+    if let Some(committer) = &commit.committer {
+        if !EmailAddress::is_valid(&committer.email) {
+            return Err(CommitError::InvalidCommitterEmail);
+        }
+    }
+
+    Ok(())
+}
+
+/// Get sign-offs found in the commit message.
+fn get_signoffs(commit: &Commit) -> Vec<SignOff> {
+    let mut signoffs = Vec::new();
+
+    for (_, [name, email]) in SIGN_OFF.captures_iter(&commit.message).map(|c| c.extract()) {
+        signoffs.push(SignOff {
+            name: name.to_string(),
+            email: email.to_string(),
+            kind: SignOffKind::Explicit,
+        });
+    }
+
+    signoffs
+}
+
+/// Check if any of the sign-offs matches the author's or committer's email.
+fn signoffs_match(signoffs: &[SignOff], commit: &Commit) -> bool {
+    let author_email = commit.author.as_ref().map(|a| &a.email);
+    let committer_email = commit.committer.as_ref().map(|c| &c.email);
+
+    signoffs
+        .iter()
+        .any(|s| Some(&s.email) == author_email || Some(&s.email) == committer_email)
 }

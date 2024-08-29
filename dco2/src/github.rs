@@ -82,7 +82,7 @@ impl GHClient for GHClientOctorust {
             .body
             .commits
             .into_iter()
-            .map(|c| c.commit.into())
+            .map(Into::into)
             .collect();
 
         Ok(commits)
@@ -149,7 +149,9 @@ pub struct CheckRun {
 pub struct Commit {
     pub author: Option<CommitAuthor>,
     pub committer: Option<CommitCommitter>,
+    pub html_url: String,
     pub message: String,
+    pub sha: String,
 }
 
 /// Commit author information.
@@ -166,19 +168,21 @@ pub struct CommitCommitter {
     pub email: String,
 }
 
-impl From<octorust::types::CommitData> for Commit {
+impl From<octorust::types::CommitDataType> for Commit {
     /// Convert octorust commit data to Commit.
-    fn from(oc: octorust::types::CommitData) -> Self {
+    fn from(c: octorust::types::CommitDataType) -> Self {
         Self {
-            author: oc.author.map(|author| CommitAuthor {
+            author: c.commit.author.map(|author| CommitAuthor {
                 name: author.name,
                 email: author.email,
             }),
-            committer: oc.committer.map(|committer| CommitCommitter {
+            committer: c.commit.committer.map(|committer| CommitCommitter {
                 name: committer.name,
                 email: committer.email,
             }),
-            message: oc.message,
+            html_url: c.html_url,
+            message: c.commit.message,
+            sha: c.sha,
         }
     }
 }
