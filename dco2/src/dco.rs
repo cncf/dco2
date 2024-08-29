@@ -25,11 +25,12 @@ pub struct CheckInput {
 }
 
 /// Check output.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Template)]
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize, Template)]
 #[template(path = "output.md")]
 pub struct CheckOutput {
     pub check_passed: bool,
     pub commits: Vec<CommitCheckOutput>,
+    pub num_commits_with_errors: usize,
 }
 
 /// Commit check output.
@@ -37,6 +38,16 @@ pub struct CheckOutput {
 pub struct CommitCheckOutput {
     pub commit: Commit,
     pub errors: Vec<CommitError>,
+}
+
+impl CommitCheckOutput {
+    /// Create a new commit check output.
+    fn new(commit: Commit) -> Self {
+        Self {
+            commit,
+            errors: Vec::new(),
+        }
+    }
 }
 
 /// Errors that may occur on a given commit during the check.
@@ -108,17 +119,11 @@ pub async fn process_event(gh_client: DynGHClient, event: &Event) -> Result<()> 
 
 /// Run DCO check.
 pub fn check(input: &CheckInput) -> Result<CheckOutput> {
-    let mut output = CheckOutput {
-        check_passed: false,
-        commits: Vec::new(),
-    };
+    let mut output = CheckOutput::default();
 
     // Check each commit
     for commit in &input.commits {
-        let mut commit_output = CommitCheckOutput {
-            commit: commit.clone(),
-            errors: Vec::new(),
-        };
+        let mut commit_output = CommitCheckOutput::new(commit.clone());
 
         // Validate author and committer emails
         if let Err(err) = validate_emails(commit) {
@@ -139,8 +144,9 @@ pub fn check(input: &CheckInput) -> Result<CheckOutput> {
         output.commits.push(commit_output);
     }
 
-    // The check passes if none of the commits have errors
-    output.check_passed = output.commits.iter().any(|c| !c.errors.is_empty());
+    // Update check output status
+    output.check_passed = output.commits.iter().all(|c| c.errors.is_empty());
+    output.num_commits_with_errors = output.commits.iter().filter(|c| !c.errors.is_empty()).count();
 
     Ok(output)
 }
