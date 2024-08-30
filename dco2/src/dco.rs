@@ -126,8 +126,8 @@ pub fn check(input: &CheckInput) -> Result<CheckOutput> {
         let mut commit_output = CommitCheckOutput::new(commit.clone());
 
         // Validate author and committer emails
-        if let Err(err) = validate_emails(commit) {
-            commit_output.errors.push(err);
+        if let Err(errs) = validate_emails(commit) {
+            commit_output.errors.extend(errs);
         }
 
         // Check if sign-off is present
@@ -155,22 +155,30 @@ pub fn check(input: &CheckInput) -> Result<CheckOutput> {
 }
 
 /// Validate author and committer emails.
-fn validate_emails(commit: &Commit) -> Result<(), CommitError> {
-    // Author
-    if let Some(author) = &commit.author {
-        if !EmailAddress::is_valid(&author.email) {
-            return Err(CommitError::InvalidAuthorEmail);
-        }
-    }
+fn validate_emails(commit: &Commit) -> Result<(), Vec<CommitError>> {
+    let mut errors = Vec::new();
 
     // Committer
-    if let Some(committer) = &commit.committer {
-        if !EmailAddress::is_valid(&committer.email) {
-            return Err(CommitError::InvalidCommitterEmail);
+    let committer_email = commit.committer.as_ref().map(|c| &c.email);
+    if let Some(committer_email) = committer_email {
+        if !EmailAddress::is_valid(committer_email) {
+            errors.push(CommitError::InvalidCommitterEmail);
         }
     }
 
-    Ok(())
+    // Author
+    let author_email = commit.author.as_ref().map(|a| &a.email);
+    if let Some(author_email) = author_email {
+        if Some(author_email) != committer_email && !EmailAddress::is_valid(author_email) {
+            errors.push(CommitError::InvalidAuthorEmail);
+        }
+    }
+
+    if errors.is_empty() {
+        Ok(())
+    } else {
+        Err(errors)
+    }
 }
 
 /// Get sign-offs found in the commit message.
@@ -201,11 +209,11 @@ fn signoffs_match(signoffs: &[SignOff], commit: &Commit) -> bool {
 /// Display some details about a processed commit.
 fn debug_processed_commit(commit_output: &CommitCheckOutput, signoffs: &[SignOff]) {
     debug!("commit processed: {}", commit_output.commit.sha);
+    debug!("errors found: {:?}", commit_output.errors);
     debug!("author: {:?}", commit_output.commit.author);
     debug!("committer: {:?}", commit_output.commit.committer);
-    debug!("sign-offs");
+    debug!("sign-offs:");
     for signoff in signoffs {
         debug!("sign-off: {:?}", signoff);
     }
-    debug!("commit has errors: {}", !commit_output.errors.is_empty());
 }
