@@ -146,7 +146,7 @@ pub struct CheckRun {
 }
 
 /// Commit information.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct Commit {
     pub author: Option<GitUser>,
     pub committer: Option<GitUser>,
@@ -157,7 +157,7 @@ pub struct Commit {
 }
 
 /// Git user information.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct GitUser {
     pub name: String,
     pub email: String,

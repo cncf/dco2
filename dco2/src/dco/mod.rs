@@ -14,6 +14,9 @@ use std::sync::LazyLock;
 use thiserror::Error;
 use tracing::debug;
 
+#[cfg(test)]
+mod tests;
+
 /// Sign-off line regular expression.
 static SIGN_OFF: LazyLock<Regex> = LazyLock::new(|| {
     Regex::new(r"(?mi)^Signed-off-by: (.*) <(.*)>\s*$").expect("expr in SIGN_OFF to be valid")
@@ -29,7 +32,6 @@ pub struct CheckInput {
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize, Template)]
 #[template(path = "output.md")]
 pub struct CheckOutput {
-    pub check_passed: bool,
     pub commits_with_errors: Vec<CommitCheckOutput>,
 }
 
@@ -101,11 +103,16 @@ pub async fn process_event(gh_client: DynGHClient, event: &Event) -> Result<()> 
 
     // Run DCO check
     let input = dco::CheckInput { commits };
-    let output = dco::check(&input).context("error running dco check")?;
+    let output = dco::check(&input);
 
     // Create check run
     let check_run = CheckRun {
-        conclusion: (if output.check_passed { "success" } else { "failure" }).to_string(),
+        conclusion: (if output.commits_with_errors.is_empty() {
+            "success"
+        } else {
+            "failure"
+        })
+        .to_string(),
         head_sha: event.pull_request.head.sha.clone(),
         name: "DCO".to_string(),
         started_at,
@@ -118,7 +125,7 @@ pub async fn process_event(gh_client: DynGHClient, event: &Event) -> Result<()> 
 }
 
 /// Run DCO check.
-pub fn check(input: &CheckInput) -> Result<CheckOutput> {
+pub fn check(input: &CheckInput) -> CheckOutput {
     let mut output = CheckOutput::default();
 
     // Check each commit
@@ -155,10 +162,7 @@ pub fn check(input: &CheckInput) -> Result<CheckOutput> {
         }
     }
 
-    // The check passes if there are no commits with errors
-    output.check_passed = output.commits_with_errors.is_empty();
-
-    Ok(output)
+    output
 }
 
 /// Check if we should skip this commit.
@@ -222,12 +226,23 @@ fn get_signoffs(commit: &Commit) -> Vec<SignOff> {
 
 /// Check if any of the sign-offs matches the author's or committer's email.
 fn signoffs_match(signoffs: &[SignOff], commit: &Commit) -> bool {
-    let author_email = commit.author.as_ref().map(|a| &a.email);
-    let committer_email = commit.committer.as_ref().map(|c| &c.email);
+    let signoff_matches_author = |s: &SignOff| {
+        if let Some(a) = &commit.author {
+            s.name.to_lowercase() == a.name.to_lowercase() && s.email.to_lowercase() == a.email.to_lowercase()
+        } else {
+            false
+        }
+    };
 
-    signoffs
-        .iter()
-        .any(|s| Some(&s.email) == author_email || Some(&s.email) == committer_email)
+    let signoff_matches_committer = |s: &SignOff| {
+        if let Some(c) = &commit.committer {
+            s.name.to_lowercase() == c.name.to_lowercase() && s.email.to_lowercase() == c.email.to_lowercase()
+        } else {
+            false
+        }
+    };
+
+    signoffs.iter().any(|s| signoff_matches_author(s) || signoff_matches_committer(s))
 }
 
 /// Display some information about a processed commit.
