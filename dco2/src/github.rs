@@ -93,6 +93,7 @@ impl GHClient for GHClientOctorust {
         let client = self.setup_client(ctx.inst_id)?;
         let conclusion = match check_run.conclusion.as_str() {
             "success" => octorust::types::ChecksCreateRequestConclusion::Success,
+            "failure" => octorust::types::ChecksCreateRequestConclusion::Failure,
             _ => bail!("invalid conclusion: {}", check_run.conclusion),
         };
         let status = match check_run.status.as_str() {
@@ -147,23 +148,16 @@ pub struct CheckRun {
 /// Commit information.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Commit {
-    pub author: Option<CommitAuthor>,
-    pub committer: Option<CommitCommitter>,
+    pub author: Option<GitUser>,
+    pub committer: Option<GitUser>,
     pub html_url: String,
     pub message: String,
     pub sha: String,
 }
 
-/// Commit author information.
+/// Git user information.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub struct CommitAuthor {
-    pub name: String,
-    pub email: String,
-}
-
-/// Commit committer information.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub struct CommitCommitter {
+pub struct GitUser {
     pub name: String,
     pub email: String,
 }
@@ -172,11 +166,11 @@ impl From<octorust::types::CommitDataType> for Commit {
     /// Convert octorust commit data to Commit.
     fn from(c: octorust::types::CommitDataType) -> Self {
         Self {
-            author: c.commit.author.map(|author| CommitAuthor {
+            author: c.commit.author.map(|author| GitUser {
                 name: author.name,
                 email: author.email,
             }),
-            committer: c.commit.committer.map(|committer| CommitCommitter {
+            committer: c.commit.committer.map(|committer| GitUser {
                 name: committer.name,
                 email: committer.email,
             }),
