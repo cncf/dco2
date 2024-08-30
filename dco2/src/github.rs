@@ -151,6 +151,7 @@ pub struct Commit {
     pub author: Option<GitUser>,
     pub committer: Option<GitUser>,
     pub html_url: String,
+    pub is_merge: bool,
     pub message: String,
     pub sha: String,
 }
@@ -175,6 +176,7 @@ impl From<octorust::types::CommitDataType> for Commit {
                 email: committer.email,
             }),
             html_url: c.html_url,
+            is_merge: c.parents.len() > 1,
             message: c.commit.message,
             sha: c.sha,
         }

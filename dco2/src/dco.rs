@@ -125,6 +125,11 @@ pub fn check(input: &CheckInput) -> Result<CheckOutput> {
     for commit in &input.commits {
         let mut commit_output = CommitCheckOutput::new(commit.clone());
 
+        // Skip merge commits
+        if commit.is_merge {
+            continue;
+        }
+
         // Validate author and committer emails
         if let Err(errs) = validate_emails(commit) {
             commit_output.errors.extend(errs);
@@ -206,7 +211,7 @@ fn signoffs_match(signoffs: &[SignOff], commit: &Commit) -> bool {
         .any(|s| Some(&s.email) == author_email || Some(&s.email) == committer_email)
 }
 
-/// Display some details about a processed commit.
+/// Display some information about a processed commit.
 fn debug_processed_commit(commit_output: &CommitCheckOutput, signoffs: &[SignOff]) {
     debug!("commit processed: {}", commit_output.commit.sha);
     debug!("errors found: {:?}", commit_output.errors);
