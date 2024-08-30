@@ -140,19 +140,23 @@ pub fn check(input: &CheckInput) -> CheckOutput {
         }
 
         // Validate author and committer emails
-        if let Err(errs) = validate_emails(commit) {
-            commit_output.errors.extend(errs);
-        }
+        let emails_are_valid = match validate_emails(commit) {
+            Ok(()) => true,
+            Err(errors) => {
+                commit_output.errors.extend(errors);
+                false
+            }
+        };
 
         // Check if sign-off is present
         let signoffs = get_signoffs(commit);
         if signoffs.is_empty() {
             commit_output.errors.push(CommitError::SignOffNotFound);
-        } else {
-            // Check if any of the sign-offs matches the author's or committer's email
-            if !signoffs_match(&signoffs, commit) {
-                commit_output.errors.push(CommitError::SignOffMismatch);
-            }
+        }
+
+        // Check if any of the sign-offs matches the author's or committer's email
+        if emails_are_valid && !signoffs.is_empty() && !signoffs_match(&signoffs, commit) {
+            commit_output.errors.push(CommitError::SignOffMismatch);
         }
 
         // Track commit if it has errors
