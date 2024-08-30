@@ -12,6 +12,7 @@ use regex::Regex;
 use serde::{Deserialize, Serialize};
 use std::sync::LazyLock;
 use thiserror::Error;
+use tracing::debug;
 
 /// Sign-off line regular expression.
 static SIGN_OFF: LazyLock<Regex> = LazyLock::new(|| {
@@ -29,8 +30,7 @@ pub struct CheckInput {
 #[template(path = "output.md")]
 pub struct CheckOutput {
     pub check_passed: bool,
-    pub commits: Vec<CommitCheckOutput>,
-    pub num_commits_with_errors: usize,
+    pub commits_with_errors: Vec<CommitCheckOutput>,
 }
 
 /// Commit check output.
@@ -141,12 +141,15 @@ pub fn check(input: &CheckInput) -> Result<CheckOutput> {
             }
         }
 
-        output.commits.push(commit_output);
+        // Track commit if it has errors
+        debug_processed_commit(&commit_output, &signoffs);
+        if !commit_output.errors.is_empty() {
+            output.commits_with_errors.push(commit_output);
+        }
     }
 
-    // Update check output status
-    output.check_passed = output.commits.iter().all(|c| c.errors.is_empty());
-    output.num_commits_with_errors = output.commits.iter().filter(|c| !c.errors.is_empty()).count();
+    // The check passes if there are no commits with errors
+    output.check_passed = output.commits_with_errors.is_empty();
 
     Ok(output)
 }
@@ -193,4 +196,16 @@ fn signoffs_match(signoffs: &[SignOff], commit: &Commit) -> bool {
     signoffs
         .iter()
         .any(|s| Some(&s.email) == author_email || Some(&s.email) == committer_email)
+}
+
+/// Display some details about a processed commit.
+fn debug_processed_commit(commit_output: &CommitCheckOutput, signoffs: &[SignOff]) {
+    debug!("commit processed: {}", commit_output.commit.sha);
+    debug!("author: {:?}", commit_output.commit.author);
+    debug!("committer: {:?}", commit_output.commit.committer);
+    debug!("sign-offs");
+    for signoff in signoffs {
+        debug!("sign-off: {:?}", signoff);
+    }
+    debug!("commit has errors: {}", !commit_output.errors.is_empty());
 }
