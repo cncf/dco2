@@ -125,8 +125,10 @@ pub fn check(input: &CheckInput) -> Result<CheckOutput> {
     for commit in &input.commits {
         let mut commit_output = CommitCheckOutput::new(commit.clone());
 
-        // Skip merge commits
-        if commit.is_merge {
+        // Check if we should skip this commit
+        let (commit_should_be_skipped, reason) = should_skip_commit(commit);
+        if commit_should_be_skipped {
+            debug!("commit ({}) skipped: {:?}", commit_output.commit.sha, reason);
             continue;
         }
 
@@ -157,6 +159,23 @@ pub fn check(input: &CheckInput) -> Result<CheckOutput> {
     output.check_passed = output.commits_with_errors.is_empty();
 
     Ok(output)
+}
+
+/// Check if we should skip this commit.
+fn should_skip_commit(commit: &Commit) -> (bool, Option<String>) {
+    // Skip merge commits
+    if commit.is_merge {
+        return (true, Some("merge commit".to_string()));
+    }
+
+    // Skip bots commits
+    if let Some(author) = &commit.author {
+        if author.is_bot {
+            return (true, Some("author is a bot".to_string()));
+        }
+    }
+
+    (false, None)
 }
 
 /// Validate author and committer emails.

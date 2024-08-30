@@ -161,6 +161,7 @@ pub struct Commit {
 pub struct GitUser {
     pub name: String,
     pub email: String,
+    pub is_bot: bool,
 }
 
 impl From<octorust::types::CommitDataType> for Commit {
@@ -170,10 +171,12 @@ impl From<octorust::types::CommitDataType> for Commit {
             author: c.commit.author.map(|author| GitUser {
                 name: author.name,
                 email: author.email,
+                is_bot: c.author.map_or(false, |a| a.type_ == "Bot"),
             }),
             committer: c.commit.committer.map(|committer| GitUser {
                 name: committer.name,
                 email: committer.email,
+                is_bot: c.committer.map_or(false, |c| c.type_ == "Bot"),
             }),
             html_url: c.html_url,
             is_merge: c.parents.len() > 1,
