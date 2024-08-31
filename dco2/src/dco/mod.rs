@@ -29,10 +29,11 @@ pub struct CheckInput {
 }
 
 /// Check output.
-#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize, Template)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Template)]
 #[template(path = "output.md")]
 pub struct CheckOutput {
     pub commits_with_errors: Vec<CommitCheckOutput>,
+    pub total_commits: usize,
 }
 
 /// Commit check output.
@@ -126,7 +127,10 @@ pub async fn process_event(gh_client: DynGHClient, event: &Event) -> Result<()> 
 
 /// Run DCO check.
 pub fn check(input: &CheckInput) -> CheckOutput {
-    let mut output = CheckOutput::default();
+    let mut output = CheckOutput {
+        commits_with_errors: Vec::new(),
+        total_commits: input.commits.len(),
+    };
 
     // Check each commit
     for commit in &input.commits {
