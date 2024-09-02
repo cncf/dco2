@@ -1,6 +1,6 @@
 //! This module defines an abstraction layer over the GitHub API.
 
-use anyhow::{bail, Result};
+use anyhow::Result;
 use async_trait::async_trait;
 use bytes::Bytes;
 use chrono::{DateTime, Utc};
@@ -74,6 +74,7 @@ impl GHClient for GHClientOctorust {
     /// [GHClient::compare_commits]
     async fn compare_commits(&self, ctx: &Ctx, base_sha: &str, head_sha: &str) -> Result<Vec<Commit>> {
         let client = self.setup_client(ctx.inst_id)?;
+
         let basehead = format!("{}...{}", base_sha, head_sha);
         let commits = client
             .repos()
@@ -91,19 +92,11 @@ impl GHClient for GHClientOctorust {
     /// [GHClient::create_check_run]
     async fn create_check_run(&self, ctx: &Ctx, check_run: &CheckRun) -> Result<()> {
         let client = self.setup_client(ctx.inst_id)?;
-        let conclusion = match check_run.conclusion.as_str() {
-            "success" => octorust::types::ChecksCreateRequestConclusion::Success,
-            "failure" => octorust::types::ChecksCreateRequestConclusion::Failure,
-            _ => bail!("invalid conclusion: {}", check_run.conclusion),
-        };
-        let status = match check_run.status.as_str() {
-            "completed" => octorust::types::JobStatus::Completed,
-            _ => bail!("invalid status: {}", check_run.status),
-        };
+
         let body = octorust::types::ChecksCreateRequest {
-            actions: vec![],
-            completed_at: Some(Utc::now()),
-            conclusion: Some(conclusion),
+            actions: check_run.actions.iter().cloned().map(Into::into).collect(),
+            completed_at: Some(check_run.completed_at),
+            conclusion: Some(check_run.conclusion.clone().into()),
             details_url: String::new(),
             external_id: String::new(),
             head_sha: check_run.head_sha.clone(),
@@ -116,7 +109,7 @@ impl GHClient for GHClientOctorust {
                 title: check_run.name.clone(),
             }),
             started_at: Some(check_run.started_at),
-            status: Some(status),
+            status: Some(check_run.status.clone().into()),
         };
         client.checks().create(&ctx.owner, &ctx.repo, &body).await?;
 
@@ -137,12 +130,105 @@ pub struct AppConfig {
 /// Check run information.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct CheckRun {
-    pub conclusion: String,
+    pub actions: Vec<CheckRunAction>,
+    pub completed_at: DateTime<Utc>,
+    pub conclusion: CheckRunConclusion,
     pub head_sha: String,
     pub name: String,
     pub started_at: DateTime<Utc>,
-    pub status: String,
+    pub status: CheckRunStatus,
     pub summary: String,
+}
+
+/// Check run action.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct CheckRunAction {
+    pub label: String,
+    pub description: String,
+    pub identifier: String,
+}
+
+impl From<CheckRunAction> for octorust::types::ChecksCreateRequestActions {
+    /// Convert CheckRunAction to octorust ChecksCreateRequestActions.
+    fn from(a: CheckRunAction) -> octorust::types::ChecksCreateRequestActions {
+        octorust::types::ChecksCreateRequestActions {
+            label: a.label,
+            description: a.description,
+            identifier: a.identifier,
+        }
+    }
+}
+
+/// Check run conclusion.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum CheckRunConclusion {
+    Success,
+    ActionRequired,
+}
+
+impl From<CheckRunConclusion> for octorust::types::ChecksCreateRequestConclusion {
+    /// Convert CheckRunConclusion to octorust ChecksCreateRequestConclusion.
+    fn from(c: CheckRunConclusion) -> octorust::types::ChecksCreateRequestConclusion {
+        match c {
+            CheckRunConclusion::Success => octorust::types::ChecksCreateRequestConclusion::Success,
+            CheckRunConclusion::ActionRequired => {
+                octorust::types::ChecksCreateRequestConclusion::ActionRequired
+            }
+        }
+    }
+}
+
+/// Check run event payload.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct CheckRunEvent {
+    pub action: CheckRunEventAction,
+    pub check_run: CheckRunEventCheckRun,
+    pub installation: Installation,
+    pub repository: Repository,
+    pub requested_action: RequestedAction,
+}
+
+impl CheckRunEvent {
+    /// Get context information from event details.
+    pub fn ctx(&self) -> Ctx {
+        let (owner, repo) = split_full_name(&self.repository.full_name);
+        Ctx {
+            inst_id: self.installation.id,
+            owner: owner.to_string(),
+            repo: repo.to_string(),
+        }
+    }
+}
+
+/// Check run event action.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum CheckRunEventAction {
+    RequestedAction,
+    Rerequested,
+}
+
+/// Check run event check run details.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct CheckRunEventCheckRun {
+    pub head_sha: String,
+}
+
+/// Check run status.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum CheckRunStatus {
+    Completed,
+}
+
+impl From<CheckRunStatus> for octorust::types::JobStatus {
+    /// Convert CheckRunStatus to octorust JobStatus.
+    fn from(s: CheckRunStatus) -> octorust::types::JobStatus {
+        match s {
+            CheckRunStatus::Completed => octorust::types::JobStatus::Completed,
+        }
+    }
 }
 
 /// Commit information.
@@ -154,14 +240,6 @@ pub struct Commit {
     pub is_merge: bool,
     pub message: String,
     pub sha: String,
-}
-
-/// Git user information.
-#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
-pub struct GitUser {
-    pub name: String,
-    pub email: String,
-    pub is_bot: bool,
 }
 
 impl From<octorust::types::CommitDataType> for Commit {
@@ -197,30 +275,8 @@ pub struct Ctx {
 /// Webhook event.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum Event {
+    CheckRun(CheckRunEvent),
     PullRequest(PullRequestEvent),
-}
-
-impl Event {
-    /// Get context information from event details.
-    pub fn ctx(&self) -> Ctx {
-        match self {
-            Event::PullRequest(event) => {
-                let (owner, repo) = split_full_name(&event.repository.full_name);
-                Ctx {
-                    inst_id: event.installation.id,
-                    owner: owner.to_string(),
-                    repo: repo.to_string(),
-                }
-            }
-        }
-    }
-
-    /// Get the installation id associated with the event.
-    pub fn installation_id(&self) -> i64 {
-        match self {
-            Event::PullRequest(event) => event.installation.id,
-        }
-    }
 }
 
 impl TryFrom<(&HeaderMap, &Bytes)> for Event {
@@ -230,6 +286,10 @@ impl TryFrom<(&HeaderMap, &Bytes)> for Event {
     fn try_from((headers, body): (&HeaderMap, &Bytes)) -> Result<Self, Self::Error> {
         match headers.get(EVENT_NAME_HEADER) {
             Some(event_name) => match event_name.as_bytes() {
+                b"check_run" => {
+                    let event = serde_json::from_slice(body).map_err(|_| EventError::InvalidPayload)?;
+                    Ok(Event::CheckRun(event))
+                }
                 b"pull_request" => {
                     let event = serde_json::from_slice(body).map_err(|_| EventError::InvalidPayload)?;
                     Ok(Event::PullRequest(event))
@@ -250,6 +310,14 @@ pub enum EventError {
     MissingHeader,
     #[error("unsupported event")]
     UnsupportedEvent,
+}
+
+/// Git user information.
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+pub struct GitUser {
+    pub name: String,
+    pub email: String,
+    pub is_bot: bool,
 }
 
 /// GitHub application installation information.
@@ -283,6 +351,18 @@ pub struct PullRequestEvent {
     pub repository: Repository,
 }
 
+impl PullRequestEvent {
+    /// Get context information from event details.
+    pub fn ctx(&self) -> Ctx {
+        let (owner, repo) = split_full_name(&self.repository.full_name);
+        Ctx {
+            inst_id: self.installation.id,
+            owner: owner.to_string(),
+            repo: repo.to_string(),
+        }
+    }
+}
+
 /// Pull request event action.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
@@ -305,6 +385,12 @@ pub struct PullRequestHead {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Repository {
     pub full_name: String,
+}
+
+/// Requested action information.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct RequestedAction {
+    pub identifier: String,
 }
 
 /// Helper function that splits a repository's full name and returns the owner

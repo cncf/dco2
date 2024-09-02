@@ -1,6 +1,8 @@
 # DCO2
 
-**DCO2** is a GitHub App that enforces the [Developer Certificate of Origin](https://developercertificate.org/) (DCO) on Pull Requests. It aims to be a drop-in replacement for [dcoapp/app](https://github.com/dcoapp/app).
+**DCO2** is a GitHub App that enforces the [Developer Certificate of Origin](https://developercertificate.org/) (DCO) on Pull Requests.
+
+It aims to be a drop-in replacement for [dcoapp/app](https://github.com/dcoapp/app).
 
 ## Usage
 
