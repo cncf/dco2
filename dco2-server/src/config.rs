@@ -1,7 +1,7 @@
 //! This module defines some types to represent the server configuration.
 
 use anyhow::Result;
-use dco2::github::AppConfig;
+use dco2::github::client::AppConfig;
 use figment::{
     providers::{Env, Format, Serialized, Yaml},
     Figment,

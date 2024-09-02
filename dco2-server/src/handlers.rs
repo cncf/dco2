@@ -11,7 +11,10 @@ use axum::{
 };
 use dco2::{
     dco,
-    github::{DynGHClient, Event, EventError, EVENT_ID_HEADER, SIGNATURE_HEADER},
+    github::{
+        client::DynGHClient,
+        event::{Event, EventError, EVENT_ID_HEADER, EVENT_SIGNATURE_HEADER},
+    },
 };
 use hmac::{Hmac, Mac};
 use sha2::Sha256;
@@ -91,7 +94,7 @@ async fn event(
 #[allow(clippy::missing_errors_doc)]
 pub fn verify_signature(secret: &[u8], headers: &HeaderMap, body: &[u8]) -> Result<()> {
     if let Some(signature) = headers
-        .get(SIGNATURE_HEADER)
+        .get(EVENT_SIGNATURE_HEADER)
         .and_then(|s| s.to_str().ok())
         .and_then(|s| s.strip_prefix("sha256="))
         .and_then(|s| hex::decode(s).ok())

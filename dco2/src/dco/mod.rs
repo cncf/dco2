@@ -3,8 +3,8 @@
 use crate::{
     dco,
     github::{
-        CheckRun, CheckRunAction, CheckRunConclusion, CheckRunEvent, CheckRunEventAction, CheckRunStatus,
-        Commit, DynGHClient, Event, PullRequestEvent, PullRequestEventAction,
+        client::{CheckRun, CheckRunAction, CheckRunConclusion, CheckRunStatus, Commit, DynGHClient},
+        event::{CheckRunEvent, CheckRunEventAction, Event, PullRequestEvent, PullRequestEventAction},
     },
 };
 use anyhow::{Context, Result};
@@ -159,7 +159,7 @@ pub async fn process_pull_request_event(gh_client: DynGHClient, event: &PullRequ
             CheckRunConclusion::ActionRequired,
             vec![CheckRunAction {
                 label: "Set DCO to pass".to_string(),
-                description: "Override check result setting it to passed".to_string(),
+                description: "Manually set DCO check result to passed".to_string(),
                 identifier: ACTION_OVERRIDE.to_string(),
             }],
         )

@@ -1,7 +1,6 @@
-use super::{check, CheckInput};
 use crate::{
-    dco::{CheckOutput, CommitCheckOutput, CommitError},
-    github::{Commit, GitUser},
+    dco::{check, CheckInput, CheckOutput, CommitCheckOutput, CommitError},
+    github::client::{Commit, GitUser},
 };
 use indoc::indoc;
 use std::vec;
