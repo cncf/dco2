@@ -4,7 +4,7 @@
 use anyhow::{Context, Result};
 use clap::Parser;
 use config::{Config, LogFormat};
-use dco2::github::GHClientOctorust;
+use dco2::github::client::GHClientOctorust;
 use dco2_server::handlers::setup_router;
 use std::{path::PathBuf, sync::Arc};
 use tokio::{net::TcpListener, signal};

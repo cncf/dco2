@@ -1,5 +1,5 @@
 use anyhow::Context;
-use dco2::github::{self, GHClientOctorust};
+use dco2::github::client::{AppConfig, GHClientOctorust};
 use dco2_server::handlers::setup_router;
 use figment::{providers::Env, Figment};
 use lambda_http::{run, tracing, Error};
@@ -15,7 +15,7 @@ async fn main() -> Result<(), Error> {
     tracing::init_default_subscriber();
 
     // Setup GitHub client
-    let cfg: github::AppConfig = Figment::new()
+    let cfg: AppConfig = Figment::new()
         .merge(Env::prefixed("DCO2_"))
         .extract()
         .context("error setting up configuration")?;
