@@ -1,2 +1,5 @@
-pub mod client;
-pub mod event;
+mod client;
+mod event;
+
+pub use client::*;
+pub use event::*;

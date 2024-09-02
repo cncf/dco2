@@ -1,12 +1,12 @@
 use crate::{
-    dco::{check, CheckInput, CheckOutput, CommitCheckOutput, CommitError},
-    github::client::{Commit, GitUser},
+    dco::check::{check, CheckInput, CheckOutput, CommitCheckOutput, CommitError},
+    github::{Commit, GitUser},
 };
 use indoc::indoc;
 use std::vec;
 
 #[test]
-fn check_single_commit_no_signoff_is_merge_commit() {
+fn single_commit_no_signoff_is_merge_commit() {
     let commit1 = Commit {
         is_merge: true,
         ..Default::default()
@@ -27,7 +27,7 @@ fn check_single_commit_no_signoff_is_merge_commit() {
 }
 
 #[test]
-fn check_single_commit_no_signoff_author_is_bot() {
+fn single_commit_no_signoff_author_is_bot() {
     let commit1 = Commit {
         author: Some(GitUser {
             is_bot: true,
@@ -51,7 +51,7 @@ fn check_single_commit_no_signoff_author_is_bot() {
 }
 
 #[test]
-fn check_single_commit_valid_signoff_author_match() {
+fn single_commit_valid_signoff_author_match() {
     let commit1 = Commit {
         author: Some(GitUser {
             name: "user1".to_string(),
@@ -87,7 +87,7 @@ fn check_single_commit_valid_signoff_author_match() {
 }
 
 #[test]
-fn check_single_commit_valid_signoff_committer_match() {
+fn single_commit_valid_signoff_committer_match() {
     let commit1 = Commit {
         author: Some(GitUser {
             name: "user2".to_string(),
@@ -123,7 +123,7 @@ fn check_single_commit_valid_signoff_committer_match() {
 }
 
 #[test]
-fn check_single_commit_valid_signoff_multiple_signoffs() {
+fn single_commit_valid_signoff_multiple_signoffs() {
     let commit1 = Commit {
         author: Some(GitUser {
             name: "user1".to_string(),
@@ -161,7 +161,7 @@ fn check_single_commit_valid_signoff_multiple_signoffs() {
 }
 
 #[test]
-fn check_single_commit_valid_signoff_signoff_case_insensitive() {
+fn single_commit_valid_signoff_signoff_case_insensitive() {
     let commit1 = Commit {
         author: Some(GitUser {
             name: "user1".to_string(),
@@ -197,7 +197,7 @@ fn check_single_commit_valid_signoff_signoff_case_insensitive() {
 }
 
 #[test]
-fn check_single_commit_valid_signoff_signoff_trailing_whitespace() {
+fn single_commit_valid_signoff_signoff_trailing_whitespace() {
     let commit1 = Commit {
         author: Some(GitUser {
             name: "user1".to_string(),
@@ -228,7 +228,7 @@ fn check_single_commit_valid_signoff_signoff_trailing_whitespace() {
 }
 
 #[test]
-fn check_single_commit_valid_signoff_email_contains_subdomain() {
+fn single_commit_valid_signoff_email_contains_subdomain() {
     let commit1 = Commit {
         author: Some(GitUser {
             name: "user1".to_string(),
@@ -264,7 +264,7 @@ fn check_single_commit_valid_signoff_email_contains_subdomain() {
 }
 
 #[test]
-fn check_single_commit_valid_signoff_email_contains_plus_alias() {
+fn single_commit_valid_signoff_email_contains_plus_alias() {
     let commit1 = Commit {
         author: Some(GitUser {
             name: "user1".to_string(),
@@ -300,7 +300,7 @@ fn check_single_commit_valid_signoff_email_contains_plus_alias() {
 }
 
 #[test]
-fn check_single_commit_invalid_author_email() {
+fn single_commit_invalid_author_email() {
     let commit1 = Commit {
         author: Some(GitUser {
             name: "user1".to_string(),
@@ -339,7 +339,7 @@ fn check_single_commit_invalid_author_email() {
 }
 
 #[test]
-fn check_single_commit_invalid_author_email_and_no_signoff() {
+fn single_commit_invalid_author_email_and_no_signoff() {
     let commit1 = Commit {
         author: Some(GitUser {
             name: "user1".to_string(),
@@ -373,7 +373,7 @@ fn check_single_commit_invalid_author_email_and_no_signoff() {
 }
 
 #[test]
-fn check_single_commit_invalid_author_email_also_used_in_signoff() {
+fn single_commit_invalid_author_email_also_used_in_signoff() {
     let commit1 = Commit {
         author: Some(GitUser {
             name: "user1".to_string(),
@@ -412,7 +412,7 @@ fn check_single_commit_invalid_author_email_also_used_in_signoff() {
 }
 
 #[test]
-fn check_single_commit_invalid_committer_email() {
+fn single_commit_invalid_committer_email() {
     let commit1 = Commit {
         author: Some(GitUser {
             name: "user1".to_string(),
@@ -451,7 +451,7 @@ fn check_single_commit_invalid_committer_email() {
 }
 
 #[test]
-fn check_single_commit_invalid_committer_email_and_no_signoff() {
+fn single_commit_invalid_committer_email_and_no_signoff() {
     let commit1 = Commit {
         author: Some(GitUser {
             name: "user1".to_string(),
@@ -485,7 +485,7 @@ fn check_single_commit_invalid_committer_email_and_no_signoff() {
 }
 
 #[test]
-fn check_single_commit_invalid_committer_email_also_used_in_signoff() {
+fn single_commit_invalid_committer_email_also_used_in_signoff() {
     let commit1 = Commit {
         author: Some(GitUser {
             name: "user1".to_string(),
@@ -524,7 +524,7 @@ fn check_single_commit_invalid_committer_email_also_used_in_signoff() {
 }
 
 #[test]
-fn check_single_commit_invalid_author_and_committer_email_same_email() {
+fn single_commit_invalid_author_and_committer_email_same_email() {
     let commit1 = Commit {
         author: Some(GitUser {
             name: "user1".to_string(),
@@ -563,7 +563,7 @@ fn check_single_commit_invalid_author_and_committer_email_same_email() {
 }
 
 #[test]
-fn check_single_commit_invalid_author_and_committer_email_different_emails() {
+fn single_commit_invalid_author_and_committer_email_different_emails() {
     let commit1 = Commit {
         author: Some(GitUser {
             name: "user1".to_string(),
@@ -605,7 +605,7 @@ fn check_single_commit_invalid_author_and_committer_email_different_emails() {
 }
 
 #[test]
-fn check_single_commit_signoff_not_found() {
+fn single_commit_signoff_not_found() {
     let commit1 = Commit {
         author: Some(GitUser {
             name: "user1".to_string(),
@@ -639,7 +639,7 @@ fn check_single_commit_signoff_not_found() {
 }
 
 #[test]
-fn check_single_commit_invalid_signoff_multiple_signoffs() {
+fn single_commit_invalid_signoff_multiple_signoffs() {
     let commit1 = Commit {
         author: Some(GitUser {
             name: "user1".to_string(),
@@ -680,7 +680,7 @@ fn check_single_commit_invalid_signoff_multiple_signoffs() {
 }
 
 #[test]
-fn check_single_commit_invalid_signoff_name_mismatch() {
+fn single_commit_invalid_signoff_name_mismatch() {
     let commit1 = Commit {
         author: Some(GitUser {
             name: "user1".to_string(),
@@ -719,7 +719,7 @@ fn check_single_commit_invalid_signoff_name_mismatch() {
 }
 
 #[test]
-fn check_single_commit_invalid_signoff_email_mismatch() {
+fn single_commit_invalid_signoff_email_mismatch() {
     let commit1 = Commit {
         author: Some(GitUser {
             name: "user1".to_string(),
@@ -758,7 +758,7 @@ fn check_single_commit_invalid_signoff_email_mismatch() {
 }
 
 #[test]
-fn check_single_commit_invalid_signoff_name_and_email_mismatch() {
+fn single_commit_invalid_signoff_name_and_email_mismatch() {
     let commit1 = Commit {
         author: Some(GitUser {
             name: "user1".to_string(),
@@ -797,7 +797,7 @@ fn check_single_commit_invalid_signoff_name_and_email_mismatch() {
 }
 
 #[test]
-fn check_single_commit_invalid_signoff_extra_whitespace_around_name() {
+fn single_commit_invalid_signoff_extra_whitespace_around_name() {
     let commit1 = Commit {
         author: Some(GitUser {
             name: "user1".to_string(),
@@ -836,7 +836,7 @@ fn check_single_commit_invalid_signoff_extra_whitespace_around_name() {
 }
 
 #[test]
-fn check_single_commit_invalid_signoff_extra_whitespace_around_email() {
+fn single_commit_invalid_signoff_extra_whitespace_around_email() {
     let commit1 = Commit {
         author: Some(GitUser {
             name: "user1".to_string(),
@@ -875,7 +875,7 @@ fn check_single_commit_invalid_signoff_extra_whitespace_around_email() {
 }
 
 #[test]
-fn check_single_commit_invalid_signoff_missing_name_in_signoff() {
+fn single_commit_invalid_signoff_missing_name_in_signoff() {
     let commit1 = Commit {
         author: Some(GitUser {
             name: "user1".to_string(),
@@ -914,7 +914,7 @@ fn check_single_commit_invalid_signoff_missing_name_in_signoff() {
 }
 
 #[test]
-fn check_single_commit_invalid_signoff_missing_email_in_signoff() {
+fn single_commit_invalid_signoff_missing_email_in_signoff() {
     let commit1 = Commit {
         author: Some(GitUser {
             name: "user1".to_string(),
@@ -953,7 +953,7 @@ fn check_single_commit_invalid_signoff_missing_email_in_signoff() {
 }
 
 #[test]
-fn check_single_commit_invalid_signoff_missing_email_brackets_in_signoff() {
+fn single_commit_invalid_signoff_missing_email_brackets_in_signoff() {
     let commit1 = Commit {
         author: Some(GitUser {
             name: "user1".to_string(),
@@ -992,7 +992,7 @@ fn check_single_commit_invalid_signoff_missing_email_brackets_in_signoff() {
 }
 
 #[test]
-fn check_single_commit_invalid_signoff_missing_name_and_email_in_signoff() {
+fn single_commit_invalid_signoff_missing_name_and_email_in_signoff() {
     let commit1 = Commit {
         author: Some(GitUser {
             name: "user1".to_string(),
@@ -1031,7 +1031,7 @@ fn check_single_commit_invalid_signoff_missing_name_and_email_in_signoff() {
 }
 
 #[test]
-fn check_single_commit_invalid_signoff_name_and_email_swapped_in_signoff() {
+fn single_commit_invalid_signoff_name_and_email_swapped_in_signoff() {
     let commit1 = Commit {
         author: Some(GitUser {
             name: "user1".to_string(),
@@ -1070,7 +1070,7 @@ fn check_single_commit_invalid_signoff_name_and_email_swapped_in_signoff() {
 }
 
 #[test]
-fn check_single_commit_invalid_signoff_invalid_email_in_signoff() {
+fn single_commit_invalid_signoff_invalid_email_in_signoff() {
     let commit1 = Commit {
         author: Some(GitUser {
             name: "user1".to_string(),
@@ -1109,7 +1109,7 @@ fn check_single_commit_invalid_signoff_invalid_email_in_signoff() {
 }
 
 #[test]
-fn check_single_commit_invalid_signoff_email_alias_used_in_signoff_but_not_in_author_email() {
+fn single_commit_invalid_signoff_email_alias_used_in_signoff_but_not_in_author_email() {
     let commit1 = Commit {
         author: Some(GitUser {
             name: "user1".to_string(),
@@ -1148,7 +1148,7 @@ fn check_single_commit_invalid_signoff_email_alias_used_in_signoff_but_not_in_au
 }
 
 #[test]
-fn check_two_commits_valid_signoff_in_both() {
+fn two_commits_valid_signoff_in_both() {
     let commit1 = Commit {
         author: Some(GitUser {
             name: "user1".to_string(),
@@ -1185,7 +1185,7 @@ fn check_two_commits_valid_signoff_in_both() {
 }
 
 #[test]
-fn check_two_commits_no_signoff_in_first_valid_signoff_in_second() {
+fn two_commits_no_signoff_in_first_valid_signoff_in_second() {
     let commit1 = Commit {
         author: Some(GitUser {
             name: "user1".to_string(),
@@ -1238,7 +1238,7 @@ fn check_two_commits_no_signoff_in_first_valid_signoff_in_second() {
 }
 
 #[test]
-fn check_two_commits_valid_signoff_in_first_no_signoff_in_second() {
+fn two_commits_valid_signoff_in_first_no_signoff_in_second() {
     let commit1 = Commit {
         author: Some(GitUser {
             name: "user1".to_string(),
@@ -1291,7 +1291,7 @@ fn check_two_commits_valid_signoff_in_first_no_signoff_in_second() {
 }
 
 #[test]
-fn check_two_commits_invalid_signoff_in_first_valid_signoff_in_second() {
+fn two_commits_invalid_signoff_in_first_valid_signoff_in_second() {
     let commit1 = Commit {
         author: Some(GitUser {
             name: "user1".to_string(),
@@ -1349,7 +1349,7 @@ fn check_two_commits_invalid_signoff_in_first_valid_signoff_in_second() {
 }
 
 #[test]
-fn check_two_commits_valid_signoff_in_first_invalid_signoff_in_second() {
+fn two_commits_valid_signoff_in_first_invalid_signoff_in_second() {
     let commit1 = Commit {
         author: Some(GitUser {
             name: "user1".to_string(),
@@ -1407,7 +1407,7 @@ fn check_two_commits_valid_signoff_in_first_invalid_signoff_in_second() {
 }
 
 #[test]
-fn check_two_commits_no_signoff_in_first_invalid_signoff_in_second() {
+fn two_commits_no_signoff_in_first_invalid_signoff_in_second() {
     let commit1 = Commit {
         author: Some(GitUser {
             name: "user1".to_string(),
@@ -1466,7 +1466,7 @@ fn check_two_commits_no_signoff_in_first_invalid_signoff_in_second() {
 }
 
 #[test]
-fn check_two_commits_invalid_signoff_in_first_no_signoff_in_second() {
+fn two_commits_invalid_signoff_in_first_no_signoff_in_second() {
     let commit1 = Commit {
         author: Some(GitUser {
             name: "user1".to_string(),
@@ -1525,7 +1525,7 @@ fn check_two_commits_invalid_signoff_in_first_no_signoff_in_second() {
 }
 
 #[test]
-fn check_three_commits_valid_signoff_in_all() {
+fn three_commits_valid_signoff_in_all() {
     let commit1 = Commit {
         author: Some(GitUser {
             name: "user1".to_string(),
@@ -1563,7 +1563,7 @@ fn check_three_commits_valid_signoff_in_all() {
 }
 
 #[test]
-fn check_three_commits_valid_signoff_first_and_second_no_signoff_third() {
+fn three_commits_valid_signoff_first_and_second_no_signoff_third() {
     let commit1 = Commit {
         author: Some(GitUser {
             name: "user1".to_string(),
@@ -1617,7 +1617,7 @@ fn check_three_commits_valid_signoff_first_and_second_no_signoff_third() {
 }
 
 #[test]
-fn check_three_commits_invalid_signoff_first_no_signoff_second_valid_signoff_third() {
+fn three_commits_invalid_signoff_first_no_signoff_second_valid_signoff_third() {
     let commit1 = Commit {
         author: Some(GitUser {
             name: "user1".to_string(),
@@ -1695,7 +1695,7 @@ fn check_three_commits_invalid_signoff_first_no_signoff_second_valid_signoff_thi
 }
 
 #[test]
-fn check_three_commits_valid_signoff_first_invalid_signoff_second_valid_signoff_third() {
+fn three_commits_valid_signoff_first_invalid_signoff_second_valid_signoff_third() {
     let commit1 = Commit {
         author: Some(GitUser {
             name: "user1".to_string(),

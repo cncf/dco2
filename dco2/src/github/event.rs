@@ -10,11 +10,11 @@ use thiserror::Error;
 /// Header representing the event unique identifier.
 pub const EVENT_ID_HEADER: &str = "X-GitHub-Delivery";
 
-/// Header representing the name of the event received.
-pub const EVENT_NAME_HEADER: &str = "X-GitHub-Event";
-
 /// Header representing the event payload signature.
 pub const EVENT_SIGNATURE_HEADER: &str = "X-Hub-Signature-256";
+
+/// Header representing the name of the event received.
+const EVENT_NAME_HEADER: &str = "X-GitHub-Event";
 
 /// Webhook event.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
