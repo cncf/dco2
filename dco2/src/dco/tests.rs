@@ -1110,7 +1110,7 @@ fn check_single_commit_invalid_signoff_invalid_email_in_signoff() {
 }
 
 #[test]
-fn check_single_commit_invalid_signoff_email_alias_used_in_signoff_but_not_authors_email() {
+fn check_single_commit_invalid_signoff_email_alias_used_in_signoff_but_not_in_author_email() {
     let commit1 = Commit {
         author: Some(GitUser {
             name: "user1".to_string(),
@@ -1144,6 +1144,612 @@ fn check_single_commit_invalid_signoff_email_alias_used_in_signoff_but_not_autho
                 errors: vec![CommitError::SignOffMismatch],
             }],
             total_commits: 1,
+        }
+    );
+}
+
+#[test]
+fn check_two_commits_valid_signoff_in_both() {
+    let commit1 = Commit {
+        author: Some(GitUser {
+            name: "user1".to_string(),
+            email: "user1@email.test".to_string(),
+            ..Default::default()
+        }),
+        committer: Some(GitUser {
+            name: "user1".to_string(),
+            email: "user1@email.test".to_string(),
+            ..Default::default()
+        }),
+        message: indoc! {r"
+            Test commit message
+
+            Signed-off-by: user1 <user1@email.test>
+        "}
+        .to_string(),
+        ..Default::default()
+    };
+    let commit2 = commit1.clone();
+
+    let input = CheckInput {
+        commits: vec![commit1, commit2],
+    };
+    let output = check(&input);
+
+    assert_eq!(
+        output,
+        CheckOutput {
+            commits_with_errors: vec![],
+            total_commits: 2,
+        }
+    );
+}
+
+#[test]
+fn check_two_commits_no_signoff_in_first_valid_signoff_in_second() {
+    let commit1 = Commit {
+        author: Some(GitUser {
+            name: "user1".to_string(),
+            email: "user1@email.test".to_string(),
+            ..Default::default()
+        }),
+        committer: Some(GitUser {
+            name: "user1".to_string(),
+            email: "user1@email.test".to_string(),
+            ..Default::default()
+        }),
+        message: "Test commit message".to_string(),
+        ..Default::default()
+    };
+    let commit2 = Commit {
+        author: Some(GitUser {
+            name: "user1".to_string(),
+            email: "user1@email.test".to_string(),
+            ..Default::default()
+        }),
+        committer: Some(GitUser {
+            name: "user1".to_string(),
+            email: "user1@email.test".to_string(),
+            ..Default::default()
+        }),
+        message: indoc! {r"
+            Test commit message
+
+            Signed-off-by: user1 <user1@email.test>
+        "}
+        .to_string(),
+        ..Default::default()
+    };
+
+    let input = CheckInput {
+        commits: vec![commit1.clone(), commit2],
+    };
+    let output = check(&input);
+
+    assert_eq!(
+        output,
+        CheckOutput {
+            commits_with_errors: vec![CommitCheckOutput {
+                commit: commit1,
+                errors: vec![CommitError::SignOffNotFound],
+            }],
+            total_commits: 2,
+        }
+    );
+}
+
+#[test]
+fn check_two_commits_valid_signoff_in_first_no_signoff_in_second() {
+    let commit1 = Commit {
+        author: Some(GitUser {
+            name: "user1".to_string(),
+            email: "user1@email.test".to_string(),
+            ..Default::default()
+        }),
+        committer: Some(GitUser {
+            name: "user1".to_string(),
+            email: "user1@email.test".to_string(),
+            ..Default::default()
+        }),
+        message: indoc! {r"
+        Test commit message
+
+        Signed-off-by: user1 <user1@email.test>
+    "}
+        .to_string(),
+        ..Default::default()
+    };
+    let commit2 = Commit {
+        author: Some(GitUser {
+            name: "user1".to_string(),
+            email: "user1@email.test".to_string(),
+            ..Default::default()
+        }),
+        committer: Some(GitUser {
+            name: "user1".to_string(),
+            email: "user1@email.test".to_string(),
+            ..Default::default()
+        }),
+        message: "Test commit message".to_string(),
+        ..Default::default()
+    };
+
+    let input = CheckInput {
+        commits: vec![commit1, commit2.clone()],
+    };
+    let output = check(&input);
+
+    assert_eq!(
+        output,
+        CheckOutput {
+            commits_with_errors: vec![CommitCheckOutput {
+                commit: commit2,
+                errors: vec![CommitError::SignOffNotFound],
+            }],
+            total_commits: 2,
+        }
+    );
+}
+
+#[test]
+fn check_two_commits_invalid_signoff_in_first_valid_signoff_in_second() {
+    let commit1 = Commit {
+        author: Some(GitUser {
+            name: "user1".to_string(),
+            email: "user1@email.test".to_string(),
+            ..Default::default()
+        }),
+        committer: Some(GitUser {
+            name: "user1".to_string(),
+            email: "user1@email.test".to_string(),
+            ..Default::default()
+        }),
+        message: indoc! {r"
+            Test commit message
+
+            Signed-off-by: userx <userx@email.test>
+        "}
+        .to_string(),
+        ..Default::default()
+    };
+    let commit2 = Commit {
+        author: Some(GitUser {
+            name: "user1".to_string(),
+            email: "user1@email.test".to_string(),
+            ..Default::default()
+        }),
+        committer: Some(GitUser {
+            name: "user1".to_string(),
+            email: "user1@email.test".to_string(),
+            ..Default::default()
+        }),
+        message: indoc! {r"
+            Test commit message
+
+            Signed-off-by: user1 <user1@email.test>
+        "}
+        .to_string(),
+        ..Default::default()
+    };
+
+    let input = CheckInput {
+        commits: vec![commit1.clone(), commit2],
+    };
+    let output = check(&input);
+
+    assert_eq!(
+        output,
+        CheckOutput {
+            commits_with_errors: vec![CommitCheckOutput {
+                commit: commit1,
+                errors: vec![CommitError::SignOffMismatch],
+            }],
+            total_commits: 2,
+        }
+    );
+}
+
+#[test]
+fn check_two_commits_valid_signoff_in_first_invalid_signoff_in_second() {
+    let commit1 = Commit {
+        author: Some(GitUser {
+            name: "user1".to_string(),
+            email: "user1@email.test".to_string(),
+            ..Default::default()
+        }),
+        committer: Some(GitUser {
+            name: "user1".to_string(),
+            email: "user1@email.test".to_string(),
+            ..Default::default()
+        }),
+        message: indoc! {r"
+            Test commit message
+
+            Signed-off-by: user1 <user1@email.test>
+        "}
+        .to_string(),
+        ..Default::default()
+    };
+    let commit2 = Commit {
+        author: Some(GitUser {
+            name: "user1".to_string(),
+            email: "user1@email.test".to_string(),
+            ..Default::default()
+        }),
+        committer: Some(GitUser {
+            name: "user1".to_string(),
+            email: "user1@email.test".to_string(),
+            ..Default::default()
+        }),
+        message: indoc! {r"
+            Test commit message
+
+            Signed-off-by: userx <userx@email.test>
+        "}
+        .to_string(),
+        ..Default::default()
+    };
+
+    let input = CheckInput {
+        commits: vec![commit1, commit2.clone()],
+    };
+    let output = check(&input);
+
+    assert_eq!(
+        output,
+        CheckOutput {
+            commits_with_errors: vec![CommitCheckOutput {
+                commit: commit2,
+                errors: vec![CommitError::SignOffMismatch],
+            }],
+            total_commits: 2,
+        }
+    );
+}
+
+#[test]
+fn check_two_commits_no_signoff_in_first_invalid_signoff_in_second() {
+    let commit1 = Commit {
+        author: Some(GitUser {
+            name: "user1".to_string(),
+            email: "user1@email.test".to_string(),
+            ..Default::default()
+        }),
+        committer: Some(GitUser {
+            name: "user1".to_string(),
+            email: "user1@email.test".to_string(),
+            ..Default::default()
+        }),
+        message: "Test commit message".to_string(),
+        ..Default::default()
+    };
+    let commit2 = Commit {
+        author: Some(GitUser {
+            name: "user1".to_string(),
+            email: "user1@email.test".to_string(),
+            ..Default::default()
+        }),
+        committer: Some(GitUser {
+            name: "user1".to_string(),
+            email: "user1@email.test".to_string(),
+            ..Default::default()
+        }),
+        message: indoc! {r"
+            Test commit message
+
+            Signed-off-by: userx <userx@email.test>
+        "}
+        .to_string(),
+        ..Default::default()
+    };
+
+    let input = CheckInput {
+        commits: vec![commit1.clone(), commit2.clone()],
+    };
+    let output = check(&input);
+
+    assert_eq!(
+        output,
+        CheckOutput {
+            commits_with_errors: vec![
+                CommitCheckOutput {
+                    commit: commit1,
+                    errors: vec![CommitError::SignOffNotFound],
+                },
+                CommitCheckOutput {
+                    commit: commit2,
+                    errors: vec![CommitError::SignOffMismatch],
+                }
+            ],
+            total_commits: 2,
+        }
+    );
+}
+
+#[test]
+fn check_two_commits_invalid_signoff_in_first_no_signoff_in_second() {
+    let commit1 = Commit {
+        author: Some(GitUser {
+            name: "user1".to_string(),
+            email: "user1@email.test".to_string(),
+            ..Default::default()
+        }),
+        committer: Some(GitUser {
+            name: "user1".to_string(),
+            email: "user1@email.test".to_string(),
+            ..Default::default()
+        }),
+        message: indoc! {r"
+        Test commit message
+
+        Signed-off-by: userx <userx@email.test>
+    "}
+        .to_string(),
+        ..Default::default()
+    };
+    let commit2 = Commit {
+        author: Some(GitUser {
+            name: "user1".to_string(),
+            email: "user1@email.test".to_string(),
+            ..Default::default()
+        }),
+        committer: Some(GitUser {
+            name: "user1".to_string(),
+            email: "user1@email.test".to_string(),
+            ..Default::default()
+        }),
+        message: "Test commit message".to_string(),
+        ..Default::default()
+    };
+
+    let input = CheckInput {
+        commits: vec![commit1.clone(), commit2.clone()],
+    };
+    let output = check(&input);
+
+    assert_eq!(
+        output,
+        CheckOutput {
+            commits_with_errors: vec![
+                CommitCheckOutput {
+                    commit: commit1,
+                    errors: vec![CommitError::SignOffMismatch],
+                },
+                CommitCheckOutput {
+                    commit: commit2,
+                    errors: vec![CommitError::SignOffNotFound],
+                }
+            ],
+            total_commits: 2,
+        }
+    );
+}
+
+#[test]
+fn check_three_commits_valid_signoff_in_all() {
+    let commit1 = Commit {
+        author: Some(GitUser {
+            name: "user1".to_string(),
+            email: "user1@email.test".to_string(),
+            ..Default::default()
+        }),
+        committer: Some(GitUser {
+            name: "user1".to_string(),
+            email: "user1@email.test".to_string(),
+            ..Default::default()
+        }),
+        message: indoc! {r"
+            Test commit message
+
+            Signed-off-by: user1 <user1@email.test>
+        "}
+        .to_string(),
+        ..Default::default()
+    };
+    let commit2 = commit1.clone();
+    let commit3 = commit1.clone();
+
+    let input = CheckInput {
+        commits: vec![commit1, commit2, commit3],
+    };
+    let output = check(&input);
+
+    assert_eq!(
+        output,
+        CheckOutput {
+            commits_with_errors: vec![],
+            total_commits: 3,
+        }
+    );
+}
+
+#[test]
+fn check_three_commits_valid_signoff_first_and_second_no_signoff_third() {
+    let commit1 = Commit {
+        author: Some(GitUser {
+            name: "user1".to_string(),
+            email: "user1@email.test".to_string(),
+            ..Default::default()
+        }),
+        committer: Some(GitUser {
+            name: "user1".to_string(),
+            email: "user1@email.test".to_string(),
+            ..Default::default()
+        }),
+        message: indoc! {r"
+            Test commit message
+
+            Signed-off-by: user1 <user1@email.test>
+        "}
+        .to_string(),
+        ..Default::default()
+    };
+    let commit2 = commit1.clone();
+    let commit3 = Commit {
+        author: Some(GitUser {
+            name: "user1".to_string(),
+            email: "user1@email.test".to_string(),
+            ..Default::default()
+        }),
+        committer: Some(GitUser {
+            name: "user1".to_string(),
+            email: "user1@email.test".to_string(),
+            ..Default::default()
+        }),
+        message: "Test commit message".to_string(),
+        ..Default::default()
+    };
+
+    let input = CheckInput {
+        commits: vec![commit1, commit2, commit3.clone()],
+    };
+    let output = check(&input);
+
+    assert_eq!(
+        output,
+        CheckOutput {
+            commits_with_errors: vec![CommitCheckOutput {
+                commit: commit3,
+                errors: vec![CommitError::SignOffNotFound],
+            }],
+            total_commits: 3,
+        }
+    );
+}
+
+#[test]
+fn check_three_commits_invalid_signoff_first_no_signoff_second_valid_signoff_third() {
+    let commit1 = Commit {
+        author: Some(GitUser {
+            name: "user1".to_string(),
+            email: "user1@email.test".to_string(),
+            ..Default::default()
+        }),
+        committer: Some(GitUser {
+            name: "user1".to_string(),
+            email: "user1@email.test".to_string(),
+            ..Default::default()
+        }),
+        message: indoc! {r"
+            Test commit message
+
+            Signed-off-by: userx <userx@email.test>
+        "}
+        .to_string(),
+        ..Default::default()
+    };
+    let commit2 = Commit {
+        author: Some(GitUser {
+            name: "user1".to_string(),
+            email: "user1@email.test".to_string(),
+            ..Default::default()
+        }),
+        committer: Some(GitUser {
+            name: "user1".to_string(),
+            email: "user1@email.test".to_string(),
+            ..Default::default()
+        }),
+        message: "Test commit message".to_string(),
+        ..Default::default()
+    };
+    let commit3 = Commit {
+        author: Some(GitUser {
+            name: "user1".to_string(),
+            email: "user1@email.test".to_string(),
+            ..Default::default()
+        }),
+        committer: Some(GitUser {
+            name: "user1".to_string(),
+            email: "user1@email.test".to_string(),
+            ..Default::default()
+        }),
+        message: indoc! {r"
+            Test commit message
+
+            Signed-off-by: user1 <user1@email.test>
+        "}
+        .to_string(),
+        ..Default::default()
+    };
+
+    let input = CheckInput {
+        commits: vec![commit1.clone(), commit2.clone(), commit3],
+    };
+    let output = check(&input);
+
+    assert_eq!(
+        output,
+        CheckOutput {
+            commits_with_errors: vec![
+                CommitCheckOutput {
+                    commit: commit1,
+                    errors: vec![CommitError::SignOffMismatch],
+                },
+                CommitCheckOutput {
+                    commit: commit2,
+                    errors: vec![CommitError::SignOffNotFound],
+                }
+            ],
+            total_commits: 3,
+        }
+    );
+}
+
+#[test]
+fn check_three_commits_valid_signoff_first_invalid_signoff_second_valid_signoff_third() {
+    let commit1 = Commit {
+        author: Some(GitUser {
+            name: "user1".to_string(),
+            email: "user1@email.test".to_string(),
+            ..Default::default()
+        }),
+        committer: Some(GitUser {
+            name: "user1".to_string(),
+            email: "user1@email.test".to_string(),
+            ..Default::default()
+        }),
+        message: indoc! {r"
+            Test commit message
+
+            Signed-off-by: user1 <user1@email.test>
+        "}
+        .to_string(),
+        ..Default::default()
+    };
+    let commit2 = Commit {
+        author: Some(GitUser {
+            name: "user1".to_string(),
+            email: "user1@email.test".to_string(),
+            ..Default::default()
+        }),
+        committer: Some(GitUser {
+            name: "user1".to_string(),
+            email: "user1@email.test".to_string(),
+            ..Default::default()
+        }),
+        message: indoc! {r"
+            Test commit message
+
+            Signed-off-by: userx <userx@email.test>
+        "}
+        .to_string(),
+        ..Default::default()
+    };
+    let commit3 = commit1.clone();
+
+    let input = CheckInput {
+        commits: vec![commit1, commit2.clone(), commit3],
+    };
+    let output = check(&input);
+
+    assert_eq!(
+        output,
+        CheckOutput {
+            commits_with_errors: vec![CommitCheckOutput {
+                commit: commit2,
+                errors: vec![CommitError::SignOffMismatch],
+            }],
+            total_commits: 3,
         }
     );
 }
