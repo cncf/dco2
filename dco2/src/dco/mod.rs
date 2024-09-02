@@ -2,7 +2,10 @@
 
 use crate::{
     dco,
-    github::{CheckRun, Commit, DynGHClient, Event, PullRequestEventAction},
+    github::{
+        CheckRun, CheckRunAction, CheckRunConclusion, CheckRunEvent, CheckRunEventAction, CheckRunStatus,
+        Commit, DynGHClient, Event, PullRequestEvent, PullRequestEventAction,
+    },
 };
 use anyhow::{Context, Result};
 use askama::Template;
@@ -16,6 +19,12 @@ use tracing::debug;
 
 #[cfg(test)]
 mod tests;
+
+/// Action to override the check result and set it to passed.
+const ACTION_OVERRIDE: &str = "override";
+
+/// Check name.
+const CHECK_NAME: &str = "DCO";
 
 /// Sign-off line regular expression.
 static SIGN_OFF: LazyLock<Regex> = LazyLock::new(|| {
@@ -60,7 +69,7 @@ pub enum CommitError {
     InvalidAuthorEmail,
     #[error("invalid committer email")]
     InvalidCommitterEmail,
-    #[error("no sign-off matches the author or committer email")]
+    #[error("no sign-off matches the author or committer")]
     SignOffMismatch,
     #[error("sign-off not found")]
     SignOffNotFound,
@@ -82,11 +91,47 @@ enum SignOffKind {
 
 /// Process the GitHub webhook event provided.
 pub async fn process_event(gh_client: DynGHClient, event: &Event) -> Result<()> {
+    // Take the appropriate action for the event received
+    match event {
+        Event::CheckRun(event) => process_check_run_event(gh_client, event).await,
+        Event::PullRequest(event) => process_pull_request_event(gh_client, event).await,
+    }
+}
+
+/// Process check run event.
+pub async fn process_check_run_event(gh_client: DynGHClient, event: &CheckRunEvent) -> Result<()> {
     let ctx = event.ctx();
     let started_at = Utc::now();
 
-    // Check if we are interested in the PR event action
-    let Event::PullRequest(event) = event;
+    // Check if we are interested in the event action
+    if event.action != CheckRunEventAction::RequestedAction {
+        return Ok(());
+    }
+
+    // Override action: create check run with success status
+    if event.requested_action.identifier == ACTION_OVERRIDE {
+        let check_run = CheckRun {
+            actions: vec![],
+            completed_at: Utc::now(),
+            conclusion: CheckRunConclusion::Success,
+            head_sha: event.check_run.head_sha.clone(),
+            name: CHECK_NAME.to_string(),
+            started_at,
+            status: CheckRunStatus::Completed,
+            summary: "Check result was manually set to passed.".to_string(),
+        };
+        gh_client.create_check_run(&ctx, &check_run).await.context("error creating check run")?;
+    }
+
+    Ok(())
+}
+
+/// Process pull request event.
+pub async fn process_pull_request_event(gh_client: DynGHClient, event: &PullRequestEvent) -> Result<()> {
+    let ctx = event.ctx();
+    let started_at = Utc::now();
+
+    // Check if we are interested in the event action
     if ![
         PullRequestEventAction::Opened,
         PullRequestEventAction::Synchronize,
@@ -107,17 +152,26 @@ pub async fn process_event(gh_client: DynGHClient, event: &Event) -> Result<()> 
     let output = dco::check(&input);
 
     // Create check run
+    let (conclusion, actions) = if output.commits_with_errors.is_empty() {
+        (CheckRunConclusion::Success, vec![])
+    } else {
+        (
+            CheckRunConclusion::ActionRequired,
+            vec![CheckRunAction {
+                label: "Set DCO to pass".to_string(),
+                description: "Override check result setting it to passed".to_string(),
+                identifier: ACTION_OVERRIDE.to_string(),
+            }],
+        )
+    };
     let check_run = CheckRun {
-        conclusion: (if output.commits_with_errors.is_empty() {
-            "success"
-        } else {
-            "failure"
-        })
-        .to_string(),
+        actions,
+        completed_at: Utc::now(),
+        conclusion,
         head_sha: event.pull_request.head.sha.clone(),
-        name: "DCO".to_string(),
+        name: CHECK_NAME.to_string(),
         started_at,
-        status: "completed".to_string(),
+        status: CheckRunStatus::Completed,
         summary: output.render().context("error rendering output template")?,
     };
     gh_client.create_check_run(&ctx, &check_run).await.context("error creating check run")?;
