@@ -11,10 +11,7 @@ use axum::{
 };
 use dco2::{
     dco,
-    github::{
-        client::DynGHClient,
-        event::{Event, EventError, EVENT_ID_HEADER, EVENT_SIGNATURE_HEADER},
-    },
+    github::{DynGHClient, Event, EventError, EVENT_ID_HEADER, EVENT_SIGNATURE_HEADER},
 };
 use hmac::{Hmac, Mac};
 use sha2::Sha256;

@@ -1,5 +1,5 @@
 use anyhow::Context;
-use dco2::github::client::{AppConfig, GHClientOctorust};
+use dco2::github::{AppConfig, GHClientOctorust};
 use dco2_server::handlers::setup_router;
 use figment::{providers::Env, Figment};
 use lambda_http::{run, tracing, Error};
