@@ -9,6 +9,7 @@ use std::sync::LazyLock;
 use thiserror::Error;
 use tracing::debug;
 
+mod filters;
 #[cfg(test)]
 mod tests;
 
@@ -23,7 +24,6 @@ pub(crate) struct CheckInput {
 #[template(path = "output.md")]
 pub(crate) struct CheckOutput {
     pub commits_with_errors: Vec<CommitCheckOutput>,
-    pub has_signoff_errors: bool,
     pub total_commits: usize,
 }
 
@@ -61,7 +61,6 @@ pub(crate) enum CommitError {
 pub(crate) fn check(input: &CheckInput) -> CheckOutput {
     let mut output = CheckOutput {
         commits_with_errors: Vec::new(),
-        has_signoff_errors: false,
         total_commits: input.commits.len(),
     };
 
@@ -102,13 +101,6 @@ pub(crate) fn check(input: &CheckInput) -> CheckOutput {
             output.commits_with_errors.push(commit_output);
         }
     }
-
-    // Update output status
-    output.has_signoff_errors = output.commits_with_errors.iter().any(|c| {
-        c.errors
-            .iter()
-            .any(|e| e == &CommitError::SignOffNotFound || e == &CommitError::SignOffMismatch)
-    });
 
     output
 }
