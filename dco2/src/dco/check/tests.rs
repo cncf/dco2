@@ -21,7 +21,6 @@ fn single_commit_no_signoff_is_merge_commit() {
         output,
         CheckOutput {
             commits_with_errors: vec![],
-            has_signoff_errors: false,
             total_commits: 1,
         }
     );
@@ -46,7 +45,6 @@ fn single_commit_no_signoff_author_is_bot() {
         output,
         CheckOutput {
             commits_with_errors: vec![],
-            has_signoff_errors: false,
             total_commits: 1,
         }
     );
@@ -83,7 +81,6 @@ fn single_commit_valid_signoff_author_match() {
         output,
         CheckOutput {
             commits_with_errors: vec![],
-            has_signoff_errors: false,
             total_commits: 1,
         }
     );
@@ -120,7 +117,6 @@ fn single_commit_valid_signoff_committer_match() {
         output,
         CheckOutput {
             commits_with_errors: vec![],
-            has_signoff_errors: false,
             total_commits: 1,
         }
     );
@@ -159,7 +155,6 @@ fn single_commit_valid_signoff_multiple_signoffs() {
         output,
         CheckOutput {
             commits_with_errors: vec![],
-            has_signoff_errors: false,
             total_commits: 1,
         }
     );
@@ -196,7 +191,6 @@ fn single_commit_valid_signoff_signoff_case_insensitive() {
         output,
         CheckOutput {
             commits_with_errors: vec![],
-            has_signoff_errors: false,
             total_commits: 1,
         }
     );
@@ -228,7 +222,6 @@ fn single_commit_valid_signoff_signoff_trailing_whitespace() {
         output,
         CheckOutput {
             commits_with_errors: vec![],
-            has_signoff_errors: false,
             total_commits: 1,
         }
     );
@@ -265,7 +258,6 @@ fn single_commit_valid_signoff_email_contains_subdomain() {
         output,
         CheckOutput {
             commits_with_errors: vec![],
-            has_signoff_errors: false,
             total_commits: 1,
         }
     );
@@ -302,7 +294,6 @@ fn single_commit_valid_signoff_email_contains_plus_alias() {
         output,
         CheckOutput {
             commits_with_errors: vec![],
-            has_signoff_errors: false,
             total_commits: 1,
         }
     );
@@ -342,7 +333,6 @@ fn single_commit_invalid_author_email() {
                 commit: commit1,
                 errors: vec![CommitError::InvalidAuthorEmail],
             }],
-            has_signoff_errors: false,
             total_commits: 1,
         }
     );
@@ -377,7 +367,6 @@ fn single_commit_invalid_author_email_and_no_signoff() {
                 commit: commit1,
                 errors: vec![CommitError::InvalidAuthorEmail, CommitError::SignOffNotFound],
             }],
-            has_signoff_errors: true,
             total_commits: 1,
         }
     );
@@ -417,7 +406,6 @@ fn single_commit_invalid_author_email_also_used_in_signoff() {
                 commit: commit1,
                 errors: vec![CommitError::InvalidAuthorEmail],
             }],
-            has_signoff_errors: false,
             total_commits: 1,
         }
     );
@@ -457,7 +445,6 @@ fn single_commit_invalid_committer_email() {
                 commit: commit1,
                 errors: vec![CommitError::InvalidCommitterEmail],
             }],
-            has_signoff_errors: false,
             total_commits: 1,
         }
     );
@@ -492,7 +479,6 @@ fn single_commit_invalid_committer_email_and_no_signoff() {
                 commit: commit1,
                 errors: vec![CommitError::InvalidCommitterEmail, CommitError::SignOffNotFound],
             }],
-            has_signoff_errors: true,
             total_commits: 1,
         }
     );
@@ -532,7 +518,6 @@ fn single_commit_invalid_committer_email_also_used_in_signoff() {
                 commit: commit1,
                 errors: vec![CommitError::InvalidCommitterEmail],
             }],
-            has_signoff_errors: false,
             total_commits: 1,
         }
     );
@@ -572,7 +557,6 @@ fn single_commit_invalid_author_and_committer_email_same_email() {
                 commit: commit1,
                 errors: vec![CommitError::InvalidCommitterEmail],
             }],
-            has_signoff_errors: false,
             total_commits: 1,
         }
     );
@@ -615,7 +599,6 @@ fn single_commit_invalid_author_and_committer_email_different_emails() {
                     CommitError::InvalidAuthorEmail
                 ],
             }],
-            has_signoff_errors: false,
             total_commits: 1,
         }
     );
@@ -650,7 +633,6 @@ fn single_commit_signoff_not_found() {
                 commit: commit1,
                 errors: vec![CommitError::SignOffNotFound],
             }],
-            has_signoff_errors: true,
             total_commits: 1,
         }
     );
@@ -692,7 +674,6 @@ fn single_commit_invalid_signoff_multiple_signoffs() {
                 commit: commit1,
                 errors: vec![CommitError::SignOffMismatch],
             }],
-            has_signoff_errors: true,
             total_commits: 1,
         }
     );
@@ -732,7 +713,6 @@ fn single_commit_invalid_signoff_name_mismatch() {
                 commit: commit1,
                 errors: vec![CommitError::SignOffMismatch],
             }],
-            has_signoff_errors: true,
             total_commits: 1,
         }
     );
@@ -772,7 +752,6 @@ fn single_commit_invalid_signoff_email_mismatch() {
                 commit: commit1,
                 errors: vec![CommitError::SignOffMismatch],
             }],
-            has_signoff_errors: true,
             total_commits: 1,
         }
     );
@@ -812,7 +791,6 @@ fn single_commit_invalid_signoff_name_and_email_mismatch() {
                 commit: commit1,
                 errors: vec![CommitError::SignOffMismatch],
             }],
-            has_signoff_errors: true,
             total_commits: 1,
         }
     );
@@ -852,7 +830,6 @@ fn single_commit_invalid_signoff_extra_whitespace_around_name() {
                 commit: commit1,
                 errors: vec![CommitError::SignOffMismatch],
             }],
-            has_signoff_errors: true,
             total_commits: 1,
         }
     );
@@ -892,7 +869,6 @@ fn single_commit_invalid_signoff_extra_whitespace_around_email() {
                 commit: commit1,
                 errors: vec![CommitError::SignOffMismatch],
             }],
-            has_signoff_errors: true,
             total_commits: 1,
         }
     );
@@ -932,7 +908,6 @@ fn single_commit_invalid_signoff_missing_name_in_signoff() {
                 commit: commit1,
                 errors: vec![CommitError::SignOffNotFound],
             }],
-            has_signoff_errors: true,
             total_commits: 1,
         }
     );
@@ -972,7 +947,6 @@ fn single_commit_invalid_signoff_missing_email_in_signoff() {
                 commit: commit1,
                 errors: vec![CommitError::SignOffNotFound],
             }],
-            has_signoff_errors: true,
             total_commits: 1,
         }
     );
@@ -1012,7 +986,6 @@ fn single_commit_invalid_signoff_missing_email_brackets_in_signoff() {
                 commit: commit1,
                 errors: vec![CommitError::SignOffNotFound],
             }],
-            has_signoff_errors: true,
             total_commits: 1,
         }
     );
@@ -1052,7 +1025,6 @@ fn single_commit_invalid_signoff_missing_name_and_email_in_signoff() {
                 commit: commit1,
                 errors: vec![CommitError::SignOffNotFound],
             }],
-            has_signoff_errors: true,
             total_commits: 1,
         }
     );
@@ -1092,7 +1064,6 @@ fn single_commit_invalid_signoff_name_and_email_swapped_in_signoff() {
                 commit: commit1,
                 errors: vec![CommitError::SignOffMismatch],
             }],
-            has_signoff_errors: true,
             total_commits: 1,
         }
     );
@@ -1132,7 +1103,6 @@ fn single_commit_invalid_signoff_invalid_email_in_signoff() {
                 commit: commit1,
                 errors: vec![CommitError::SignOffMismatch],
             }],
-            has_signoff_errors: true,
             total_commits: 1,
         }
     );
@@ -1172,7 +1142,6 @@ fn single_commit_invalid_signoff_email_alias_used_in_signoff_but_not_in_author_e
                 commit: commit1,
                 errors: vec![CommitError::SignOffMismatch],
             }],
-            has_signoff_errors: true,
             total_commits: 1,
         }
     );
@@ -1210,7 +1179,6 @@ fn two_commits_valid_signoff_in_both() {
         output,
         CheckOutput {
             commits_with_errors: vec![],
-            has_signoff_errors: false,
             total_commits: 2,
         }
     );
@@ -1264,7 +1232,6 @@ fn two_commits_no_signoff_in_first_valid_signoff_in_second() {
                 commit: commit1,
                 errors: vec![CommitError::SignOffNotFound],
             }],
-            has_signoff_errors: true,
             total_commits: 2,
         }
     );
@@ -1318,7 +1285,6 @@ fn two_commits_valid_signoff_in_first_no_signoff_in_second() {
                 commit: commit2,
                 errors: vec![CommitError::SignOffNotFound],
             }],
-            has_signoff_errors: true,
             total_commits: 2,
         }
     );
@@ -1377,7 +1343,6 @@ fn two_commits_invalid_signoff_in_first_valid_signoff_in_second() {
                 commit: commit1,
                 errors: vec![CommitError::SignOffMismatch],
             }],
-            has_signoff_errors: true,
             total_commits: 2,
         }
     );
@@ -1436,7 +1401,6 @@ fn two_commits_valid_signoff_in_first_invalid_signoff_in_second() {
                 commit: commit2,
                 errors: vec![CommitError::SignOffMismatch],
             }],
-            has_signoff_errors: true,
             total_commits: 2,
         }
     );
@@ -1496,7 +1460,6 @@ fn two_commits_no_signoff_in_first_invalid_signoff_in_second() {
                     errors: vec![CommitError::SignOffMismatch],
                 }
             ],
-            has_signoff_errors: true,
             total_commits: 2,
         }
     );
@@ -1556,7 +1519,6 @@ fn two_commits_invalid_signoff_in_first_no_signoff_in_second() {
                     errors: vec![CommitError::SignOffNotFound],
                 }
             ],
-            has_signoff_errors: true,
             total_commits: 2,
         }
     );
@@ -1595,7 +1557,6 @@ fn three_commits_valid_signoff_in_all() {
         output,
         CheckOutput {
             commits_with_errors: vec![],
-            has_signoff_errors: false,
             total_commits: 3,
         }
     );
@@ -1650,7 +1611,6 @@ fn three_commits_valid_signoff_first_and_second_no_signoff_third() {
                 commit: commit3,
                 errors: vec![CommitError::SignOffNotFound],
             }],
-            has_signoff_errors: true,
             total_commits: 3,
         }
     );
@@ -1729,7 +1689,6 @@ fn three_commits_invalid_signoff_first_no_signoff_second_valid_signoff_third() {
                     errors: vec![CommitError::SignOffNotFound],
                 }
             ],
-            has_signoff_errors: true,
             total_commits: 3,
         }
     );
@@ -1789,7 +1748,6 @@ fn three_commits_valid_signoff_first_invalid_signoff_second_valid_signoff_third(
                 commit: commit2,
                 errors: vec![CommitError::SignOffMismatch],
             }],
-            has_signoff_errors: true,
             total_commits: 3,
         }
     );
