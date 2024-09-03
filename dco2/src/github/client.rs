@@ -121,14 +121,103 @@ pub struct AppConfig {
 /// Check run information.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct CheckRun {
-    pub actions: Vec<CheckRunAction>,
-    pub completed_at: DateTime<Utc>,
-    pub conclusion: CheckRunConclusion,
-    pub head_sha: String,
-    pub name: String,
-    pub started_at: DateTime<Utc>,
-    pub status: CheckRunStatus,
-    pub summary: String,
+    actions: Vec<CheckRunAction>,
+    completed_at: DateTime<Utc>,
+    conclusion: CheckRunConclusion,
+    head_sha: String,
+    name: String,
+    started_at: DateTime<Utc>,
+    status: CheckRunStatus,
+    summary: String,
+}
+
+impl CheckRun {
+    /// Create a new CheckRun instance.
+    pub fn new(input: NewCheckRunInput) -> Self {
+        // Create a new check run from the input received.
+        let mut check_run = Self {
+            actions: input.actions,
+            completed_at: input.completed_at,
+            conclusion: input.conclusion,
+            head_sha: input.head_sha,
+            name: input.name,
+            started_at: input.started_at,
+            status: input.status,
+            summary: input.summary,
+        };
+
+        // Make sure the length of some fields is below the maximum allowed by
+        // GitHub (we'll truncate them if necessary).
+
+        // Output summary
+        const MAX_OUTPUT_SUMMARY_LENGTH: usize = 65535;
+        if check_run.summary.len() > MAX_OUTPUT_SUMMARY_LENGTH {
+            check_run.summary.truncate(MAX_OUTPUT_SUMMARY_LENGTH);
+        }
+
+        // Actions
+        for action in &mut check_run.actions {
+            // Action label
+            const MAX_ACTION_LABEL_LENGTH: usize = 20;
+            if action.label.len() > MAX_ACTION_LABEL_LENGTH {
+                action.label.truncate(MAX_ACTION_LABEL_LENGTH);
+            }
+
+            // Action description
+            const MAX_ACTION_DESCRIPTION_LENGTH: usize = 40;
+            if action.description.len() > MAX_ACTION_DESCRIPTION_LENGTH {
+                action.description.truncate(MAX_ACTION_DESCRIPTION_LENGTH);
+            }
+
+            // Action identifier
+            const MAX_ACTION_IDENTIFIER_LENGTH: usize = 20;
+            if action.identifier.len() > MAX_ACTION_IDENTIFIER_LENGTH {
+                action.identifier.truncate(MAX_ACTION_IDENTIFIER_LENGTH);
+            }
+        }
+
+        check_run
+    }
+
+    /// Get the actions of the check run.
+    pub fn actions(&self) -> &[CheckRunAction] {
+        &self.actions
+    }
+
+    /// Get the completion time of the check run.
+    pub fn completed_at(&self) -> &DateTime<Utc> {
+        &self.completed_at
+    }
+
+    /// Get the conclusion of the check run.
+    pub fn conclusion(&self) -> &CheckRunConclusion {
+        &self.conclusion
+    }
+
+    /// Get the head SHA of the check run.
+    pub fn head_sha(&self) -> &str {
+        &self.head_sha
+    }
+
+    /// Get the name of the check run.
+    pub fn name(&self) -> &str {
+        &self.name
+    }
+
+    /// Get the start time of the check run.
+    pub fn started_at(&self) -> &DateTime<Utc> {
+        &self.started_at
+    }
+
+    /// Get the status of the check run.
+    pub fn status(&self) -> &CheckRunStatus {
+        &self.status
+    }
+
+    /// Get the summary of the check run.
+    pub fn summary(&self) -> &str {
+        &self.summary
+    }
 }
 
 /// Check run action.
@@ -233,4 +322,17 @@ pub struct GitUser {
     pub name: String,
     pub email: String,
     pub is_bot: bool,
+}
+
+/// Input used to create a new check run.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct NewCheckRunInput {
+    pub actions: Vec<CheckRunAction>,
+    pub completed_at: DateTime<Utc>,
+    pub conclusion: CheckRunConclusion,
+    pub head_sha: String,
+    pub name: String,
+    pub started_at: DateTime<Utc>,
+    pub status: CheckRunStatus,
+    pub summary: String,
 }

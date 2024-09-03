@@ -3,7 +3,7 @@
 use super::check::{check, CheckInput};
 use crate::github::{
     CheckRun, CheckRunAction, CheckRunConclusion, CheckRunEvent, CheckRunEventAction, CheckRunStatus, Commit,
-    DynGHClient, Event, PullRequestEvent, PullRequestEventAction,
+    DynGHClient, Event, NewCheckRunInput, PullRequestEvent, PullRequestEventAction,
 };
 use anyhow::{Context, Result};
 use askama::Template;
@@ -48,7 +48,7 @@ async fn process_check_run_event(gh_client: DynGHClient, event: &CheckRunEvent) 
     // Override: create check run with success status
     if let Some(requested_action) = &event.requested_action {
         if requested_action.identifier == OVERRIDE_ACTION_IDENTIFIER {
-            let check_run = CheckRun {
+            let check_run = CheckRun::new(NewCheckRunInput {
                 actions: vec![],
                 completed_at: Utc::now(),
                 conclusion: CheckRunConclusion::Success,
@@ -57,7 +57,7 @@ async fn process_check_run_event(gh_client: DynGHClient, event: &CheckRunEvent) 
                 started_at,
                 status: CheckRunStatus::Completed,
                 summary: OVERRIDE_ACTION_SUMMARY.to_string(),
-            };
+            });
             gh_client.create_check_run(&ctx, &check_run).await.context("error creating check run")?;
         }
     }
@@ -106,7 +106,7 @@ async fn process_pull_request_event(gh_client: DynGHClient, event: &PullRequestE
             }],
         )
     };
-    let check_run = CheckRun {
+    let check_run = CheckRun::new(NewCheckRunInput {
         actions,
         completed_at: Utc::now(),
         conclusion,
@@ -115,7 +115,7 @@ async fn process_pull_request_event(gh_client: DynGHClient, event: &PullRequestE
         started_at,
         status: CheckRunStatus::Completed,
         summary: output.render().context("error rendering output template")?,
-    };
+    });
     gh_client.create_check_run(&ctx, &check_run).await.context("error creating check run")?;
 
     Ok(())

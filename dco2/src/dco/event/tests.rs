@@ -80,13 +80,13 @@ async fn check_run_event_requested_action_override_error_creating_check_run() {
         .expect_create_check_run()
         .withf(move |ctx, check_run| {
             *ctx == expected_ctx
-                && check_run.actions.is_empty()
-                && check_run.completed_at >= check_run.started_at
-                && check_run.conclusion == CheckRunConclusion::Success
-                && check_run.head_sha == "head_sha"
-                && check_run.name == CHECK_NAME
-                && check_run.status == CheckRunStatus::Completed
-                && check_run.summary == OVERRIDE_ACTION_SUMMARY
+                && check_run.actions().is_empty()
+                && check_run.completed_at() >= check_run.started_at()
+                && check_run.conclusion() == &CheckRunConclusion::Success
+                && check_run.head_sha() == "head_sha"
+                && check_run.name() == CHECK_NAME
+                && check_run.status() == &CheckRunStatus::Completed
+                && check_run.summary() == OVERRIDE_ACTION_SUMMARY
         })
         .times(1)
         .returning(|_, _| Box::pin(future::ready(Err(anyhow!("test error")))));
@@ -116,13 +116,13 @@ async fn check_run_event_requested_action_override_success() {
         .expect_create_check_run()
         .withf(move |ctx, check_run| {
             *ctx == expected_ctx
-                && check_run.actions.is_empty()
-                && check_run.completed_at >= check_run.started_at
-                && check_run.conclusion == CheckRunConclusion::Success
-                && check_run.head_sha == "head_sha"
-                && check_run.name == CHECK_NAME
-                && check_run.status == CheckRunStatus::Completed
-                && check_run.summary == OVERRIDE_ACTION_SUMMARY
+                && check_run.actions().is_empty()
+                && check_run.completed_at() >= check_run.started_at()
+                && check_run.conclusion() == &CheckRunConclusion::Success
+                && check_run.head_sha() == "head_sha"
+                && check_run.name() == CHECK_NAME
+                && check_run.status() == &CheckRunStatus::Completed
+                && check_run.summary() == OVERRIDE_ACTION_SUMMARY
         })
         .times(1)
         .returning(|_, _| Box::pin(future::ready(Ok(()))));
@@ -241,12 +241,12 @@ async fn pull_request_event_opened_action_error_creating_check_run() {
         .expect_create_check_run()
         .withf(move |ctx, check_run| {
             *ctx == expected_ctx
-                && check_run.actions.is_empty()
-                && check_run.completed_at >= check_run.started_at
-                && check_run.conclusion == CheckRunConclusion::Success
-                && check_run.head_sha == "head_sha"
-                && check_run.name == CHECK_NAME
-                && check_run.status == CheckRunStatus::Completed
+                && check_run.actions().is_empty()
+                && check_run.completed_at() >= check_run.started_at()
+                && check_run.conclusion() == &CheckRunConclusion::Success
+                && check_run.head_sha() == "head_sha"
+                && check_run.name() == CHECK_NAME
+                && check_run.status() == &CheckRunStatus::Completed
         })
         .times(1)
         .returning(|_, _| Box::pin(future::ready(Err(anyhow!("test error")))));
@@ -306,12 +306,12 @@ async fn pull_request_event_opened_action_success_check_passed() {
         .expect_create_check_run()
         .withf(move |ctx, check_run| {
             *ctx == expected_ctx
-                && check_run.actions.is_empty()
-                && check_run.completed_at >= check_run.started_at
-                && check_run.conclusion == CheckRunConclusion::Success
-                && check_run.head_sha == "head_sha"
-                && check_run.name == CHECK_NAME
-                && check_run.status == CheckRunStatus::Completed
+                && check_run.actions().is_empty()
+                && check_run.completed_at() >= check_run.started_at()
+                && check_run.conclusion() == &CheckRunConclusion::Success
+                && check_run.head_sha() == "head_sha"
+                && check_run.name() == CHECK_NAME
+                && check_run.status() == &CheckRunStatus::Completed
         })
         .times(1)
         .returning(|_, _| Box::pin(future::ready(Ok(()))));
@@ -371,17 +371,17 @@ async fn pull_request_event_opened_action_success_check_failed() {
         .expect_create_check_run()
         .withf(move |ctx, check_run| {
             *ctx == expected_ctx
-                && check_run.actions
+                && check_run.actions()
                     == vec![CheckRunAction {
                         label: OVERRIDE_ACTION_LABEL.to_string(),
                         description: OVERRIDE_ACTION_DESCRIPTION.to_string(),
                         identifier: OVERRIDE_ACTION_IDENTIFIER.to_string(),
                     }]
-                && check_run.completed_at >= check_run.started_at
-                && check_run.conclusion == CheckRunConclusion::ActionRequired
-                && check_run.head_sha == "head_sha"
-                && check_run.name == CHECK_NAME
-                && check_run.status == CheckRunStatus::Completed
+                && check_run.completed_at() >= check_run.started_at()
+                && check_run.conclusion() == &CheckRunConclusion::ActionRequired
+                && check_run.head_sha() == "head_sha"
+                && check_run.name() == CHECK_NAME
+                && check_run.status() == &CheckRunStatus::Completed
         })
         .times(1)
         .returning(|_, _| Box::pin(future::ready(Ok(()))));
