@@ -2,11 +2,17 @@
 
 use anyhow::Result;
 use async_trait::async_trait;
+use base64::{engine::general_purpose::STANDARD as b64, Engine as _};
 use chrono::{DateTime, Utc};
+use http::StatusCode;
 #[cfg(test)]
 use mockall::automock;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
+use tracing::warn;
+
+/// Path of the configuration file in the repository.
+const CONFIG_FILE_PATH: &str = ".github/dco.yml";
 
 /// Abstraction layer over a GitHub client. This trait defines the methods that
 /// a GHClient implementation must provide.
@@ -18,6 +24,9 @@ pub trait GHClient {
 
     /// Create a check run.
     async fn create_check_run(&self, ctx: &Ctx, check_run: &CheckRun) -> Result<()>;
+
+    /// Get configuration.
+    async fn get_config(&self, ctx: &Ctx) -> Result<Option<Config>>;
 }
 
 /// Type alias to represent a GHClient trait object.
@@ -64,8 +73,10 @@ impl GHClientOctorust {
 impl GHClient for GHClientOctorust {
     /// [GHClient::compare_commits]
     async fn compare_commits(&self, ctx: &Ctx, base_sha: &str, head_sha: &str) -> Result<Vec<Commit>> {
+        // Setup client for installation provided
         let client = self.setup_client(ctx.inst_id)?;
 
+        // Compare commits
         let basehead = format!("{}...{}", base_sha, head_sha);
         let commits = client
             .repos()
@@ -82,8 +93,10 @@ impl GHClient for GHClientOctorust {
 
     /// [GHClient::create_check_run]
     async fn create_check_run(&self, ctx: &Ctx, check_run: &CheckRun) -> Result<()> {
+        // Setup client for installation provided
         let client = self.setup_client(ctx.inst_id)?;
 
+        // Create check run
         let body = octorust::types::ChecksCreateRequest {
             actions: check_run.actions.iter().cloned().map(Into::into).collect(),
             completed_at: Some(check_run.completed_at),
@@ -105,6 +118,26 @@ impl GHClient for GHClientOctorust {
         client.checks().create(&ctx.owner, &ctx.repo, &body).await?;
 
         Ok(())
+    }
+
+    /// [GHClient::get_config]
+    async fn get_config(&self, ctx: &Ctx) -> Result<Option<Config>> {
+        // Setup client for installation provided
+        let client = self.setup_client(ctx.inst_id)?;
+
+        // Get configuration file content
+        let resp = client.repos().get_content_file(&ctx.owner, &ctx.repo, CONFIG_FILE_PATH, "").await?;
+        if resp.status == StatusCode::NOT_FOUND {
+            return Ok(None);
+        }
+
+        // Decode and parse configuration
+        let mut b64data = resp.body.content.as_bytes().to_owned();
+        b64data.retain(|b| !b" \n\t\r\x0b\x0c".contains(b));
+        let data = String::from_utf8(b64.decode(b64data)?)?;
+        let config = serde_yaml::from_str(&data)?;
+
+        Ok(config)
     }
 }
 
@@ -153,6 +186,7 @@ impl CheckRun {
         const MAX_OUTPUT_SUMMARY_LENGTH: usize = 65535;
         if check_run.summary.len() > MAX_OUTPUT_SUMMARY_LENGTH {
             check_run.summary.truncate(MAX_OUTPUT_SUMMARY_LENGTH);
+            warn!("check run summary truncated");
         }
 
         // Actions
@@ -161,18 +195,21 @@ impl CheckRun {
             const MAX_ACTION_LABEL_LENGTH: usize = 20;
             if action.label.len() > MAX_ACTION_LABEL_LENGTH {
                 action.label.truncate(MAX_ACTION_LABEL_LENGTH);
+                warn!("check run action label truncated");
             }
 
             // Action description
             const MAX_ACTION_DESCRIPTION_LENGTH: usize = 40;
             if action.description.len() > MAX_ACTION_DESCRIPTION_LENGTH {
                 action.description.truncate(MAX_ACTION_DESCRIPTION_LENGTH);
+                warn!("check run action description truncated");
             }
 
             // Action identifier
             const MAX_ACTION_IDENTIFIER_LENGTH: usize = 20;
             if action.identifier.len() > MAX_ACTION_IDENTIFIER_LENGTH {
                 action.identifier.truncate(MAX_ACTION_IDENTIFIER_LENGTH);
+                warn!("check run action identifier truncated");
             }
         }
 
@@ -314,6 +351,50 @@ impl From<octorust::types::CommitDataType> for Commit {
             sha: c.sha,
         }
     }
+}
+
+/// Repository configuration.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all(deserialize = "camelCase"))]
+pub struct Config {
+    allow_remediation_commits: Option<ConfigAllowRemediationCommits>,
+    require: Option<ConfigRequire>,
+}
+
+impl Default for Config {
+    fn default() -> Self {
+        Self {
+            allow_remediation_commits: {
+                Some(ConfigAllowRemediationCommits {
+                    individual: Some(false),
+                    third_party: Some(false),
+                })
+            },
+            require: Some(ConfigRequire { members: Some(true) }),
+        }
+    }
+}
+
+/// Allow remediation commits section of the configuration.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all(deserialize = "camelCase"))]
+pub struct ConfigAllowRemediationCommits {
+    /// Indicates whether individual remediation commits are allowed or not.
+    /// (default: false)
+    individual: Option<bool>,
+
+    /// Indicates whether third party remediation commits are allowed or not.
+    /// (default: false)
+    third_party: Option<bool>,
+}
+
+/// Require section of the configuration.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all(deserialize = "camelCase"))]
+pub struct ConfigRequire {
+    /// Indicates whether members are required to sign-off or not.
+    /// (default: true)
+    members: Option<bool>,
 }
 
 /// Git user information.

@@ -8,8 +8,9 @@ use crate::{
     },
     github::{
         CheckRunAction, CheckRunConclusion, CheckRunEvent, CheckRunEventAction, CheckRunEventCheckRun,
-        CheckRunStatus, Commit, Event, GitUser, Installation, MockGHClient, PullRequest, PullRequestBase,
-        PullRequestEvent, PullRequestEventAction, PullRequestHead, Repository, RequestedAction,
+        CheckRunStatus, Commit, Config, Event, GitUser, Installation, MockGHClient, PullRequest,
+        PullRequestBase, PullRequestEvent, PullRequestEventAction, PullRequestHead, Repository,
+        RequestedAction,
     },
 };
 use anyhow::anyhow;
@@ -189,6 +190,63 @@ async fn pull_request_event_opened_action_error_getting_pr_commits() {
 }
 
 #[tokio::test]
+#[should_panic(expected = "error getting repository configuration")]
+async fn pull_request_event_opened_action_error_getting_repository_configuration() {
+    let event = PullRequestEvent {
+        action: PullRequestEventAction::Opened,
+        installation: Installation { id: 1 },
+        pull_request: PullRequest {
+            base: PullRequestBase {
+                ref_: "base_ref".to_string(),
+                sha: "base_sha".to_string(),
+            },
+            head: PullRequestHead {
+                ref_: "head_ref".to_string(),
+                sha: "head_sha".to_string(),
+            },
+            html_url: "url".to_string(),
+        },
+        repository: Repository {
+            full_name: "owner/repo".to_string(),
+        },
+    };
+
+    let mut gh_client = MockGHClient::new();
+    gh_client
+        .expect_compare_commits()
+        .with(eq(event.ctx()), eq("base_sha"), eq("head_sha"))
+        .times(1)
+        .returning(|_, _, _| {
+            Box::pin(future::ready(Ok(vec![Commit {
+                author: Some(GitUser {
+                    name: "user1".to_string(),
+                    email: "user1@email.test".to_string(),
+                    ..Default::default()
+                }),
+                committer: Some(GitUser {
+                    name: "user1".to_string(),
+                    email: "user1@email.test".to_string(),
+                    ..Default::default()
+                }),
+                message: indoc! {r"
+                    Test commit message
+
+                    Signed-off-by: user1 <user1@email.test>
+                "}
+                .to_string(),
+                ..Default::default()
+            }])))
+        });
+    gh_client
+        .expect_get_config()
+        .with(eq(event.ctx()))
+        .times(1)
+        .returning(|_| Box::pin(future::ready(Err(anyhow!("test error")))));
+
+    process_event(Arc::new(gh_client), &Event::PullRequest(event)).await.unwrap();
+}
+
+#[tokio::test]
 #[should_panic(expected = "error creating check run")]
 async fn pull_request_event_opened_action_error_creating_check_run() {
     let event = PullRequestEvent {
@@ -236,6 +294,11 @@ async fn pull_request_event_opened_action_error_creating_check_run() {
                 ..Default::default()
             }])))
         });
+    gh_client
+        .expect_get_config()
+        .with(eq(event.ctx()))
+        .times(1)
+        .returning(|_| Box::pin(future::ready(Ok(None))));
     let expected_ctx = event.ctx();
     gh_client
         .expect_create_check_run()
@@ -301,6 +364,11 @@ async fn pull_request_event_opened_action_success_check_passed() {
                 ..Default::default()
             }])))
         });
+    gh_client
+        .expect_get_config()
+        .with(eq(event.ctx()))
+        .times(1)
+        .returning(|_| Box::pin(future::ready(Ok(Some(Config::default())))));
     let expected_ctx = event.ctx();
     gh_client
         .expect_create_check_run()
@@ -366,6 +434,11 @@ async fn pull_request_event_opened_action_success_check_failed() {
                 ..Default::default()
             }])))
         });
+    gh_client
+        .expect_get_config()
+        .with(eq(event.ctx()))
+        .times(1)
+        .returning(|_| Box::pin(future::ready(Ok(Some(Config::default())))));
     let expected_ctx = event.ctx();
     gh_client
         .expect_create_check_run()
