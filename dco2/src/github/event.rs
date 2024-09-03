@@ -63,7 +63,7 @@ pub struct CheckRunEvent {
     pub check_run: CheckRunEventCheckRun,
     pub installation: Installation,
     pub repository: Repository,
-    pub requested_action: RequestedAction,
+    pub requested_action: Option<RequestedAction>,
 }
 
 impl CheckRunEvent {
@@ -84,6 +84,8 @@ impl CheckRunEvent {
 pub enum CheckRunEventAction {
     RequestedAction,
     Rerequested,
+    #[serde(other)]
+    Other,
 }
 
 /// Check run event check run details.

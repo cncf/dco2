@@ -3,12 +3,15 @@
 use anyhow::Result;
 use async_trait::async_trait;
 use chrono::{DateTime, Utc};
+#[cfg(test)]
+use mockall::automock;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 
 /// Abstraction layer over a GitHub client. This trait defines the methods that
 /// a GHClient implementation must provide.
 #[async_trait]
+#[cfg_attr(test, automock)]
 pub trait GHClient {
     /// Compare two commits.
     async fn compare_commits(&self, ctx: &Ctx, base_sha: &str, head_sha: &str) -> Result<Vec<Commit>>;
