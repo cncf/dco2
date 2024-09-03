@@ -7,3 +7,7 @@ There is at least one commit incorrectly signed off. This means that the author 
 {% if commits_with_errors|contains_error([CommitError::SignOffNotFound, CommitError::SignOffMismatch]) %}
 Tada!
 {% endif %}
+
+{% if commits_with_errors|have_same_errors %}
+Tada!
+{% endif %}
