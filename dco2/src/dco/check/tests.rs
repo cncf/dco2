@@ -14,6 +14,7 @@ fn single_commit_no_signoff_is_merge_commit() {
 
     let input = CheckInput {
         commits: vec![commit1],
+        config: Default::default(),
         head_ref: "main".to_string(),
     };
     let output = check(&input);
@@ -40,6 +41,7 @@ fn single_commit_no_signoff_author_is_bot() {
 
     let input = CheckInput {
         commits: vec![commit1],
+        config: Default::default(),
         head_ref: "main".to_string(),
     };
     let output = check(&input);
@@ -78,6 +80,7 @@ fn single_commit_valid_signoff_author_match() {
 
     let input = CheckInput {
         commits: vec![commit1],
+        config: Default::default(),
         head_ref: "main".to_string(),
     };
     let output = check(&input);
@@ -116,6 +119,7 @@ fn single_commit_valid_signoff_committer_match() {
 
     let input = CheckInput {
         commits: vec![commit1],
+        config: Default::default(),
         head_ref: "main".to_string(),
     };
     let output = check(&input);
@@ -156,6 +160,7 @@ fn single_commit_valid_signoff_multiple_signoffs() {
 
     let input = CheckInput {
         commits: vec![commit1],
+        config: Default::default(),
         head_ref: "main".to_string(),
     };
     let output = check(&input);
@@ -194,6 +199,7 @@ fn single_commit_valid_signoff_signoff_case_insensitive() {
 
     let input = CheckInput {
         commits: vec![commit1],
+        config: Default::default(),
         head_ref: "main".to_string(),
     };
     let output = check(&input);
@@ -227,6 +233,7 @@ fn single_commit_valid_signoff_signoff_trailing_whitespace() {
 
     let input = CheckInput {
         commits: vec![commit1],
+        config: Default::default(),
         head_ref: "main".to_string(),
     };
     let output = check(&input);
@@ -265,6 +272,7 @@ fn single_commit_valid_signoff_email_contains_subdomain() {
 
     let input = CheckInput {
         commits: vec![commit1],
+        config: Default::default(),
         head_ref: "main".to_string(),
     };
     let output = check(&input);
@@ -303,6 +311,7 @@ fn single_commit_valid_signoff_email_contains_plus_alias() {
 
     let input = CheckInput {
         commits: vec![commit1],
+        config: Default::default(),
         head_ref: "main".to_string(),
     };
     let output = check(&input);
@@ -341,6 +350,7 @@ fn single_commit_invalid_author_email() {
 
     let input = CheckInput {
         commits: vec![commit1.clone()],
+        config: Default::default(),
         head_ref: "main".to_string(),
     };
     let output = check(&input);
@@ -377,6 +387,7 @@ fn single_commit_invalid_author_email_and_no_signoff() {
 
     let input = CheckInput {
         commits: vec![commit1.clone()],
+        config: Default::default(),
         head_ref: "main".to_string(),
     };
     let output = check(&input);
@@ -418,6 +429,7 @@ fn single_commit_invalid_author_email_also_used_in_signoff() {
 
     let input = CheckInput {
         commits: vec![commit1.clone()],
+        config: Default::default(),
         head_ref: "main".to_string(),
     };
     let output = check(&input);
@@ -459,6 +471,7 @@ fn single_commit_invalid_committer_email() {
 
     let input = CheckInput {
         commits: vec![commit1.clone()],
+        config: Default::default(),
         head_ref: "main".to_string(),
     };
     let output = check(&input);
@@ -495,6 +508,7 @@ fn single_commit_invalid_committer_email_and_no_signoff() {
 
     let input = CheckInput {
         commits: vec![commit1.clone()],
+        config: Default::default(),
         head_ref: "main".to_string(),
     };
     let output = check(&input);
@@ -536,6 +550,7 @@ fn single_commit_invalid_committer_email_also_used_in_signoff() {
 
     let input = CheckInput {
         commits: vec![commit1.clone()],
+        config: Default::default(),
         head_ref: "main".to_string(),
     };
     let output = check(&input);
@@ -577,6 +592,7 @@ fn single_commit_invalid_author_and_committer_email_same_email() {
 
     let input = CheckInput {
         commits: vec![commit1.clone()],
+        config: Default::default(),
         head_ref: "main".to_string(),
     };
     let output = check(&input);
@@ -618,6 +634,7 @@ fn single_commit_invalid_author_and_committer_email_different_emails() {
 
     let input = CheckInput {
         commits: vec![commit1.clone()],
+        config: Default::default(),
         head_ref: "main".to_string(),
     };
     let output = check(&input);
@@ -657,6 +674,7 @@ fn single_commit_signoff_not_found() {
 
     let input = CheckInput {
         commits: vec![commit1.clone()],
+        config: Default::default(),
         head_ref: "main".to_string(),
     };
     let output = check(&input);
@@ -700,6 +718,7 @@ fn single_commit_invalid_signoff_multiple_signoffs() {
 
     let input = CheckInput {
         commits: vec![commit1.clone()],
+        config: Default::default(),
         head_ref: "main".to_string(),
     };
     let output = check(&input);
@@ -741,6 +760,7 @@ fn single_commit_invalid_signoff_name_mismatch() {
 
     let input = CheckInput {
         commits: vec![commit1.clone()],
+        config: Default::default(),
         head_ref: "main".to_string(),
     };
     let output = check(&input);
@@ -782,6 +802,7 @@ fn single_commit_invalid_signoff_email_mismatch() {
 
     let input = CheckInput {
         commits: vec![commit1.clone()],
+        config: Default::default(),
         head_ref: "main".to_string(),
     };
     let output = check(&input);
@@ -823,6 +844,7 @@ fn single_commit_invalid_signoff_name_and_email_mismatch() {
 
     let input = CheckInput {
         commits: vec![commit1.clone()],
+        config: Default::default(),
         head_ref: "main".to_string(),
     };
     let output = check(&input);
@@ -864,6 +886,7 @@ fn single_commit_invalid_signoff_extra_whitespace_around_name() {
 
     let input = CheckInput {
         commits: vec![commit1.clone()],
+        config: Default::default(),
         head_ref: "main".to_string(),
     };
     let output = check(&input);
@@ -905,6 +928,7 @@ fn single_commit_invalid_signoff_extra_whitespace_around_email() {
 
     let input = CheckInput {
         commits: vec![commit1.clone()],
+        config: Default::default(),
         head_ref: "main".to_string(),
     };
     let output = check(&input);
@@ -946,6 +970,7 @@ fn single_commit_invalid_signoff_missing_name_in_signoff() {
 
     let input = CheckInput {
         commits: vec![commit1.clone()],
+        config: Default::default(),
         head_ref: "main".to_string(),
     };
     let output = check(&input);
@@ -987,6 +1012,7 @@ fn single_commit_invalid_signoff_missing_email_in_signoff() {
 
     let input = CheckInput {
         commits: vec![commit1.clone()],
+        config: Default::default(),
         head_ref: "main".to_string(),
     };
     let output = check(&input);
@@ -1028,6 +1054,7 @@ fn single_commit_invalid_signoff_missing_email_brackets_in_signoff() {
 
     let input = CheckInput {
         commits: vec![commit1.clone()],
+        config: Default::default(),
         head_ref: "main".to_string(),
     };
     let output = check(&input);
@@ -1069,6 +1096,7 @@ fn single_commit_invalid_signoff_missing_name_and_email_in_signoff() {
 
     let input = CheckInput {
         commits: vec![commit1.clone()],
+        config: Default::default(),
         head_ref: "main".to_string(),
     };
     let output = check(&input);
@@ -1110,6 +1138,7 @@ fn single_commit_invalid_signoff_name_and_email_swapped_in_signoff() {
 
     let input = CheckInput {
         commits: vec![commit1.clone()],
+        config: Default::default(),
         head_ref: "main".to_string(),
     };
     let output = check(&input);
@@ -1151,6 +1180,7 @@ fn single_commit_invalid_signoff_invalid_email_in_signoff() {
 
     let input = CheckInput {
         commits: vec![commit1.clone()],
+        config: Default::default(),
         head_ref: "main".to_string(),
     };
     let output = check(&input);
@@ -1192,6 +1222,7 @@ fn single_commit_invalid_signoff_email_alias_used_in_signoff_but_not_in_author_e
 
     let input = CheckInput {
         commits: vec![commit1.clone()],
+        config: Default::default(),
         head_ref: "main".to_string(),
     };
     let output = check(&input);
@@ -1234,6 +1265,7 @@ fn two_commits_valid_signoff_in_both() {
 
     let input = CheckInput {
         commits: vec![commit1, commit2],
+        config: Default::default(),
         head_ref: "main".to_string(),
     };
     let output = check(&input);
@@ -1286,6 +1318,7 @@ fn two_commits_no_signoff_in_first_valid_signoff_in_second() {
 
     let input = CheckInput {
         commits: vec![commit1.clone(), commit2],
+        config: Default::default(),
         head_ref: "main".to_string(),
     };
     let output = check(&input);
@@ -1341,6 +1374,7 @@ fn two_commits_valid_signoff_in_first_no_signoff_in_second() {
 
     let input = CheckInput {
         commits: vec![commit1, commit2.clone()],
+        config: Default::default(),
         head_ref: "main".to_string(),
     };
     let output = check(&input);
@@ -1401,6 +1435,7 @@ fn two_commits_invalid_signoff_in_first_valid_signoff_in_second() {
 
     let input = CheckInput {
         commits: vec![commit1.clone(), commit2],
+        config: Default::default(),
         head_ref: "main".to_string(),
     };
     let output = check(&input);
@@ -1461,6 +1496,7 @@ fn two_commits_valid_signoff_in_first_invalid_signoff_in_second() {
 
     let input = CheckInput {
         commits: vec![commit1, commit2.clone()],
+        config: Default::default(),
         head_ref: "main".to_string(),
     };
     let output = check(&input);
@@ -1516,6 +1552,7 @@ fn two_commits_no_signoff_in_first_invalid_signoff_in_second() {
 
     let input = CheckInput {
         commits: vec![commit1.clone(), commit2.clone()],
+        config: Default::default(),
         head_ref: "main".to_string(),
     };
     let output = check(&input);
@@ -1577,6 +1614,7 @@ fn two_commits_invalid_signoff_in_first_no_signoff_in_second() {
 
     let input = CheckInput {
         commits: vec![commit1.clone(), commit2.clone()],
+        config: Default::default(),
         head_ref: "main".to_string(),
     };
     let output = check(&input);
@@ -1626,6 +1664,7 @@ fn three_commits_valid_signoff_in_all() {
 
     let input = CheckInput {
         commits: vec![commit1, commit2, commit3],
+        config: Default::default(),
         head_ref: "main".to_string(),
     };
     let output = check(&input);
@@ -1679,6 +1718,7 @@ fn three_commits_valid_signoff_first_and_second_no_signoff_third() {
 
     let input = CheckInput {
         commits: vec![commit1, commit2, commit3.clone()],
+        config: Default::default(),
         head_ref: "main".to_string(),
     };
     let output = check(&input);
@@ -1753,6 +1793,7 @@ fn three_commits_invalid_signoff_first_no_signoff_second_valid_signoff_third() {
 
     let input = CheckInput {
         commits: vec![commit1.clone(), commit2.clone(), commit3],
+        config: Default::default(),
         head_ref: "main".to_string(),
     };
     let output = check(&input);
@@ -1820,6 +1861,7 @@ fn three_commits_valid_signoff_first_invalid_signoff_second_valid_signoff_third(
 
     let input = CheckInput {
         commits: vec![commit1, commit2.clone(), commit3],
+        config: Default::default(),
         head_ref: "main".to_string(),
     };
     let output = check(&input);

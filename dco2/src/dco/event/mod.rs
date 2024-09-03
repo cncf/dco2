@@ -86,9 +86,17 @@ async fn process_pull_request_event(gh_client: DynGHClient, event: &PullRequestE
         .await
         .context("error getting pull request commits")?;
 
+    // Get repository configuration
+    let config = gh_client
+        .get_config(&ctx)
+        .await
+        .context("error getting repository configuration")?
+        .unwrap_or_default();
+
     // Run DCO check
     let input = CheckInput {
         commits,
+        config,
         head_ref: event.pull_request.head.ref_.clone(),
     };
     let output = check(&input);

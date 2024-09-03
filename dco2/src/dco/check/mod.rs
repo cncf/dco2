@@ -1,6 +1,6 @@
 //! This module contains the DCO check logic.
 
-use crate::github::Commit;
+use crate::github::{Commit, Config};
 use askama::Template;
 use email_address::EmailAddress;
 use regex::Regex;
@@ -17,6 +17,7 @@ mod tests;
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub(crate) struct CheckInput {
     pub commits: Vec<Commit>,
+    pub config: Config,
     pub head_ref: String,
 }
 
@@ -169,6 +170,8 @@ struct SignOff {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 enum SignOffKind {
     Explicit,
+    IndividualRemediation,
+    ThirdPartyRemediation,
 }
 
 /// Get sign-offs found in the commit message.
