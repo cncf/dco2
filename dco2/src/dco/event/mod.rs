@@ -9,11 +9,23 @@ use anyhow::{Context, Result};
 use askama::Template;
 use chrono::Utc;
 
-/// Check name that will be displayed in GitHub.
+#[cfg(test)]
+mod tests;
+
+/// Name of the check that will be displayed in GitHub.
 const CHECK_NAME: &str = "DCO";
 
-/// Action to override the check result and set it to passed.
-const OVERRIDE: &str = "override";
+/// Identifier of the override action (set check result to passed).
+const OVERRIDE_ACTION_IDENTIFIER: &str = "override";
+
+/// Label of the override action.
+const OVERRIDE_ACTION_LABEL: &str = "Set DCO to pass";
+
+/// Description of the override action.
+const OVERRIDE_ACTION_DESCRIPTION: &str = "Manually set DCO check result to passed";
+
+/// Summary of the override action.
+const OVERRIDE_ACTION_SUMMARY: &str = "Check result was manually set to passed.";
 
 /// Process the GitHub webhook event provided, taking the appropriate action.
 pub async fn process_event(gh_client: DynGHClient, event: &Event) -> Result<()> {
@@ -25,8 +37,8 @@ pub async fn process_event(gh_client: DynGHClient, event: &Event) -> Result<()> 
 
 /// Process check run event.
 async fn process_check_run_event(gh_client: DynGHClient, event: &CheckRunEvent) -> Result<()> {
-    let ctx = event.ctx();
     let started_at = Utc::now();
+    let ctx = event.ctx();
 
     // Check if we are interested in the event action
     if event.action != CheckRunEventAction::RequestedAction {
@@ -34,18 +46,20 @@ async fn process_check_run_event(gh_client: DynGHClient, event: &CheckRunEvent) 
     }
 
     // Override: create check run with success status
-    if event.requested_action.identifier == OVERRIDE {
-        let check_run = CheckRun {
-            actions: vec![],
-            completed_at: Utc::now(),
-            conclusion: CheckRunConclusion::Success,
-            head_sha: event.check_run.head_sha.clone(),
-            name: CHECK_NAME.to_string(),
-            started_at,
-            status: CheckRunStatus::Completed,
-            summary: "Check result was manually set to passed.".to_string(),
-        };
-        gh_client.create_check_run(&ctx, &check_run).await.context("error creating check run")?;
+    if let Some(requested_action) = &event.requested_action {
+        if requested_action.identifier == OVERRIDE_ACTION_IDENTIFIER {
+            let check_run = CheckRun {
+                actions: vec![],
+                completed_at: Utc::now(),
+                conclusion: CheckRunConclusion::Success,
+                head_sha: event.check_run.head_sha.clone(),
+                name: CHECK_NAME.to_string(),
+                started_at,
+                status: CheckRunStatus::Completed,
+                summary: OVERRIDE_ACTION_SUMMARY.to_string(),
+            };
+            gh_client.create_check_run(&ctx, &check_run).await.context("error creating check run")?;
+        }
     }
 
     Ok(())
@@ -53,8 +67,8 @@ async fn process_check_run_event(gh_client: DynGHClient, event: &CheckRunEvent) 
 
 /// Process pull request event.
 async fn process_pull_request_event(gh_client: DynGHClient, event: &PullRequestEvent) -> Result<()> {
-    let ctx = event.ctx();
     let started_at = Utc::now();
+    let ctx = event.ctx();
 
     // Check if we are interested in the event action
     if ![
@@ -83,9 +97,9 @@ async fn process_pull_request_event(gh_client: DynGHClient, event: &PullRequestE
         (
             CheckRunConclusion::ActionRequired,
             vec![CheckRunAction {
-                label: "Set DCO to pass".to_string(),
-                description: "Manually set DCO check result to passed".to_string(),
-                identifier: OVERRIDE.to_string(),
+                label: OVERRIDE_ACTION_LABEL.to_string(),
+                description: OVERRIDE_ACTION_DESCRIPTION.to_string(),
+                identifier: OVERRIDE_ACTION_IDENTIFIER.to_string(),
             }],
         )
     };
