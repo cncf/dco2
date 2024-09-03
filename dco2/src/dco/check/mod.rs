@@ -17,6 +17,7 @@ mod tests;
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub(crate) struct CheckInput {
     pub commits: Vec<Commit>,
+    pub head_ref: String,
 }
 
 /// Check output.
@@ -24,6 +25,7 @@ pub(crate) struct CheckInput {
 #[template(path = "output.md")]
 pub(crate) struct CheckOutput {
     pub commits_with_errors: Vec<CommitCheckOutput>,
+    pub head_ref: String,
     pub total_commits: usize,
 }
 
@@ -61,6 +63,7 @@ pub(crate) enum CommitError {
 pub(crate) fn check(input: &CheckInput) -> CheckOutput {
     let mut output = CheckOutput {
         commits_with_errors: Vec::new(),
+        head_ref: input.head_ref.clone(),
         total_commits: input.commits.len(),
     };
 

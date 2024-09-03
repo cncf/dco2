@@ -87,7 +87,10 @@ async fn process_pull_request_event(gh_client: DynGHClient, event: &PullRequestE
         .context("error getting pull request commits")?;
 
     // Run DCO check
-    let input = CheckInput { commits };
+    let input = CheckInput {
+        commits,
+        head_ref: event.pull_request.head.ref_.clone(),
+    };
     let output = check(&input);
 
     // Create check run
