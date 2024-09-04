@@ -5,7 +5,7 @@ use askama::Template;
 use email_address::EmailAddress;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
-use std::sync::LazyLock;
+use std::{fmt::Display, sync::LazyLock};
 use thiserror::Error;
 
 mod filters;
@@ -67,6 +67,16 @@ pub(crate) enum CommitSuccessReason {
     FromBot,
     IsMerge,
     ValidSignOff,
+}
+
+impl Display for CommitSuccessReason {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            CommitSuccessReason::FromBot => write!(f, "sign-off not required in bot commit"),
+            CommitSuccessReason::IsMerge => write!(f, "sign-off not required in merge commit"),
+            CommitSuccessReason::ValidSignOff => write!(f, "valid sign-off found"),
+        }
+    }
 }
 
 /// Run DCO check.
