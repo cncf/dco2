@@ -357,8 +357,8 @@ impl From<octorust::types::CommitDataType> for Commit {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all(deserialize = "camelCase"))]
 pub struct Config {
-    allow_remediation_commits: Option<ConfigAllowRemediationCommits>,
-    require: Option<ConfigRequire>,
+    pub allow_remediation_commits: Option<ConfigAllowRemediationCommits>,
+    pub require: Option<ConfigRequire>,
 }
 
 impl Default for Config {
@@ -376,25 +376,25 @@ impl Default for Config {
 }
 
 /// Allow remediation commits section of the configuration.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all(deserialize = "camelCase"))]
 pub struct ConfigAllowRemediationCommits {
     /// Indicates whether individual remediation commits are allowed or not.
     /// (default: false)
-    individual: Option<bool>,
+    pub individual: Option<bool>,
 
     /// Indicates whether third party remediation commits are allowed or not.
     /// (default: false)
-    third_party: Option<bool>,
+    pub third_party: Option<bool>,
 }
 
 /// Require section of the configuration.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all(deserialize = "camelCase"))]
 pub struct ConfigRequire {
     /// Indicates whether members are required to sign-off or not.
     /// (default: true)
-    members: Option<bool>,
+    pub members: Option<bool>,
 }
 
 /// Git user information.
@@ -403,6 +403,18 @@ pub struct GitUser {
     pub name: String,
     pub email: String,
     pub is_bot: bool,
+}
+
+impl GitUser {
+    /// Check if the user matches the provided user (if any).
+    pub fn matches(&self, user: &Option<GitUser>) -> bool {
+        if let Some(user) = user {
+            self.name.to_lowercase() == user.name.to_lowercase()
+                && self.email.to_lowercase() == user.email.to_lowercase()
+        } else {
+            false
+        }
+    }
 }
 
 /// Input used to create a new check run.

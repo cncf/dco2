@@ -1,6 +1,7 @@
 //! This module contains the DCO check logic.
 
-use crate::github::{Commit, Config};
+use crate::github::{Commit, Config, ConfigAllowRemediationCommits, GitUser};
+use anyhow::{bail, Result};
 use askama::Template;
 use email_address::EmailAddress;
 use regex::Regex;
@@ -67,14 +68,18 @@ pub(crate) enum CommitSuccessReason {
     FromBot,
     IsMerge,
     ValidSignOff,
+    ValidSignOffInRemediationCommit,
 }
 
 impl Display for CommitSuccessReason {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            CommitSuccessReason::FromBot => write!(f, "sign-off not required in bot commit"),
-            CommitSuccessReason::IsMerge => write!(f, "sign-off not required in merge commit"),
+            CommitSuccessReason::FromBot => write!(f, "skipped: sign-off not required in bot commit"),
+            CommitSuccessReason::IsMerge => write!(f, "skipped: sign-off not required in merge commit"),
             CommitSuccessReason::ValidSignOff => write!(f, "valid sign-off found"),
+            CommitSuccessReason::ValidSignOffInRemediationCommit => {
+                write!(f, "valid sign-off found in remediation commit")
+            }
         }
     }
 }
@@ -86,6 +91,9 @@ pub(crate) fn check(input: &CheckInput) -> CheckOutput {
         head_ref: input.head_ref.clone(),
         num_commits_with_errors: 0,
     };
+
+    // Get remediations from all commits
+    let remediations = get_remediations(&input.config.allow_remediation_commits, &input.commits);
 
     // Check each commit
     for commit in &input.commits {
@@ -115,14 +123,21 @@ pub(crate) fn check(input: &CheckInput) -> CheckOutput {
         }
 
         // Check if any of the sign-offs matches the author's or committer's email
-        if emails_are_valid && !signoffs.is_empty() && !signoffs_match(&signoffs, commit) {
-            commit_output.errors.push(CommitError::SignOffMismatch);
+        if emails_are_valid && !signoffs.is_empty() {
+            if signoffs_match(&signoffs, commit) {
+                commit_output.success_reason = Some(CommitSuccessReason::ValidSignOff);
+            } else {
+                commit_output.errors.push(CommitError::SignOffMismatch);
+            }
+        }
+
+        // Check if the sign-off is present in a remediation commit
+        if commit_output.success_reason.is_none() && remediations_match(&remediations, commit) {
+            commit_output.errors.clear();
+            commit_output.success_reason = Some(CommitSuccessReason::ValidSignOffInRemediationCommit);
         }
 
         // Track commit
-        if commit_output.errors.is_empty() {
-            commit_output.success_reason = Some(CommitSuccessReason::ValidSignOff);
-        }
         output.commits.push(commit_output);
     }
 
@@ -186,15 +201,18 @@ static SIGN_OFF: LazyLock<Regex> = LazyLock::new(|| {
 struct SignOff {
     name: String,
     email: String,
-    kind: SignOffKind,
 }
 
-/// Sign-off kind.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-enum SignOffKind {
-    Explicit,
-    IndividualRemediation,
-    ThirdPartyRemediation,
+impl SignOff {
+    /// Check if the sign-off matches the provided user (if any).
+    fn matches_user(&self, user: &Option<GitUser>) -> bool {
+        if let Some(user) = user {
+            self.name.to_lowercase() == user.name.to_lowercase()
+                && self.email.to_lowercase() == user.email.to_lowercase()
+        } else {
+            false
+        }
+    }
 }
 
 /// Get sign-offs found in the commit message.
@@ -205,7 +223,6 @@ fn get_signoffs(commit: &Commit) -> Vec<SignOff> {
         signoffs.push(SignOff {
             name: name.to_string(),
             email: email.to_string(),
-            kind: SignOffKind::Explicit,
         });
     }
 
@@ -214,21 +231,140 @@ fn get_signoffs(commit: &Commit) -> Vec<SignOff> {
 
 /// Check if any of the sign-offs matches the author's or committer's email.
 fn signoffs_match(signoffs: &[SignOff], commit: &Commit) -> bool {
-    let signoff_matches_author = |s: &SignOff| {
-        if let Some(a) = &commit.author {
-            s.name.to_lowercase() == a.name.to_lowercase() && s.email.to_lowercase() == a.email.to_lowercase()
+    signoffs
+        .iter()
+        .any(|signoff| signoff.matches_user(&commit.author) || signoff.matches_user(&commit.committer))
+}
+
+/// Individual remediation regular expression.
+static INDIVIDUAL_REMEDIATION: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(r"(?mi)^I, (.*) <(.*)>, hereby add my Signed-off-by to this commit: (.*)\s*$")
+        .expect("expr in INDIVIDUAL_REMEDIATION to be valid")
+});
+
+/// Third party remediation regular expression.
+static THIRD_PARTY_REMEDIATION: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(r"(?mi)^On behalf of (.*) <(.*)>, I, (.*) <(.*)>, hereby add my Signed-off-by to this commit: (.*)\s*$")
+        .expect("expr in THIRD_PARTY_REMEDIATION to be valid")
+});
+
+/// Remediation details.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+struct Remediation {
+    pub declarant: GitUser,
+    pub target_sha: String,
+}
+
+impl Remediation {
+    /// Create a new remediation.
+    fn new(
+        declarant_name: &str,
+        declarant_email: &str,
+        representative_name: Option<&str>,
+        representative_email: Option<&str>,
+        target_sha: &str,
+        commit: &Commit,
+    ) -> Result<Self> {
+        // Prepare declarant and representative
+        let declarant = GitUser {
+            name: declarant_name.to_string(),
+            email: declarant_email.to_string(),
+            ..Default::default()
+        };
+        let representative = 'representative: {
+            let Some(name) = representative_name else {
+                break 'representative None;
+            };
+            let Some(email) = representative_email else {
+                break 'representative None;
+            };
+            Some(GitUser {
+                name: name.to_string(),
+                email: email.to_string(),
+                ..Default::default()
+            })
+        };
+
+        // If the representative is provided, it must match the author or committer
+        if let Some(representative) = &representative {
+            if !representative.matches(&commit.author) && !representative.matches(&commit.committer) {
+                bail!("representative must match the author or committer");
+            }
         } else {
-            false
+            // Otherwise, the declarant must match the author or committer
+            if !declarant.matches(&commit.author) && !declarant.matches(&commit.committer) {
+                bail!("declarant must match the author or committer");
+            }
         }
+
+        // Create remediation and return it
+        Ok(Remediation {
+            declarant,
+            target_sha: target_sha.to_string(),
+        })
+    }
+
+    /// Check if the remediation matches the provided commit.
+    fn matches_commit(&self, commit: &Commit) -> bool {
+        if self.target_sha != commit.sha {
+            return false;
+        }
+        self.declarant.matches(&commit.author) || self.declarant.matches(&commit.committer)
+    }
+}
+
+/// Get remediations found in the list of commits provided.
+fn get_remediations(
+    allow_remediation_commits: &Option<ConfigAllowRemediationCommits>,
+    commits: &[Commit],
+) -> Vec<Remediation> {
+    let mut remediations = Vec::new();
+
+    // Nothing to do if this feature isn't enabled in the config
+    let Some(allow_remediation_commits) = allow_remediation_commits else {
+        return remediations;
     };
 
-    let signoff_matches_committer = |s: &SignOff| {
-        if let Some(c) = &commit.committer {
-            s.name.to_lowercase() == c.name.to_lowercase() && s.email.to_lowercase() == c.email.to_lowercase()
-        } else {
-            false
-        }
-    };
+    // Collect remediations from commits
+    for commit in commits {
+        // Collect individual remediations if this feature is enabled
+        if allow_remediation_commits.individual.unwrap_or(false) {
+            let captures = INDIVIDUAL_REMEDIATION.captures_iter(&commit.message).map(|c| c.extract());
+            for (_, [declarant_name, declarant_email, target_sha]) in captures {
+                if let Ok(remediation) =
+                    Remediation::new(declarant_name, declarant_email, None, None, target_sha, commit)
+                {
+                    remediations.push(remediation);
+                }
+            }
 
-    signoffs.iter().any(|s| signoff_matches_author(s) || signoff_matches_committer(s))
+            // Collect third-party remediations if this feature is enabled
+            if allow_remediation_commits.third_party.unwrap_or(false) {
+                let captures = THIRD_PARTY_REMEDIATION.captures_iter(&commit.message).map(|c| c.extract());
+                for (
+                    _,
+                    [declarant_name, declarant_email, representative_name, representative_email, target_sha],
+                ) in captures
+                {
+                    if let Ok(remediation) = Remediation::new(
+                        declarant_name,
+                        declarant_email,
+                        Some(representative_name),
+                        Some(representative_email),
+                        target_sha,
+                        commit,
+                    ) {
+                        remediations.push(remediation);
+                    }
+                }
+            }
+        }
+    }
+
+    remediations
+}
+
+/// Check if any of the remediations matches the provided commit.
+fn remediations_match(remediations: &[Remediation], commit: &Commit) -> bool {
+    remediations.iter().any(|remediation| remediation.matches_commit(commit))
 }

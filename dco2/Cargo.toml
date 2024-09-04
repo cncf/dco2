@@ -28,3 +28,4 @@ tracing = { workspace = true }
 [dev-dependencies]
 indoc = { workspace = true }
 mockall = { workspace = true }
+pretty_assertions = { workspace = true }
