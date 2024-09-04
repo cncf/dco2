@@ -1,8 +1,9 @@
 use crate::{
     dco::check::{check, CheckInput, CheckOutput, CommitCheckOutput, CommitError, CommitSuccessReason},
-    github::{Commit, GitUser},
+    github::{Commit, Config, ConfigAllowRemediationCommits, GitUser},
 };
 use indoc::indoc;
+use pretty_assertions::assert_eq;
 use std::vec;
 
 #[test]
@@ -1744,6 +1745,1332 @@ fn two_commits_invalid_signoff_in_first_no_signoff_in_second() {
 }
 
 #[test]
+fn two_commits_no_signoff_in_first_valid_remediation_commit_in_second_but_not_enabled_in_config() {
+    let commit1 = Commit {
+        author: Some(GitUser {
+            name: "user1".to_string(),
+            email: "user1@email.test".to_string(),
+            ..Default::default()
+        }),
+        committer: Some(GitUser {
+            name: "user1".to_string(),
+            email: "user1@email.test".to_string(),
+            ..Default::default()
+        }),
+        message: "Test commit message".to_string(),
+        sha: "sha1".to_string(),
+        ..Default::default()
+    };
+    let commit2 = Commit {
+        author: Some(GitUser {
+            name: "user1".to_string(),
+            email: "user1@email.test".to_string(),
+            ..Default::default()
+        }),
+        committer: Some(GitUser {
+            name: "user1".to_string(),
+            email: "user1@email.test".to_string(),
+            ..Default::default()
+        }),
+        message: indoc! {r"
+            Test commit message
+
+            I, user1 <user1@email.test>, hereby add my Signed-off-by to this commit: sha1
+
+            Signed-off-by: user1 <user1@email.test>
+        "}
+        .to_string(),
+        ..Default::default()
+    };
+
+    let input = CheckInput {
+        commits: vec![commit1.clone(), commit2.clone()],
+        config: Default::default(),
+        head_ref: "main".to_string(),
+    };
+    let output = check(&input);
+
+    assert_eq!(
+        output,
+        CheckOutput {
+            commits: vec![
+                CommitCheckOutput {
+                    commit: commit1,
+                    errors: vec![CommitError::SignOffNotFound],
+                    success_reason: None,
+                },
+                CommitCheckOutput {
+                    commit: commit2,
+                    errors: vec![],
+                    success_reason: Some(CommitSuccessReason::ValidSignOff),
+                }
+            ],
+            head_ref: "main".to_string(),
+            num_commits_with_errors: 1,
+        }
+    );
+}
+
+#[test]
+fn two_commits_no_signoff_in_first_valid_remediation_commit_matching_author_in_second() {
+    let commit1 = Commit {
+        author: Some(GitUser {
+            name: "user1".to_string(),
+            email: "user1@email.test".to_string(),
+            ..Default::default()
+        }),
+        committer: Some(GitUser {
+            name: "user2".to_string(),
+            email: "user2@email.test".to_string(),
+            ..Default::default()
+        }),
+        message: "Test commit message".to_string(),
+        sha: "sha1".to_string(),
+        ..Default::default()
+    };
+    let commit2 = Commit {
+        author: Some(GitUser {
+            name: "user1".to_string(),
+            email: "user1@email.test".to_string(),
+            ..Default::default()
+        }),
+        committer: Some(GitUser {
+            name: "user1".to_string(),
+            email: "user1@email.test".to_string(),
+            ..Default::default()
+        }),
+        message: indoc! {r"
+            Test commit message
+
+            I, user1 <user1@email.test>, hereby add my Signed-off-by to this commit: sha1
+
+            Signed-off-by: user1 <user1@email.test>
+        "}
+        .to_string(),
+        ..Default::default()
+    };
+
+    let input = CheckInput {
+        commits: vec![commit1.clone(), commit2.clone()],
+        config: Config {
+            allow_remediation_commits: Some(ConfigAllowRemediationCommits {
+                individual: Some(true),
+                ..Default::default()
+            }),
+            ..Default::default()
+        },
+        head_ref: "main".to_string(),
+    };
+    let output = check(&input);
+
+    assert_eq!(
+        output,
+        CheckOutput {
+            commits: vec![
+                CommitCheckOutput {
+                    commit: commit1,
+                    errors: vec![],
+                    success_reason: Some(CommitSuccessReason::ValidSignOffInRemediationCommit),
+                },
+                CommitCheckOutput {
+                    commit: commit2,
+                    errors: vec![],
+                    success_reason: Some(CommitSuccessReason::ValidSignOff),
+                }
+            ],
+            head_ref: "main".to_string(),
+            num_commits_with_errors: 0,
+        }
+    );
+}
+
+#[test]
+fn two_commits_no_signoff_in_first_valid_remediation_commit_matching_committer_in_second() {
+    let commit1 = Commit {
+        author: Some(GitUser {
+            name: "user2".to_string(),
+            email: "user2@email.test".to_string(),
+            ..Default::default()
+        }),
+        committer: Some(GitUser {
+            name: "user1".to_string(),
+            email: "user1@email.test".to_string(),
+            ..Default::default()
+        }),
+        message: "Test commit message".to_string(),
+        sha: "sha1".to_string(),
+        ..Default::default()
+    };
+    let commit2 = Commit {
+        author: Some(GitUser {
+            name: "user1".to_string(),
+            email: "user1@email.test".to_string(),
+            ..Default::default()
+        }),
+        committer: Some(GitUser {
+            name: "user1".to_string(),
+            email: "user1@email.test".to_string(),
+            ..Default::default()
+        }),
+        message: indoc! {r"
+            Test commit message
+
+            I, user1 <user1@email.test>, hereby add my Signed-off-by to this commit: sha1
+
+            Signed-off-by: user1 <user1@email.test>
+        "}
+        .to_string(),
+        ..Default::default()
+    };
+
+    let input = CheckInput {
+        commits: vec![commit1.clone(), commit2.clone()],
+        config: Config {
+            allow_remediation_commits: Some(ConfigAllowRemediationCommits {
+                individual: Some(true),
+                ..Default::default()
+            }),
+            ..Default::default()
+        },
+        head_ref: "main".to_string(),
+    };
+    let output = check(&input);
+
+    assert_eq!(
+        output,
+        CheckOutput {
+            commits: vec![
+                CommitCheckOutput {
+                    commit: commit1,
+                    errors: vec![],
+                    success_reason: Some(CommitSuccessReason::ValidSignOffInRemediationCommit),
+                },
+                CommitCheckOutput {
+                    commit: commit2,
+                    errors: vec![],
+                    success_reason: Some(CommitSuccessReason::ValidSignOff),
+                }
+            ],
+            head_ref: "main".to_string(),
+            num_commits_with_errors: 0,
+        }
+    );
+}
+
+#[test]
+fn two_commits_invalid_signoff_incorrect_name_in_first_valid_remediation_commit_in_second() {
+    let commit1 = Commit {
+        author: Some(GitUser {
+            name: "user1".to_string(),
+            email: "user1@email.test".to_string(),
+            ..Default::default()
+        }),
+        committer: Some(GitUser {
+            name: "user1".to_string(),
+            email: "user1@email.test".to_string(),
+            ..Default::default()
+        }),
+        message: indoc! {r"
+            Test commit message
+
+            Signed-off-by: userx <user1@email.test>
+        "}
+        .to_string(),
+        sha: "sha1".to_string(),
+        ..Default::default()
+    };
+    let commit2 = Commit {
+        author: Some(GitUser {
+            name: "user1".to_string(),
+            email: "user1@email.test".to_string(),
+            ..Default::default()
+        }),
+        committer: Some(GitUser {
+            name: "user1".to_string(),
+            email: "user1@email.test".to_string(),
+            ..Default::default()
+        }),
+        message: indoc! {r"
+            Test commit message
+
+            I, user1 <user1@email.test>, hereby add my Signed-off-by to this commit: sha1
+
+            Signed-off-by: user1 <user1@email.test>
+        "}
+        .to_string(),
+        ..Default::default()
+    };
+
+    let input = CheckInput {
+        commits: vec![commit1.clone(), commit2.clone()],
+        config: Config {
+            allow_remediation_commits: Some(ConfigAllowRemediationCommits {
+                individual: Some(true),
+                ..Default::default()
+            }),
+            ..Default::default()
+        },
+        head_ref: "main".to_string(),
+    };
+    let output = check(&input);
+
+    assert_eq!(
+        output,
+        CheckOutput {
+            commits: vec![
+                CommitCheckOutput {
+                    commit: commit1,
+                    errors: vec![],
+                    success_reason: Some(CommitSuccessReason::ValidSignOffInRemediationCommit),
+                },
+                CommitCheckOutput {
+                    commit: commit2,
+                    errors: vec![],
+                    success_reason: Some(CommitSuccessReason::ValidSignOff),
+                }
+            ],
+            head_ref: "main".to_string(),
+            num_commits_with_errors: 0,
+        }
+    );
+}
+
+#[test]
+fn two_commits_invalid_signoff_incorrect_email_in_first_valid_remediation_commit_in_second() {
+    let commit1 = Commit {
+        author: Some(GitUser {
+            name: "user1".to_string(),
+            email: "user1@email.test".to_string(),
+            ..Default::default()
+        }),
+        committer: Some(GitUser {
+            name: "user1".to_string(),
+            email: "user1@email.test".to_string(),
+            ..Default::default()
+        }),
+        message: indoc! {r"
+            Test commit message
+
+            Signed-off-by: user1 <userx@email.test>
+        "}
+        .to_string(),
+        sha: "sha1".to_string(),
+        ..Default::default()
+    };
+    let commit2 = Commit {
+        author: Some(GitUser {
+            name: "user1".to_string(),
+            email: "user1@email.test".to_string(),
+            ..Default::default()
+        }),
+        committer: Some(GitUser {
+            name: "user1".to_string(),
+            email: "user1@email.test".to_string(),
+            ..Default::default()
+        }),
+        message: indoc! {r"
+            Test commit message
+
+            I, user1 <user1@email.test>, hereby add my Signed-off-by to this commit: sha1
+
+            Signed-off-by: user1 <user1@email.test>
+        "}
+        .to_string(),
+        ..Default::default()
+    };
+
+    let input = CheckInput {
+        commits: vec![commit1.clone(), commit2.clone()],
+        config: Config {
+            allow_remediation_commits: Some(ConfigAllowRemediationCommits {
+                individual: Some(true),
+                ..Default::default()
+            }),
+            ..Default::default()
+        },
+        head_ref: "main".to_string(),
+    };
+    let output = check(&input);
+
+    assert_eq!(
+        output,
+        CheckOutput {
+            commits: vec![
+                CommitCheckOutput {
+                    commit: commit1,
+                    errors: vec![],
+                    success_reason: Some(CommitSuccessReason::ValidSignOffInRemediationCommit),
+                },
+                CommitCheckOutput {
+                    commit: commit2,
+                    errors: vec![],
+                    success_reason: Some(CommitSuccessReason::ValidSignOff),
+                }
+            ],
+            head_ref: "main".to_string(),
+            num_commits_with_errors: 0,
+        }
+    );
+}
+
+#[test]
+fn two_commits_valid_signoff_in_first_redundant_remediation_commit_in_second() {
+    let commit1 = Commit {
+        author: Some(GitUser {
+            name: "user1".to_string(),
+            email: "user1@email.test".to_string(),
+            ..Default::default()
+        }),
+        committer: Some(GitUser {
+            name: "user1".to_string(),
+            email: "user1@email.test".to_string(),
+            ..Default::default()
+        }),
+        message: indoc! {r"
+            Test commit message
+
+            Signed-off-by: user1 <user1@email.test>
+        "}
+        .to_string(),
+        sha: "sha1".to_string(),
+        ..Default::default()
+    };
+    let commit2 = Commit {
+        author: Some(GitUser {
+            name: "user1".to_string(),
+            email: "user1@email.test".to_string(),
+            ..Default::default()
+        }),
+        committer: Some(GitUser {
+            name: "user1".to_string(),
+            email: "user1@email.test".to_string(),
+            ..Default::default()
+        }),
+        message: indoc! {r"
+            Test commit message
+
+            I, user1 <user1@email.test>, hereby add my Signed-off-by to this commit: sha1
+
+            Signed-off-by: user1 <user1@email.test>
+        "}
+        .to_string(),
+        ..Default::default()
+    };
+
+    let input = CheckInput {
+        commits: vec![commit1.clone(), commit2.clone()],
+        config: Config {
+            allow_remediation_commits: Some(ConfigAllowRemediationCommits {
+                individual: Some(true),
+                ..Default::default()
+            }),
+            ..Default::default()
+        },
+        head_ref: "main".to_string(),
+    };
+    let output = check(&input);
+
+    assert_eq!(
+        output,
+        CheckOutput {
+            commits: vec![
+                CommitCheckOutput {
+                    commit: commit1,
+                    errors: vec![],
+                    success_reason: Some(CommitSuccessReason::ValidSignOff),
+                },
+                CommitCheckOutput {
+                    commit: commit2,
+                    errors: vec![],
+                    success_reason: Some(CommitSuccessReason::ValidSignOff),
+                }
+            ],
+            head_ref: "main".to_string(),
+            num_commits_with_errors: 0,
+        }
+    );
+}
+
+#[test]
+fn two_commits_valid_signoff_in_first_remediation_commit_non_existent_sha_in_second() {
+    let commit1 = Commit {
+        author: Some(GitUser {
+            name: "user1".to_string(),
+            email: "user1@email.test".to_string(),
+            ..Default::default()
+        }),
+        committer: Some(GitUser {
+            name: "user1".to_string(),
+            email: "user1@email.test".to_string(),
+            ..Default::default()
+        }),
+        message: indoc! {r"
+            Test commit message
+
+            Signed-off-by: user1 <user1@email.test>
+        "}
+        .to_string(),
+        sha: "sha1".to_string(),
+        ..Default::default()
+    };
+    let commit2 = Commit {
+        author: Some(GitUser {
+            name: "user1".to_string(),
+            email: "user1@email.test".to_string(),
+            ..Default::default()
+        }),
+        committer: Some(GitUser {
+            name: "user1".to_string(),
+            email: "user1@email.test".to_string(),
+            ..Default::default()
+        }),
+        message: indoc! {r"
+            Test commit message
+
+            I, user1 <user1@email.test>, hereby add my Signed-off-by to this commit: non-existent
+
+            Signed-off-by: user1 <user1@email.test>
+        "}
+        .to_string(),
+        ..Default::default()
+    };
+
+    let input = CheckInput {
+        commits: vec![commit1.clone(), commit2.clone()],
+        config: Config {
+            allow_remediation_commits: Some(ConfigAllowRemediationCommits {
+                individual: Some(true),
+                ..Default::default()
+            }),
+            ..Default::default()
+        },
+        head_ref: "main".to_string(),
+    };
+    let output = check(&input);
+
+    assert_eq!(
+        output,
+        CheckOutput {
+            commits: vec![
+                CommitCheckOutput {
+                    commit: commit1,
+                    errors: vec![],
+                    success_reason: Some(CommitSuccessReason::ValidSignOff),
+                },
+                CommitCheckOutput {
+                    commit: commit2,
+                    errors: vec![],
+                    success_reason: Some(CommitSuccessReason::ValidSignOff),
+                }
+            ],
+            head_ref: "main".to_string(),
+            num_commits_with_errors: 0,
+        }
+    );
+}
+
+#[test]
+fn two_commits_no_signoff_in_first_remediation_commit_no_signoff_in_second() {
+    let commit1 = Commit {
+        author: Some(GitUser {
+            name: "user1".to_string(),
+            email: "user1@email.test".to_string(),
+            ..Default::default()
+        }),
+        committer: Some(GitUser {
+            name: "user1".to_string(),
+            email: "user1@email.test".to_string(),
+            ..Default::default()
+        }),
+        message: "Test commit message".to_string(),
+        sha: "sha1".to_string(),
+        ..Default::default()
+    };
+    let commit2 = Commit {
+        author: Some(GitUser {
+            name: "user1".to_string(),
+            email: "user1@email.test".to_string(),
+            ..Default::default()
+        }),
+        committer: Some(GitUser {
+            name: "user1".to_string(),
+            email: "user1@email.test".to_string(),
+            ..Default::default()
+        }),
+        message: indoc! {r"
+            Test commit message
+
+            I, user1 <user1@email.test>, hereby add my Signed-off-by to this commit: sha1
+        "}
+        .to_string(),
+        ..Default::default()
+    };
+
+    let input = CheckInput {
+        commits: vec![commit1.clone(), commit2.clone()],
+        config: Config {
+            allow_remediation_commits: Some(ConfigAllowRemediationCommits {
+                individual: Some(true),
+                ..Default::default()
+            }),
+            ..Default::default()
+        },
+        head_ref: "main".to_string(),
+    };
+    let output = check(&input);
+
+    assert_eq!(
+        output,
+        CheckOutput {
+            commits: vec![
+                CommitCheckOutput {
+                    commit: commit1,
+                    errors: vec![],
+                    success_reason: Some(CommitSuccessReason::ValidSignOffInRemediationCommit),
+                },
+                CommitCheckOutput {
+                    commit: commit2,
+                    errors: vec![CommitError::SignOffNotFound],
+                    success_reason: None,
+                }
+            ],
+            head_ref: "main".to_string(),
+            num_commits_with_errors: 1,
+        }
+    );
+}
+
+#[test]
+fn two_commits_no_signoff_in_first_remediation_commit_different_name_in_second() {
+    let commit1 = Commit {
+        author: Some(GitUser {
+            name: "user1".to_string(),
+            email: "user1@email.test".to_string(),
+            ..Default::default()
+        }),
+        committer: Some(GitUser {
+            name: "user1".to_string(),
+            email: "user1@email.test".to_string(),
+            ..Default::default()
+        }),
+        message: "Test commit message".to_string(),
+        sha: "sha1".to_string(),
+        ..Default::default()
+    };
+    let commit2 = Commit {
+        author: Some(GitUser {
+            name: "userx".to_string(),
+            email: "user1@email.test".to_string(),
+            ..Default::default()
+        }),
+        committer: Some(GitUser {
+            name: "userx".to_string(),
+            email: "user1@email.test".to_string(),
+            ..Default::default()
+        }),
+        message: indoc! {r"
+            Test commit message
+
+            I, userx <user1@email.test>, hereby add my Signed-off-by to this commit: sha1
+
+            Signed-off-by: userx <user1@email.test>
+        "}
+        .to_string(),
+        ..Default::default()
+    };
+
+    let input = CheckInput {
+        commits: vec![commit1.clone(), commit2.clone()],
+        config: Config {
+            allow_remediation_commits: Some(ConfigAllowRemediationCommits {
+                individual: Some(true),
+                ..Default::default()
+            }),
+            ..Default::default()
+        },
+        head_ref: "main".to_string(),
+    };
+    let output = check(&input);
+
+    assert_eq!(
+        output,
+        CheckOutput {
+            commits: vec![
+                CommitCheckOutput {
+                    commit: commit1,
+                    errors: vec![CommitError::SignOffNotFound],
+                    success_reason: None,
+                },
+                CommitCheckOutput {
+                    commit: commit2,
+                    errors: vec![],
+                    success_reason: Some(CommitSuccessReason::ValidSignOff),
+                }
+            ],
+            head_ref: "main".to_string(),
+            num_commits_with_errors: 1,
+        }
+    );
+}
+
+#[test]
+fn two_commits_no_signoff_in_first_remediation_commit_different_email_in_second() {
+    let commit1 = Commit {
+        author: Some(GitUser {
+            name: "user1".to_string(),
+            email: "user1@email.test".to_string(),
+            ..Default::default()
+        }),
+        committer: Some(GitUser {
+            name: "user1".to_string(),
+            email: "user1@email.test".to_string(),
+            ..Default::default()
+        }),
+        message: "Test commit message".to_string(),
+        sha: "sha1".to_string(),
+        ..Default::default()
+    };
+    let commit2 = Commit {
+        author: Some(GitUser {
+            name: "user1".to_string(),
+            email: "userx@email.test".to_string(),
+            ..Default::default()
+        }),
+        committer: Some(GitUser {
+            name: "user1".to_string(),
+            email: "userx@email.test".to_string(),
+            ..Default::default()
+        }),
+        message: indoc! {r"
+            Test commit message
+
+            I, user1 <userx@email.test>, hereby add my Signed-off-by to this commit: sha1
+
+            Signed-off-by: user1 <userx@email.test>
+        "}
+        .to_string(),
+        ..Default::default()
+    };
+
+    let input = CheckInput {
+        commits: vec![commit1.clone(), commit2.clone()],
+        config: Config {
+            allow_remediation_commits: Some(ConfigAllowRemediationCommits {
+                individual: Some(true),
+                ..Default::default()
+            }),
+            ..Default::default()
+        },
+        head_ref: "main".to_string(),
+    };
+    let output = check(&input);
+
+    assert_eq!(
+        output,
+        CheckOutput {
+            commits: vec![
+                CommitCheckOutput {
+                    commit: commit1,
+                    errors: vec![CommitError::SignOffNotFound],
+                    success_reason: None,
+                },
+                CommitCheckOutput {
+                    commit: commit2,
+                    errors: vec![],
+                    success_reason: Some(CommitSuccessReason::ValidSignOff),
+                }
+            ],
+            head_ref: "main".to_string(),
+            num_commits_with_errors: 1,
+        }
+    );
+}
+
+#[test]
+fn two_commits_no_signoff_in_first_remediation_commit_different_name_and_email_in_second() {
+    let commit1 = Commit {
+        author: Some(GitUser {
+            name: "user1".to_string(),
+            email: "user1@email.test".to_string(),
+            ..Default::default()
+        }),
+        committer: Some(GitUser {
+            name: "user1".to_string(),
+            email: "user1@email.test".to_string(),
+            ..Default::default()
+        }),
+        message: "Test commit message".to_string(),
+        sha: "sha1".to_string(),
+        ..Default::default()
+    };
+    let commit2 = Commit {
+        author: Some(GitUser {
+            name: "userx".to_string(),
+            email: "userx@email.test".to_string(),
+            ..Default::default()
+        }),
+        committer: Some(GitUser {
+            name: "userx".to_string(),
+            email: "userx@email.test".to_string(),
+            ..Default::default()
+        }),
+        message: indoc! {r"
+            Test commit message
+
+            I, userx <userx@email.test>, hereby add my Signed-off-by to this commit: sha1
+
+            Signed-off-by: userx <userx@email.test>
+        "}
+        .to_string(),
+        ..Default::default()
+    };
+
+    let input = CheckInput {
+        commits: vec![commit1.clone(), commit2.clone()],
+        config: Config {
+            allow_remediation_commits: Some(ConfigAllowRemediationCommits {
+                individual: Some(true),
+                ..Default::default()
+            }),
+            ..Default::default()
+        },
+        head_ref: "main".to_string(),
+    };
+    let output = check(&input);
+
+    assert_eq!(
+        output,
+        CheckOutput {
+            commits: vec![
+                CommitCheckOutput {
+                    commit: commit1,
+                    errors: vec![CommitError::SignOffNotFound],
+                    success_reason: None,
+                },
+                CommitCheckOutput {
+                    commit: commit2,
+                    errors: vec![],
+                    success_reason: Some(CommitSuccessReason::ValidSignOff),
+                }
+            ],
+            head_ref: "main".to_string(),
+            num_commits_with_errors: 1,
+        }
+    );
+}
+
+#[test]
+fn two_commits_no_signoff_in_first_remediation_commit_different_name_in_signoff_in_second() {
+    let commit1 = Commit {
+        author: Some(GitUser {
+            name: "user1".to_string(),
+            email: "user1@email.test".to_string(),
+            ..Default::default()
+        }),
+        committer: Some(GitUser {
+            name: "user1".to_string(),
+            email: "user1@email.test".to_string(),
+            ..Default::default()
+        }),
+        message: "Test commit message".to_string(),
+        sha: "sha1".to_string(),
+        ..Default::default()
+    };
+    let commit2 = Commit {
+        author: Some(GitUser {
+            name: "user1".to_string(),
+            email: "user1@email.test".to_string(),
+            ..Default::default()
+        }),
+        committer: Some(GitUser {
+            name: "user1".to_string(),
+            email: "user1@email.test".to_string(),
+            ..Default::default()
+        }),
+        message: indoc! {r"
+            Test commit message
+
+            I, user1 <user1@email.test>, hereby add my Signed-off-by to this commit: sha1
+
+            Signed-off-by: userx <user1@email.test>
+        "}
+        .to_string(),
+        ..Default::default()
+    };
+
+    let input = CheckInput {
+        commits: vec![commit1.clone(), commit2.clone()],
+        config: Config {
+            allow_remediation_commits: Some(ConfigAllowRemediationCommits {
+                individual: Some(true),
+                ..Default::default()
+            }),
+            ..Default::default()
+        },
+        head_ref: "main".to_string(),
+    };
+    let output = check(&input);
+
+    assert_eq!(
+        output,
+        CheckOutput {
+            commits: vec![
+                CommitCheckOutput {
+                    commit: commit1,
+                    errors: vec![],
+                    success_reason: Some(CommitSuccessReason::ValidSignOffInRemediationCommit),
+                },
+                CommitCheckOutput {
+                    commit: commit2,
+                    errors: vec![CommitError::SignOffMismatch],
+                    success_reason: None,
+                }
+            ],
+            head_ref: "main".to_string(),
+            num_commits_with_errors: 1,
+        }
+    );
+}
+
+#[test]
+fn two_commits_no_signoff_in_first_remediation_commit_different_email_in_signoff_in_second() {
+    let commit1 = Commit {
+        author: Some(GitUser {
+            name: "user1".to_string(),
+            email: "user1@email.test".to_string(),
+            ..Default::default()
+        }),
+        committer: Some(GitUser {
+            name: "user1".to_string(),
+            email: "user1@email.test".to_string(),
+            ..Default::default()
+        }),
+        message: "Test commit message".to_string(),
+        sha: "sha1".to_string(),
+        ..Default::default()
+    };
+    let commit2 = Commit {
+        author: Some(GitUser {
+            name: "user1".to_string(),
+            email: "user1@email.test".to_string(),
+            ..Default::default()
+        }),
+        committer: Some(GitUser {
+            name: "user1".to_string(),
+            email: "user1@email.test".to_string(),
+            ..Default::default()
+        }),
+        message: indoc! {r"
+            Test commit message
+
+            I, user1 <user1@email.test>, hereby add my Signed-off-by to this commit: sha1
+
+            Signed-off-by: user1 <userx@email.test>
+        "}
+        .to_string(),
+        ..Default::default()
+    };
+
+    let input = CheckInput {
+        commits: vec![commit1.clone(), commit2.clone()],
+        config: Config {
+            allow_remediation_commits: Some(ConfigAllowRemediationCommits {
+                individual: Some(true),
+                ..Default::default()
+            }),
+            ..Default::default()
+        },
+        head_ref: "main".to_string(),
+    };
+    let output = check(&input);
+
+    assert_eq!(
+        output,
+        CheckOutput {
+            commits: vec![
+                CommitCheckOutput {
+                    commit: commit1,
+                    errors: vec![],
+                    success_reason: Some(CommitSuccessReason::ValidSignOffInRemediationCommit),
+                },
+                CommitCheckOutput {
+                    commit: commit2,
+                    errors: vec![CommitError::SignOffMismatch],
+                    success_reason: None,
+                }
+            ],
+            head_ref: "main".to_string(),
+            num_commits_with_errors: 1,
+        }
+    );
+}
+
+#[test]
+fn two_commits_no_signoff_in_first_remediation_commit_different_name_and_email_in_signoff_in_second() {
+    let commit1 = Commit {
+        author: Some(GitUser {
+            name: "user1".to_string(),
+            email: "user1@email.test".to_string(),
+            ..Default::default()
+        }),
+        committer: Some(GitUser {
+            name: "user1".to_string(),
+            email: "user1@email.test".to_string(),
+            ..Default::default()
+        }),
+        message: "Test commit message".to_string(),
+        sha: "sha1".to_string(),
+        ..Default::default()
+    };
+    let commit2 = Commit {
+        author: Some(GitUser {
+            name: "user1".to_string(),
+            email: "user1@email.test".to_string(),
+            ..Default::default()
+        }),
+        committer: Some(GitUser {
+            name: "user1".to_string(),
+            email: "user1@email.test".to_string(),
+            ..Default::default()
+        }),
+        message: indoc! {r"
+            Test commit message
+
+            I, user1 <user1@email.test>, hereby add my Signed-off-by to this commit: sha1
+
+            Signed-off-by: userx <userx@email.test>
+        "}
+        .to_string(),
+        ..Default::default()
+    };
+
+    let input = CheckInput {
+        commits: vec![commit1.clone(), commit2.clone()],
+        config: Config {
+            allow_remediation_commits: Some(ConfigAllowRemediationCommits {
+                individual: Some(true),
+                ..Default::default()
+            }),
+            ..Default::default()
+        },
+        head_ref: "main".to_string(),
+    };
+    let output = check(&input);
+
+    assert_eq!(
+        output,
+        CheckOutput {
+            commits: vec![
+                CommitCheckOutput {
+                    commit: commit1,
+                    errors: vec![],
+                    success_reason: Some(CommitSuccessReason::ValidSignOffInRemediationCommit),
+                },
+                CommitCheckOutput {
+                    commit: commit2,
+                    errors: vec![CommitError::SignOffMismatch],
+                    success_reason: None,
+                }
+            ],
+            head_ref: "main".to_string(),
+            num_commits_with_errors: 1,
+        }
+    );
+}
+
+#[test]
+fn two_commits_no_signoff_in_first_remediation_commit_different_name_in_remediation_in_second() {
+    let commit1 = Commit {
+        author: Some(GitUser {
+            name: "user1".to_string(),
+            email: "user1@email.test".to_string(),
+            ..Default::default()
+        }),
+        committer: Some(GitUser {
+            name: "user1".to_string(),
+            email: "user1@email.test".to_string(),
+            ..Default::default()
+        }),
+        message: "Test commit message".to_string(),
+        sha: "sha1".to_string(),
+        ..Default::default()
+    };
+    let commit2 = Commit {
+        author: Some(GitUser {
+            name: "user1".to_string(),
+            email: "user1@email.test".to_string(),
+            ..Default::default()
+        }),
+        committer: Some(GitUser {
+            name: "user1".to_string(),
+            email: "user1@email.test".to_string(),
+            ..Default::default()
+        }),
+        message: indoc! {r"
+            Test commit message
+
+            I, userx <user1@email.test>, hereby add my Signed-off-by to this commit: sha1
+
+            Signed-off-by: user1 <user1@email.test>
+        "}
+        .to_string(),
+        ..Default::default()
+    };
+
+    let input = CheckInput {
+        commits: vec![commit1.clone(), commit2.clone()],
+        config: Config {
+            allow_remediation_commits: Some(ConfigAllowRemediationCommits {
+                individual: Some(true),
+                ..Default::default()
+            }),
+            ..Default::default()
+        },
+        head_ref: "main".to_string(),
+    };
+    let output = check(&input);
+
+    assert_eq!(
+        output,
+        CheckOutput {
+            commits: vec![
+                CommitCheckOutput {
+                    commit: commit1,
+                    errors: vec![CommitError::SignOffNotFound],
+                    success_reason: None,
+                },
+                CommitCheckOutput {
+                    commit: commit2,
+                    errors: vec![],
+                    success_reason: Some(CommitSuccessReason::ValidSignOff),
+                }
+            ],
+            head_ref: "main".to_string(),
+            num_commits_with_errors: 1,
+        }
+    );
+}
+
+#[test]
+fn two_commits_no_signoff_in_first_remediation_commit_different_email_in_remediation_in_second() {
+    let commit1 = Commit {
+        author: Some(GitUser {
+            name: "user1".to_string(),
+            email: "user1@email.test".to_string(),
+            ..Default::default()
+        }),
+        committer: Some(GitUser {
+            name: "user1".to_string(),
+            email: "user1@email.test".to_string(),
+            ..Default::default()
+        }),
+        message: "Test commit message".to_string(),
+        sha: "sha1".to_string(),
+        ..Default::default()
+    };
+    let commit2 = Commit {
+        author: Some(GitUser {
+            name: "user1".to_string(),
+            email: "user1@email.test".to_string(),
+            ..Default::default()
+        }),
+        committer: Some(GitUser {
+            name: "user1".to_string(),
+            email: "user1@email.test".to_string(),
+            ..Default::default()
+        }),
+        message: indoc! {r"
+            Test commit message
+
+            I, user1 <userx@email.test>, hereby add my Signed-off-by to this commit: sha1
+
+            Signed-off-by: user1 <user1@email.test>
+        "}
+        .to_string(),
+        ..Default::default()
+    };
+
+    let input = CheckInput {
+        commits: vec![commit1.clone(), commit2.clone()],
+        config: Config {
+            allow_remediation_commits: Some(ConfigAllowRemediationCommits {
+                individual: Some(true),
+                ..Default::default()
+            }),
+            ..Default::default()
+        },
+        head_ref: "main".to_string(),
+    };
+    let output = check(&input);
+
+    assert_eq!(
+        output,
+        CheckOutput {
+            commits: vec![
+                CommitCheckOutput {
+                    commit: commit1,
+                    errors: vec![CommitError::SignOffNotFound],
+                    success_reason: None,
+                },
+                CommitCheckOutput {
+                    commit: commit2,
+                    errors: vec![],
+                    success_reason: Some(CommitSuccessReason::ValidSignOff),
+                }
+            ],
+            head_ref: "main".to_string(),
+            num_commits_with_errors: 1,
+        }
+    );
+}
+
+#[test]
+fn two_commits_no_signoff_in_first_remediation_commit_different_name_and_email_in_remediation_in_second() {
+    let commit1 = Commit {
+        author: Some(GitUser {
+            name: "user1".to_string(),
+            email: "user1@email.test".to_string(),
+            ..Default::default()
+        }),
+        committer: Some(GitUser {
+            name: "user1".to_string(),
+            email: "user1@email.test".to_string(),
+            ..Default::default()
+        }),
+        message: "Test commit message".to_string(),
+        sha: "sha1".to_string(),
+        ..Default::default()
+    };
+    let commit2 = Commit {
+        author: Some(GitUser {
+            name: "user1".to_string(),
+            email: "user1@email.test".to_string(),
+            ..Default::default()
+        }),
+        committer: Some(GitUser {
+            name: "user1".to_string(),
+            email: "user1@email.test".to_string(),
+            ..Default::default()
+        }),
+        message: indoc! {r"
+            Test commit message
+
+            I, userx <userx@email.test>, hereby add my Signed-off-by to this commit: sha1
+
+            Signed-off-by: user1 <user1@email.test>
+        "}
+        .to_string(),
+        ..Default::default()
+    };
+
+    let input = CheckInput {
+        commits: vec![commit1.clone(), commit2.clone()],
+        config: Config {
+            allow_remediation_commits: Some(ConfigAllowRemediationCommits {
+                individual: Some(true),
+                ..Default::default()
+            }),
+            ..Default::default()
+        },
+        head_ref: "main".to_string(),
+    };
+    let output = check(&input);
+
+    assert_eq!(
+        output,
+        CheckOutput {
+            commits: vec![
+                CommitCheckOutput {
+                    commit: commit1,
+                    errors: vec![CommitError::SignOffNotFound],
+                    success_reason: None,
+                },
+                CommitCheckOutput {
+                    commit: commit2,
+                    errors: vec![],
+                    success_reason: Some(CommitSuccessReason::ValidSignOff),
+                }
+            ],
+            head_ref: "main".to_string(),
+            num_commits_with_errors: 1,
+        }
+    );
+}
+
+#[test]
+fn two_commits_no_signoff_in_first_remediation_commit_different_sha_in_second() {
+    let commit1 = Commit {
+        author: Some(GitUser {
+            name: "user1".to_string(),
+            email: "user1@email.test".to_string(),
+            ..Default::default()
+        }),
+        committer: Some(GitUser {
+            name: "user1".to_string(),
+            email: "user1@email.test".to_string(),
+            ..Default::default()
+        }),
+        message: "Test commit message".to_string(),
+        sha: "sha1".to_string(),
+        ..Default::default()
+    };
+    let commit2 = Commit {
+        author: Some(GitUser {
+            name: "user1".to_string(),
+            email: "user1@email.test".to_string(),
+            ..Default::default()
+        }),
+        committer: Some(GitUser {
+            name: "user1".to_string(),
+            email: "user1@email.test".to_string(),
+            ..Default::default()
+        }),
+        message: indoc! {r"
+            Test commit message
+
+            I, user1 <user1@email.test>, hereby add my Signed-off-by to this commit: sha2
+
+            Signed-off-by: user1 <user1@email.test>
+        "}
+        .to_string(),
+        ..Default::default()
+    };
+
+    let input = CheckInput {
+        commits: vec![commit1.clone(), commit2.clone()],
+        config: Config {
+            allow_remediation_commits: Some(ConfigAllowRemediationCommits {
+                individual: Some(true),
+                ..Default::default()
+            }),
+            ..Default::default()
+        },
+        head_ref: "main".to_string(),
+    };
+    let output = check(&input);
+
+    assert_eq!(
+        output,
+        CheckOutput {
+            commits: vec![
+                CommitCheckOutput {
+                    commit: commit1,
+                    errors: vec![CommitError::SignOffNotFound],
+                    success_reason: None,
+                },
+                CommitCheckOutput {
+                    commit: commit2,
+                    errors: vec![],
+                    success_reason: Some(CommitSuccessReason::ValidSignOff),
+                }
+            ],
+            head_ref: "main".to_string(),
+            num_commits_with_errors: 1,
+        }
+    );
+}
+
+#[test]
 fn three_commits_valid_signoff_in_all() {
     let commit1 = Commit {
         author: Some(GitUser {
@@ -2029,6 +3356,199 @@ fn three_commits_valid_signoff_first_invalid_signoff_second_valid_signoff_third(
             ],
             head_ref: "main".to_string(),
             num_commits_with_errors: 1,
+        }
+    );
+}
+
+#[test]
+fn three_commits_no_signoff_in_first_remediation_commit_without_signoff_in_second_valid_remediation_commit_in_third(
+) {
+    let commit1 = Commit {
+        author: Some(GitUser {
+            name: "user1".to_string(),
+            email: "user1@email.test".to_string(),
+            ..Default::default()
+        }),
+        committer: Some(GitUser {
+            name: "user1".to_string(),
+            email: "user1@email.test".to_string(),
+            ..Default::default()
+        }),
+        message: "Test commit message".to_string(),
+        sha: "sha1".to_string(),
+        ..Default::default()
+    };
+    let commit2 = Commit {
+        author: Some(GitUser {
+            name: "user1".to_string(),
+            email: "user1@email.test".to_string(),
+            ..Default::default()
+        }),
+        committer: Some(GitUser {
+            name: "user1".to_string(),
+            email: "user1@email.test".to_string(),
+            ..Default::default()
+        }),
+        message: indoc! {r"
+            Test commit message
+
+            I, user1 <user1@email.test>, hereby add my Signed-off-by to this commit: sha1
+        "}
+        .to_string(),
+        sha: "sha2".to_string(),
+        ..Default::default()
+    };
+    let commit3 = Commit {
+        author: Some(GitUser {
+            name: "user1".to_string(),
+            email: "user1@email.test".to_string(),
+            ..Default::default()
+        }),
+        committer: Some(GitUser {
+            name: "user1".to_string(),
+            email: "user1@email.test".to_string(),
+            ..Default::default()
+        }),
+        message: indoc! {r"
+            Test commit message
+
+            I, user1 <user1@email.test>, hereby add my Signed-off-by to this commit: sha2
+
+            Signed-off-by: user1 <user1@email.test>
+        "}
+        .to_string(),
+        ..Default::default()
+    };
+
+    let input = CheckInput {
+        commits: vec![commit1.clone(), commit2.clone(), commit3.clone()],
+        config: Config {
+            allow_remediation_commits: Some(ConfigAllowRemediationCommits {
+                individual: Some(true),
+                ..Default::default()
+            }),
+            ..Default::default()
+        },
+        head_ref: "main".to_string(),
+    };
+    let output = check(&input);
+
+    assert_eq!(
+        output,
+        CheckOutput {
+            commits: vec![
+                CommitCheckOutput {
+                    commit: commit1,
+                    errors: vec![],
+                    success_reason: Some(CommitSuccessReason::ValidSignOffInRemediationCommit),
+                },
+                CommitCheckOutput {
+                    commit: commit2,
+                    errors: vec![],
+                    success_reason: Some(CommitSuccessReason::ValidSignOffInRemediationCommit),
+                },
+                CommitCheckOutput {
+                    commit: commit3,
+                    errors: vec![],
+                    success_reason: Some(CommitSuccessReason::ValidSignOff),
+                }
+            ],
+            head_ref: "main".to_string(),
+            num_commits_with_errors: 0,
+        }
+    );
+}
+
+#[test]
+fn three_commits_no_signoff_in_first_no_signoff_in_second_valid_remediation_commit_for_both_in_third() {
+    let commit1 = Commit {
+        author: Some(GitUser {
+            name: "user1".to_string(),
+            email: "user1@email.test".to_string(),
+            ..Default::default()
+        }),
+        committer: Some(GitUser {
+            name: "user1".to_string(),
+            email: "user1@email.test".to_string(),
+            ..Default::default()
+        }),
+        message: "Test commit message".to_string(),
+        sha: "sha1".to_string(),
+        ..Default::default()
+    };
+    let commit2 = Commit {
+        author: Some(GitUser {
+            name: "user1".to_string(),
+            email: "user1@email.test".to_string(),
+            ..Default::default()
+        }),
+        committer: Some(GitUser {
+            name: "user1".to_string(),
+            email: "user1@email.test".to_string(),
+            ..Default::default()
+        }),
+        message: "Test commit message".to_string(),
+        sha: "sha2".to_string(),
+        ..Default::default()
+    };
+    let commit3 = Commit {
+        author: Some(GitUser {
+            name: "user1".to_string(),
+            email: "user1@email.test".to_string(),
+            ..Default::default()
+        }),
+        committer: Some(GitUser {
+            name: "user1".to_string(),
+            email: "user1@email.test".to_string(),
+            ..Default::default()
+        }),
+        message: indoc! {r"
+            Test commit message
+
+            I, user1 <user1@email.test>, hereby add my Signed-off-by to this commit: sha1
+            I, user1 <user1@email.test>, hereby add my Signed-off-by to this commit: sha2
+
+            Signed-off-by: user1 <user1@email.test>
+        "}
+        .to_string(),
+        ..Default::default()
+    };
+
+    let input = CheckInput {
+        commits: vec![commit1.clone(), commit2.clone(), commit3.clone()],
+        config: Config {
+            allow_remediation_commits: Some(ConfigAllowRemediationCommits {
+                individual: Some(true),
+                ..Default::default()
+            }),
+            ..Default::default()
+        },
+        head_ref: "main".to_string(),
+    };
+    let output = check(&input);
+
+    assert_eq!(
+        output,
+        CheckOutput {
+            commits: vec![
+                CommitCheckOutput {
+                    commit: commit1,
+                    errors: vec![],
+                    success_reason: Some(CommitSuccessReason::ValidSignOffInRemediationCommit),
+                },
+                CommitCheckOutput {
+                    commit: commit2,
+                    errors: vec![],
+                    success_reason: Some(CommitSuccessReason::ValidSignOffInRemediationCommit),
+                },
+                CommitCheckOutput {
+                    commit: commit3,
+                    errors: vec![],
+                    success_reason: Some(CommitSuccessReason::ValidSignOff),
+                }
+            ],
+            head_ref: "main".to_string(),
+            num_commits_with_errors: 0,
         }
     );
 }
