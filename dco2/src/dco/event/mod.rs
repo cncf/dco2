@@ -102,7 +102,7 @@ async fn process_pull_request_event(gh_client: DynGHClient, event: &PullRequestE
     let output = check(&input);
 
     // Create check run
-    let (conclusion, actions) = if output.commits_with_errors.is_empty() {
+    let (conclusion, actions) = if output.num_commits_with_errors == 0 {
         (CheckRunConclusion::Success, vec![])
     } else {
         (

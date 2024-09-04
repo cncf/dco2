@@ -7,7 +7,6 @@ use regex::Regex;
 use serde::{Deserialize, Serialize};
 use std::sync::LazyLock;
 use thiserror::Error;
-use tracing::debug;
 
 mod filters;
 #[cfg(test)]
@@ -25,9 +24,9 @@ pub(crate) struct CheckInput {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Template)]
 #[template(path = "output.md")]
 pub(crate) struct CheckOutput {
-    pub commits_with_errors: Vec<CommitCheckOutput>,
+    pub commits: Vec<CommitCheckOutput>,
     pub head_ref: String,
-    pub total_commits: usize,
+    pub num_commits_with_errors: usize,
 }
 
 /// Commit check output.
@@ -35,6 +34,7 @@ pub(crate) struct CheckOutput {
 pub(crate) struct CommitCheckOutput {
     pub commit: Commit,
     pub errors: Vec<CommitError>,
+    pub success_reason: Option<CommitSuccessReason>,
 }
 
 impl CommitCheckOutput {
@@ -43,6 +43,7 @@ impl CommitCheckOutput {
         Self {
             commit,
             errors: Vec::new(),
+            success_reason: None,
         }
     }
 }
@@ -60,12 +61,20 @@ pub(crate) enum CommitError {
     SignOffNotFound,
 }
 
+/// Reasons why a commit's check succeeded.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub(crate) enum CommitSuccessReason {
+    FromBot,
+    IsMerge,
+    ValidSignOff,
+}
+
 /// Run DCO check.
 pub(crate) fn check(input: &CheckInput) -> CheckOutput {
     let mut output = CheckOutput {
-        commits_with_errors: Vec::new(),
+        commits: Vec::new(),
         head_ref: input.head_ref.clone(),
-        total_commits: input.commits.len(),
+        num_commits_with_errors: 0,
     };
 
     // Check each commit
@@ -75,7 +84,8 @@ pub(crate) fn check(input: &CheckInput) -> CheckOutput {
         // Check if we should skip this commit
         let (commit_should_be_skipped, reason) = should_skip_commit(commit);
         if commit_should_be_skipped {
-            debug!("commit ({}) skipped: {:?}", commit_output.commit.sha, reason);
+            commit_output.success_reason = reason;
+            output.commits.push(commit_output);
             continue;
         }
 
@@ -99,27 +109,30 @@ pub(crate) fn check(input: &CheckInput) -> CheckOutput {
             commit_output.errors.push(CommitError::SignOffMismatch);
         }
 
-        // Track commit if it has errors
-        debug_processed_commit(&commit_output, &signoffs);
-        if !commit_output.errors.is_empty() {
-            output.commits_with_errors.push(commit_output);
+        // Track commit
+        if commit_output.errors.is_empty() {
+            commit_output.success_reason = Some(CommitSuccessReason::ValidSignOff);
         }
+        output.commits.push(commit_output);
     }
+
+    // Update output status
+    output.num_commits_with_errors = output.commits.iter().filter(|c| !c.errors.is_empty()).count();
 
     output
 }
 
 /// Check if we should skip this commit.
-fn should_skip_commit(commit: &Commit) -> (bool, Option<String>) {
+fn should_skip_commit(commit: &Commit) -> (bool, Option<CommitSuccessReason>) {
     // Skip merge commits
     if commit.is_merge {
-        return (true, Some("merge commit".to_string()));
+        return (true, Some(CommitSuccessReason::IsMerge));
     }
 
     // Skip bots commits
     if let Some(author) = &commit.author {
         if author.is_bot {
-            return (true, Some("author is a bot".to_string()));
+            return (true, Some(CommitSuccessReason::FromBot));
         }
     }
 
@@ -208,16 +221,4 @@ fn signoffs_match(signoffs: &[SignOff], commit: &Commit) -> bool {
     };
 
     signoffs.iter().any(|s| signoff_matches_author(s) || signoff_matches_committer(s))
-}
-
-/// Display some information about a processed commit.
-fn debug_processed_commit(commit_output: &CommitCheckOutput, signoffs: &[SignOff]) {
-    debug!("commit processed: {}", commit_output.commit.sha);
-    debug!("errors found: {:?}", commit_output.errors);
-    debug!("author: {:?}", commit_output.commit.author);
-    debug!("committer: {:?}", commit_output.commit.committer);
-    debug!("sign-offs:");
-    for signoff in signoffs {
-        debug!("sign-off: {:?}", signoff);
-    }
 }

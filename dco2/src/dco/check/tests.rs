@@ -1,5 +1,5 @@
 use crate::{
-    dco::check::{check, CheckInput, CheckOutput, CommitCheckOutput, CommitError},
+    dco::check::{check, CheckInput, CheckOutput, CommitCheckOutput, CommitError, CommitSuccessReason},
     github::{Commit, GitUser},
 };
 use indoc::indoc;
@@ -13,7 +13,7 @@ fn single_commit_no_signoff_is_merge_commit() {
     };
 
     let input = CheckInput {
-        commits: vec![commit1],
+        commits: vec![commit1.clone()],
         config: Default::default(),
         head_ref: "main".to_string(),
     };
@@ -22,9 +22,13 @@ fn single_commit_no_signoff_is_merge_commit() {
     assert_eq!(
         output,
         CheckOutput {
-            commits_with_errors: vec![],
+            commits: vec![CommitCheckOutput {
+                commit: commit1,
+                errors: vec![],
+                success_reason: Some(CommitSuccessReason::IsMerge),
+            }],
             head_ref: "main".to_string(),
-            total_commits: 1,
+            num_commits_with_errors: 0,
         }
     );
 }
@@ -40,7 +44,7 @@ fn single_commit_no_signoff_author_is_bot() {
     };
 
     let input = CheckInput {
-        commits: vec![commit1],
+        commits: vec![commit1.clone()],
         config: Default::default(),
         head_ref: "main".to_string(),
     };
@@ -49,9 +53,13 @@ fn single_commit_no_signoff_author_is_bot() {
     assert_eq!(
         output,
         CheckOutput {
-            commits_with_errors: vec![],
+            commits: vec![CommitCheckOutput {
+                commit: commit1,
+                errors: vec![],
+                success_reason: Some(CommitSuccessReason::FromBot),
+            }],
             head_ref: "main".to_string(),
-            total_commits: 1,
+            num_commits_with_errors: 0,
         }
     );
 }
@@ -79,7 +87,7 @@ fn single_commit_valid_signoff_author_match() {
     };
 
     let input = CheckInput {
-        commits: vec![commit1],
+        commits: vec![commit1.clone()],
         config: Default::default(),
         head_ref: "main".to_string(),
     };
@@ -88,9 +96,13 @@ fn single_commit_valid_signoff_author_match() {
     assert_eq!(
         output,
         CheckOutput {
-            commits_with_errors: vec![],
+            commits: vec![CommitCheckOutput {
+                commit: commit1,
+                errors: vec![],
+                success_reason: Some(CommitSuccessReason::ValidSignOff),
+            }],
             head_ref: "main".to_string(),
-            total_commits: 1,
+            num_commits_with_errors: 0,
         }
     );
 }
@@ -118,7 +130,7 @@ fn single_commit_valid_signoff_committer_match() {
     };
 
     let input = CheckInput {
-        commits: vec![commit1],
+        commits: vec![commit1.clone()],
         config: Default::default(),
         head_ref: "main".to_string(),
     };
@@ -127,9 +139,13 @@ fn single_commit_valid_signoff_committer_match() {
     assert_eq!(
         output,
         CheckOutput {
-            commits_with_errors: vec![],
+            commits: vec![CommitCheckOutput {
+                commit: commit1,
+                errors: vec![],
+                success_reason: Some(CommitSuccessReason::ValidSignOff),
+            }],
             head_ref: "main".to_string(),
-            total_commits: 1,
+            num_commits_with_errors: 0,
         }
     );
 }
@@ -159,7 +175,7 @@ fn single_commit_valid_signoff_multiple_signoffs() {
     };
 
     let input = CheckInput {
-        commits: vec![commit1],
+        commits: vec![commit1.clone()],
         config: Default::default(),
         head_ref: "main".to_string(),
     };
@@ -168,9 +184,13 @@ fn single_commit_valid_signoff_multiple_signoffs() {
     assert_eq!(
         output,
         CheckOutput {
-            commits_with_errors: vec![],
+            commits: vec![CommitCheckOutput {
+                commit: commit1,
+                errors: vec![],
+                success_reason: Some(CommitSuccessReason::ValidSignOff),
+            }],
             head_ref: "main".to_string(),
-            total_commits: 1,
+            num_commits_with_errors: 0,
         }
     );
 }
@@ -198,7 +218,7 @@ fn single_commit_valid_signoff_signoff_case_insensitive() {
     };
 
     let input = CheckInput {
-        commits: vec![commit1],
+        commits: vec![commit1.clone()],
         config: Default::default(),
         head_ref: "main".to_string(),
     };
@@ -207,9 +227,13 @@ fn single_commit_valid_signoff_signoff_case_insensitive() {
     assert_eq!(
         output,
         CheckOutput {
-            commits_with_errors: vec![],
+            commits: vec![CommitCheckOutput {
+                commit: commit1,
+                errors: vec![],
+                success_reason: Some(CommitSuccessReason::ValidSignOff),
+            }],
             head_ref: "main".to_string(),
-            total_commits: 1,
+            num_commits_with_errors: 0,
         }
     );
 }
@@ -232,7 +256,7 @@ fn single_commit_valid_signoff_signoff_trailing_whitespace() {
     };
 
     let input = CheckInput {
-        commits: vec![commit1],
+        commits: vec![commit1.clone()],
         config: Default::default(),
         head_ref: "main".to_string(),
     };
@@ -241,9 +265,13 @@ fn single_commit_valid_signoff_signoff_trailing_whitespace() {
     assert_eq!(
         output,
         CheckOutput {
-            commits_with_errors: vec![],
+            commits: vec![CommitCheckOutput {
+                commit: commit1,
+                errors: vec![],
+                success_reason: Some(CommitSuccessReason::ValidSignOff),
+            }],
             head_ref: "main".to_string(),
-            total_commits: 1,
+            num_commits_with_errors: 0,
         }
     );
 }
@@ -271,7 +299,7 @@ fn single_commit_valid_signoff_email_contains_subdomain() {
     };
 
     let input = CheckInput {
-        commits: vec![commit1],
+        commits: vec![commit1.clone()],
         config: Default::default(),
         head_ref: "main".to_string(),
     };
@@ -280,9 +308,13 @@ fn single_commit_valid_signoff_email_contains_subdomain() {
     assert_eq!(
         output,
         CheckOutput {
-            commits_with_errors: vec![],
+            commits: vec![CommitCheckOutput {
+                commit: commit1,
+                errors: vec![],
+                success_reason: Some(CommitSuccessReason::ValidSignOff),
+            }],
             head_ref: "main".to_string(),
-            total_commits: 1,
+            num_commits_with_errors: 0,
         }
     );
 }
@@ -310,7 +342,7 @@ fn single_commit_valid_signoff_email_contains_plus_alias() {
     };
 
     let input = CheckInput {
-        commits: vec![commit1],
+        commits: vec![commit1.clone()],
         config: Default::default(),
         head_ref: "main".to_string(),
     };
@@ -319,9 +351,13 @@ fn single_commit_valid_signoff_email_contains_plus_alias() {
     assert_eq!(
         output,
         CheckOutput {
-            commits_with_errors: vec![],
+            commits: vec![CommitCheckOutput {
+                commit: commit1,
+                errors: vec![],
+                success_reason: Some(CommitSuccessReason::ValidSignOff),
+            }],
             head_ref: "main".to_string(),
-            total_commits: 1,
+            num_commits_with_errors: 0,
         }
     );
 }
@@ -358,12 +394,13 @@ fn single_commit_invalid_author_email() {
     assert_eq!(
         output,
         CheckOutput {
-            commits_with_errors: vec![CommitCheckOutput {
+            commits: vec![CommitCheckOutput {
                 commit: commit1,
                 errors: vec![CommitError::InvalidAuthorEmail],
+                success_reason: None,
             }],
             head_ref: "main".to_string(),
-            total_commits: 1,
+            num_commits_with_errors: 1,
         }
     );
 }
@@ -395,12 +432,13 @@ fn single_commit_invalid_author_email_and_no_signoff() {
     assert_eq!(
         output,
         CheckOutput {
-            commits_with_errors: vec![CommitCheckOutput {
+            commits: vec![CommitCheckOutput {
                 commit: commit1,
                 errors: vec![CommitError::InvalidAuthorEmail, CommitError::SignOffNotFound],
+                success_reason: None,
             }],
             head_ref: "main".to_string(),
-            total_commits: 1,
+            num_commits_with_errors: 1,
         }
     );
 }
@@ -437,12 +475,13 @@ fn single_commit_invalid_author_email_also_used_in_signoff() {
     assert_eq!(
         output,
         CheckOutput {
-            commits_with_errors: vec![CommitCheckOutput {
+            commits: vec![CommitCheckOutput {
                 commit: commit1,
                 errors: vec![CommitError::InvalidAuthorEmail],
+                success_reason: None,
             }],
             head_ref: "main".to_string(),
-            total_commits: 1,
+            num_commits_with_errors: 1,
         }
     );
 }
@@ -479,12 +518,13 @@ fn single_commit_invalid_committer_email() {
     assert_eq!(
         output,
         CheckOutput {
-            commits_with_errors: vec![CommitCheckOutput {
+            commits: vec![CommitCheckOutput {
                 commit: commit1,
                 errors: vec![CommitError::InvalidCommitterEmail],
+                success_reason: None,
             }],
             head_ref: "main".to_string(),
-            total_commits: 1,
+            num_commits_with_errors: 1,
         }
     );
 }
@@ -516,12 +556,13 @@ fn single_commit_invalid_committer_email_and_no_signoff() {
     assert_eq!(
         output,
         CheckOutput {
-            commits_with_errors: vec![CommitCheckOutput {
+            commits: vec![CommitCheckOutput {
                 commit: commit1,
                 errors: vec![CommitError::InvalidCommitterEmail, CommitError::SignOffNotFound],
+                success_reason: None,
             }],
             head_ref: "main".to_string(),
-            total_commits: 1,
+            num_commits_with_errors: 1,
         }
     );
 }
@@ -558,12 +599,13 @@ fn single_commit_invalid_committer_email_also_used_in_signoff() {
     assert_eq!(
         output,
         CheckOutput {
-            commits_with_errors: vec![CommitCheckOutput {
+            commits: vec![CommitCheckOutput {
                 commit: commit1,
                 errors: vec![CommitError::InvalidCommitterEmail],
+                success_reason: None,
             }],
             head_ref: "main".to_string(),
-            total_commits: 1,
+            num_commits_with_errors: 1,
         }
     );
 }
@@ -600,12 +642,13 @@ fn single_commit_invalid_author_and_committer_email_same_email() {
     assert_eq!(
         output,
         CheckOutput {
-            commits_with_errors: vec![CommitCheckOutput {
+            commits: vec![CommitCheckOutput {
                 commit: commit1,
                 errors: vec![CommitError::InvalidCommitterEmail],
+                success_reason: None,
             }],
             head_ref: "main".to_string(),
-            total_commits: 1,
+            num_commits_with_errors: 1,
         }
     );
 }
@@ -642,15 +685,16 @@ fn single_commit_invalid_author_and_committer_email_different_emails() {
     assert_eq!(
         output,
         CheckOutput {
-            commits_with_errors: vec![CommitCheckOutput {
+            commits: vec![CommitCheckOutput {
                 commit: commit1,
                 errors: vec![
                     CommitError::InvalidCommitterEmail,
                     CommitError::InvalidAuthorEmail
                 ],
+                success_reason: None,
             }],
             head_ref: "main".to_string(),
-            total_commits: 1,
+            num_commits_with_errors: 1,
         }
     );
 }
@@ -682,12 +726,13 @@ fn single_commit_signoff_not_found() {
     assert_eq!(
         output,
         CheckOutput {
-            commits_with_errors: vec![CommitCheckOutput {
+            commits: vec![CommitCheckOutput {
                 commit: commit1,
                 errors: vec![CommitError::SignOffNotFound],
+                success_reason: None,
             }],
             head_ref: "main".to_string(),
-            total_commits: 1,
+            num_commits_with_errors: 1,
         }
     );
 }
@@ -726,12 +771,13 @@ fn single_commit_invalid_signoff_multiple_signoffs() {
     assert_eq!(
         output,
         CheckOutput {
-            commits_with_errors: vec![CommitCheckOutput {
+            commits: vec![CommitCheckOutput {
                 commit: commit1,
                 errors: vec![CommitError::SignOffMismatch],
+                success_reason: None,
             }],
             head_ref: "main".to_string(),
-            total_commits: 1,
+            num_commits_with_errors: 1,
         }
     );
 }
@@ -768,12 +814,13 @@ fn single_commit_invalid_signoff_name_mismatch() {
     assert_eq!(
         output,
         CheckOutput {
-            commits_with_errors: vec![CommitCheckOutput {
+            commits: vec![CommitCheckOutput {
                 commit: commit1,
                 errors: vec![CommitError::SignOffMismatch],
+                success_reason: None,
             }],
             head_ref: "main".to_string(),
-            total_commits: 1,
+            num_commits_with_errors: 1,
         }
     );
 }
@@ -810,12 +857,13 @@ fn single_commit_invalid_signoff_email_mismatch() {
     assert_eq!(
         output,
         CheckOutput {
-            commits_with_errors: vec![CommitCheckOutput {
+            commits: vec![CommitCheckOutput {
                 commit: commit1,
                 errors: vec![CommitError::SignOffMismatch],
+                success_reason: None,
             }],
             head_ref: "main".to_string(),
-            total_commits: 1,
+            num_commits_with_errors: 1,
         }
     );
 }
@@ -852,12 +900,13 @@ fn single_commit_invalid_signoff_name_and_email_mismatch() {
     assert_eq!(
         output,
         CheckOutput {
-            commits_with_errors: vec![CommitCheckOutput {
+            commits: vec![CommitCheckOutput {
                 commit: commit1,
                 errors: vec![CommitError::SignOffMismatch],
+                success_reason: None,
             }],
             head_ref: "main".to_string(),
-            total_commits: 1,
+            num_commits_with_errors: 1,
         }
     );
 }
@@ -894,12 +943,13 @@ fn single_commit_invalid_signoff_extra_whitespace_around_name() {
     assert_eq!(
         output,
         CheckOutput {
-            commits_with_errors: vec![CommitCheckOutput {
+            commits: vec![CommitCheckOutput {
                 commit: commit1,
                 errors: vec![CommitError::SignOffMismatch],
+                success_reason: None,
             }],
             head_ref: "main".to_string(),
-            total_commits: 1,
+            num_commits_with_errors: 1,
         }
     );
 }
@@ -936,12 +986,13 @@ fn single_commit_invalid_signoff_extra_whitespace_around_email() {
     assert_eq!(
         output,
         CheckOutput {
-            commits_with_errors: vec![CommitCheckOutput {
+            commits: vec![CommitCheckOutput {
                 commit: commit1,
                 errors: vec![CommitError::SignOffMismatch],
+                success_reason: None,
             }],
             head_ref: "main".to_string(),
-            total_commits: 1,
+            num_commits_with_errors: 1,
         }
     );
 }
@@ -978,12 +1029,13 @@ fn single_commit_invalid_signoff_missing_name_in_signoff() {
     assert_eq!(
         output,
         CheckOutput {
-            commits_with_errors: vec![CommitCheckOutput {
+            commits: vec![CommitCheckOutput {
                 commit: commit1,
                 errors: vec![CommitError::SignOffNotFound],
+                success_reason: None,
             }],
             head_ref: "main".to_string(),
-            total_commits: 1,
+            num_commits_with_errors: 1,
         }
     );
 }
@@ -1020,12 +1072,13 @@ fn single_commit_invalid_signoff_missing_email_in_signoff() {
     assert_eq!(
         output,
         CheckOutput {
-            commits_with_errors: vec![CommitCheckOutput {
+            commits: vec![CommitCheckOutput {
                 commit: commit1,
                 errors: vec![CommitError::SignOffNotFound],
+                success_reason: None,
             }],
             head_ref: "main".to_string(),
-            total_commits: 1,
+            num_commits_with_errors: 1,
         }
     );
 }
@@ -1062,12 +1115,13 @@ fn single_commit_invalid_signoff_missing_email_brackets_in_signoff() {
     assert_eq!(
         output,
         CheckOutput {
-            commits_with_errors: vec![CommitCheckOutput {
+            commits: vec![CommitCheckOutput {
                 commit: commit1,
                 errors: vec![CommitError::SignOffNotFound],
+                success_reason: None,
             }],
             head_ref: "main".to_string(),
-            total_commits: 1,
+            num_commits_with_errors: 1,
         }
     );
 }
@@ -1104,12 +1158,13 @@ fn single_commit_invalid_signoff_missing_name_and_email_in_signoff() {
     assert_eq!(
         output,
         CheckOutput {
-            commits_with_errors: vec![CommitCheckOutput {
+            commits: vec![CommitCheckOutput {
                 commit: commit1,
                 errors: vec![CommitError::SignOffNotFound],
+                success_reason: None,
             }],
             head_ref: "main".to_string(),
-            total_commits: 1,
+            num_commits_with_errors: 1,
         }
     );
 }
@@ -1146,12 +1201,13 @@ fn single_commit_invalid_signoff_name_and_email_swapped_in_signoff() {
     assert_eq!(
         output,
         CheckOutput {
-            commits_with_errors: vec![CommitCheckOutput {
+            commits: vec![CommitCheckOutput {
                 commit: commit1,
                 errors: vec![CommitError::SignOffMismatch],
+                success_reason: None,
             }],
             head_ref: "main".to_string(),
-            total_commits: 1,
+            num_commits_with_errors: 1,
         }
     );
 }
@@ -1188,12 +1244,13 @@ fn single_commit_invalid_signoff_invalid_email_in_signoff() {
     assert_eq!(
         output,
         CheckOutput {
-            commits_with_errors: vec![CommitCheckOutput {
+            commits: vec![CommitCheckOutput {
                 commit: commit1,
                 errors: vec![CommitError::SignOffMismatch],
+                success_reason: None,
             }],
             head_ref: "main".to_string(),
-            total_commits: 1,
+            num_commits_with_errors: 1,
         }
     );
 }
@@ -1230,12 +1287,13 @@ fn single_commit_invalid_signoff_email_alias_used_in_signoff_but_not_in_author_e
     assert_eq!(
         output,
         CheckOutput {
-            commits_with_errors: vec![CommitCheckOutput {
+            commits: vec![CommitCheckOutput {
                 commit: commit1,
                 errors: vec![CommitError::SignOffMismatch],
+                success_reason: None,
             }],
             head_ref: "main".to_string(),
-            total_commits: 1,
+            num_commits_with_errors: 1,
         }
     );
 }
@@ -1264,7 +1322,7 @@ fn two_commits_valid_signoff_in_both() {
     let commit2 = commit1.clone();
 
     let input = CheckInput {
-        commits: vec![commit1, commit2],
+        commits: vec![commit1.clone(), commit2.clone()],
         config: Default::default(),
         head_ref: "main".to_string(),
     };
@@ -1273,9 +1331,20 @@ fn two_commits_valid_signoff_in_both() {
     assert_eq!(
         output,
         CheckOutput {
-            commits_with_errors: vec![],
+            commits: vec![
+                CommitCheckOutput {
+                    commit: commit1,
+                    errors: vec![],
+                    success_reason: Some(CommitSuccessReason::ValidSignOff),
+                },
+                CommitCheckOutput {
+                    commit: commit2,
+                    errors: vec![],
+                    success_reason: Some(CommitSuccessReason::ValidSignOff),
+                }
+            ],
             head_ref: "main".to_string(),
-            total_commits: 2,
+            num_commits_with_errors: 0,
         }
     );
 }
@@ -1317,7 +1386,7 @@ fn two_commits_no_signoff_in_first_valid_signoff_in_second() {
     };
 
     let input = CheckInput {
-        commits: vec![commit1.clone(), commit2],
+        commits: vec![commit1.clone(), commit2.clone()],
         config: Default::default(),
         head_ref: "main".to_string(),
     };
@@ -1326,12 +1395,20 @@ fn two_commits_no_signoff_in_first_valid_signoff_in_second() {
     assert_eq!(
         output,
         CheckOutput {
-            commits_with_errors: vec![CommitCheckOutput {
-                commit: commit1,
-                errors: vec![CommitError::SignOffNotFound],
-            }],
+            commits: vec![
+                CommitCheckOutput {
+                    commit: commit1,
+                    errors: vec![CommitError::SignOffNotFound],
+                    success_reason: None,
+                },
+                CommitCheckOutput {
+                    commit: commit2,
+                    errors: vec![],
+                    success_reason: Some(CommitSuccessReason::ValidSignOff),
+                }
+            ],
             head_ref: "main".to_string(),
-            total_commits: 2,
+            num_commits_with_errors: 1,
         }
     );
 }
@@ -1373,7 +1450,7 @@ fn two_commits_valid_signoff_in_first_no_signoff_in_second() {
     };
 
     let input = CheckInput {
-        commits: vec![commit1, commit2.clone()],
+        commits: vec![commit1.clone(), commit2.clone()],
         config: Default::default(),
         head_ref: "main".to_string(),
     };
@@ -1382,12 +1459,20 @@ fn two_commits_valid_signoff_in_first_no_signoff_in_second() {
     assert_eq!(
         output,
         CheckOutput {
-            commits_with_errors: vec![CommitCheckOutput {
-                commit: commit2,
-                errors: vec![CommitError::SignOffNotFound],
-            }],
+            commits: vec![
+                CommitCheckOutput {
+                    commit: commit1,
+                    errors: vec![],
+                    success_reason: Some(CommitSuccessReason::ValidSignOff),
+                },
+                CommitCheckOutput {
+                    commit: commit2,
+                    errors: vec![CommitError::SignOffNotFound],
+                    success_reason: None,
+                }
+            ],
             head_ref: "main".to_string(),
-            total_commits: 2,
+            num_commits_with_errors: 1,
         }
     );
 }
@@ -1434,7 +1519,7 @@ fn two_commits_invalid_signoff_in_first_valid_signoff_in_second() {
     };
 
     let input = CheckInput {
-        commits: vec![commit1.clone(), commit2],
+        commits: vec![commit1.clone(), commit2.clone()],
         config: Default::default(),
         head_ref: "main".to_string(),
     };
@@ -1443,12 +1528,20 @@ fn two_commits_invalid_signoff_in_first_valid_signoff_in_second() {
     assert_eq!(
         output,
         CheckOutput {
-            commits_with_errors: vec![CommitCheckOutput {
-                commit: commit1,
-                errors: vec![CommitError::SignOffMismatch],
-            }],
+            commits: vec![
+                CommitCheckOutput {
+                    commit: commit1,
+                    errors: vec![CommitError::SignOffMismatch],
+                    success_reason: None,
+                },
+                CommitCheckOutput {
+                    commit: commit2,
+                    errors: vec![],
+                    success_reason: Some(CommitSuccessReason::ValidSignOff),
+                }
+            ],
             head_ref: "main".to_string(),
-            total_commits: 2,
+            num_commits_with_errors: 1,
         }
     );
 }
@@ -1495,7 +1588,7 @@ fn two_commits_valid_signoff_in_first_invalid_signoff_in_second() {
     };
 
     let input = CheckInput {
-        commits: vec![commit1, commit2.clone()],
+        commits: vec![commit1.clone(), commit2.clone()],
         config: Default::default(),
         head_ref: "main".to_string(),
     };
@@ -1504,12 +1597,20 @@ fn two_commits_valid_signoff_in_first_invalid_signoff_in_second() {
     assert_eq!(
         output,
         CheckOutput {
-            commits_with_errors: vec![CommitCheckOutput {
-                commit: commit2,
-                errors: vec![CommitError::SignOffMismatch],
-            }],
+            commits: vec![
+                CommitCheckOutput {
+                    commit: commit1,
+                    errors: vec![],
+                    success_reason: Some(CommitSuccessReason::ValidSignOff),
+                },
+                CommitCheckOutput {
+                    commit: commit2,
+                    errors: vec![CommitError::SignOffMismatch],
+                    success_reason: None,
+                }
+            ],
             head_ref: "main".to_string(),
-            total_commits: 2,
+            num_commits_with_errors: 1,
         }
     );
 }
@@ -1560,18 +1661,20 @@ fn two_commits_no_signoff_in_first_invalid_signoff_in_second() {
     assert_eq!(
         output,
         CheckOutput {
-            commits_with_errors: vec![
+            commits: vec![
                 CommitCheckOutput {
                     commit: commit1,
                     errors: vec![CommitError::SignOffNotFound],
+                    success_reason: None,
                 },
                 CommitCheckOutput {
                     commit: commit2,
                     errors: vec![CommitError::SignOffMismatch],
+                    success_reason: None,
                 }
             ],
             head_ref: "main".to_string(),
-            total_commits: 2,
+            num_commits_with_errors: 2,
         }
     );
 }
@@ -1622,18 +1725,20 @@ fn two_commits_invalid_signoff_in_first_no_signoff_in_second() {
     assert_eq!(
         output,
         CheckOutput {
-            commits_with_errors: vec![
+            commits: vec![
                 CommitCheckOutput {
                     commit: commit1,
                     errors: vec![CommitError::SignOffMismatch],
+                    success_reason: None,
                 },
                 CommitCheckOutput {
                     commit: commit2,
                     errors: vec![CommitError::SignOffNotFound],
+                    success_reason: None,
                 }
             ],
             head_ref: "main".to_string(),
-            total_commits: 2,
+            num_commits_with_errors: 2,
         }
     );
 }
@@ -1663,7 +1768,7 @@ fn three_commits_valid_signoff_in_all() {
     let commit3 = commit1.clone();
 
     let input = CheckInput {
-        commits: vec![commit1, commit2, commit3],
+        commits: vec![commit1.clone(), commit2.clone(), commit3.clone()],
         config: Default::default(),
         head_ref: "main".to_string(),
     };
@@ -1672,9 +1777,25 @@ fn three_commits_valid_signoff_in_all() {
     assert_eq!(
         output,
         CheckOutput {
-            commits_with_errors: vec![],
+            commits: vec![
+                CommitCheckOutput {
+                    commit: commit1,
+                    errors: vec![],
+                    success_reason: Some(CommitSuccessReason::ValidSignOff),
+                },
+                CommitCheckOutput {
+                    commit: commit2,
+                    errors: vec![],
+                    success_reason: Some(CommitSuccessReason::ValidSignOff),
+                },
+                CommitCheckOutput {
+                    commit: commit3,
+                    errors: vec![],
+                    success_reason: Some(CommitSuccessReason::ValidSignOff),
+                }
+            ],
             head_ref: "main".to_string(),
-            total_commits: 3,
+            num_commits_with_errors: 0,
         }
     );
 }
@@ -1717,7 +1838,7 @@ fn three_commits_valid_signoff_first_and_second_no_signoff_third() {
     };
 
     let input = CheckInput {
-        commits: vec![commit1, commit2, commit3.clone()],
+        commits: vec![commit1.clone(), commit2.clone(), commit3.clone()],
         config: Default::default(),
         head_ref: "main".to_string(),
     };
@@ -1726,12 +1847,25 @@ fn three_commits_valid_signoff_first_and_second_no_signoff_third() {
     assert_eq!(
         output,
         CheckOutput {
-            commits_with_errors: vec![CommitCheckOutput {
-                commit: commit3,
-                errors: vec![CommitError::SignOffNotFound],
-            }],
+            commits: vec![
+                CommitCheckOutput {
+                    commit: commit1,
+                    errors: vec![],
+                    success_reason: Some(CommitSuccessReason::ValidSignOff),
+                },
+                CommitCheckOutput {
+                    commit: commit2,
+                    errors: vec![],
+                    success_reason: Some(CommitSuccessReason::ValidSignOff),
+                },
+                CommitCheckOutput {
+                    commit: commit3,
+                    errors: vec![CommitError::SignOffNotFound],
+                    success_reason: None,
+                }
+            ],
             head_ref: "main".to_string(),
-            total_commits: 3,
+            num_commits_with_errors: 1,
         }
     );
 }
@@ -1792,7 +1926,7 @@ fn three_commits_invalid_signoff_first_no_signoff_second_valid_signoff_third() {
     };
 
     let input = CheckInput {
-        commits: vec![commit1.clone(), commit2.clone(), commit3],
+        commits: vec![commit1.clone(), commit2.clone(), commit3.clone()],
         config: Default::default(),
         head_ref: "main".to_string(),
     };
@@ -1801,18 +1935,25 @@ fn three_commits_invalid_signoff_first_no_signoff_second_valid_signoff_third() {
     assert_eq!(
         output,
         CheckOutput {
-            commits_with_errors: vec![
+            commits: vec![
                 CommitCheckOutput {
                     commit: commit1,
                     errors: vec![CommitError::SignOffMismatch],
+                    success_reason: None,
                 },
                 CommitCheckOutput {
                     commit: commit2,
                     errors: vec![CommitError::SignOffNotFound],
+                    success_reason: None,
+                },
+                CommitCheckOutput {
+                    commit: commit3,
+                    errors: vec![],
+                    success_reason: Some(CommitSuccessReason::ValidSignOff),
                 }
             ],
             head_ref: "main".to_string(),
-            total_commits: 3,
+            num_commits_with_errors: 2,
         }
     );
 }
@@ -1860,7 +2001,7 @@ fn three_commits_valid_signoff_first_invalid_signoff_second_valid_signoff_third(
     let commit3 = commit1.clone();
 
     let input = CheckInput {
-        commits: vec![commit1, commit2.clone(), commit3],
+        commits: vec![commit1.clone(), commit2.clone(), commit3.clone()],
         config: Default::default(),
         head_ref: "main".to_string(),
     };
@@ -1869,12 +2010,25 @@ fn three_commits_valid_signoff_first_invalid_signoff_second_valid_signoff_third(
     assert_eq!(
         output,
         CheckOutput {
-            commits_with_errors: vec![CommitCheckOutput {
-                commit: commit2,
-                errors: vec![CommitError::SignOffMismatch],
-            }],
+            commits: vec![
+                CommitCheckOutput {
+                    commit: commit1,
+                    errors: vec![],
+                    success_reason: Some(CommitSuccessReason::ValidSignOff),
+                },
+                CommitCheckOutput {
+                    commit: commit2,
+                    errors: vec![CommitError::SignOffMismatch],
+                    success_reason: None,
+                },
+                CommitCheckOutput {
+                    commit: commit3,
+                    errors: vec![],
+                    success_reason: Some(CommitSuccessReason::ValidSignOff),
+                }
+            ],
             head_ref: "main".to_string(),
-            total_commits: 3,
+            num_commits_with_errors: 1,
         }
     );
 }
