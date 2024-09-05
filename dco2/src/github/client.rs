@@ -27,6 +27,9 @@ pub trait GHClient {
 
     /// Get configuration.
     async fn get_config(&self, ctx: &Ctx) -> Result<Option<Config>>;
+
+    /// Check if a user is a member of the organization.
+    async fn is_organization_member(&self, ctx: &Ctx, org: &str, login: &str) -> Result<bool>;
 }
 
 /// Type alias to represent a GHClient trait object.
@@ -138,6 +141,17 @@ impl GHClient for GHClientOctorust {
         let config = serde_yaml::from_str(&data)?;
 
         Ok(config)
+    }
+
+    /// [GHClient::is_organization_member]
+    async fn is_organization_member(&self, ctx: &Ctx, org: &str, username: &str) -> Result<bool> {
+        // Setup client for installation provided
+        let client = self.setup_client(ctx.inst_id)?;
+
+        // Check if user is a member of the organization
+        let resp = client.orgs().check_membership_for_user(org, username).await?;
+
+        Ok(resp.status == StatusCode::NO_CONTENT)
     }
 }
 
@@ -323,35 +337,44 @@ pub struct Ctx {
 /// Commit information.
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct Commit {
-    pub author: Option<GitUser>,
-    pub committer: Option<GitUser>,
+    pub author: Option<User>,
+    pub committer: Option<User>,
     pub html_url: String,
     pub is_merge: bool,
     pub message: String,
     pub sha: String,
+    pub verified: Option<bool>,
 }
 
 impl From<octorust::types::CommitDataType> for Commit {
     /// Convert octorust commit data to Commit.
     fn from(c: octorust::types::CommitDataType) -> Self {
         Self {
-            author: c.commit.author.map(|author| GitUser {
+            author: c.commit.author.map(|author| User {
                 name: author.name,
                 email: author.email,
-                is_bot: c.author.map_or(false, |a| a.type_ == "Bot"),
+                is_bot: c.author.as_ref().map_or(false, |a| a.type_ == "Bot"),
+                login: c.author.map(|a| a.login),
             }),
-            committer: c.commit.committer.map(|committer| GitUser {
+            committer: c.commit.committer.map(|committer| User {
                 name: committer.name,
                 email: committer.email,
-                is_bot: c.committer.map_or(false, |c| c.type_ == "Bot"),
+                is_bot: c.committer.as_ref().map_or(false, |c| c.type_ == "Bot"),
+                login: c.committer.map(|c| c.login),
             }),
             html_url: c.html_url,
             is_merge: c.parents.len() > 1,
             message: c.commit.message,
             sha: c.sha,
+            verified: c.commit.verification.map(|v| v.verified),
         }
     }
 }
+
+/// Default values for the configuration.
+pub const DEFAULT_INDIVIDUAL_REMEDIATION_COMMITS_ALLOWED: bool = false;
+pub const DEFAULT_THIRD_PARTY_REMEDIATION_COMMITS_ALLOWED: bool = false;
+pub const DEFAULT_MEMBERS_SIGNOFF_REQUIRED: bool = true;
 
 /// Repository configuration.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -364,19 +387,47 @@ pub struct Config {
 impl Default for Config {
     fn default() -> Self {
         Self {
-            allow_remediation_commits: {
-                Some(ConfigAllowRemediationCommits {
-                    individual: Some(false),
-                    third_party: Some(false),
-                })
-            },
-            require: Some(ConfigRequire { members: Some(true) }),
+            allow_remediation_commits: Some(ConfigAllowRemediationCommits::default()),
+            require: Some(ConfigRequire::default()),
+        }
+    }
+}
+
+impl Config {
+    /// Check if individual remediation commits are allowed.
+    pub fn individual_remediation_commits_are_allowed(&self) -> bool {
+        if let Some(allow_remediation_commits) = &self.allow_remediation_commits {
+            allow_remediation_commits
+                .individual
+                .unwrap_or(DEFAULT_INDIVIDUAL_REMEDIATION_COMMITS_ALLOWED)
+        } else {
+            DEFAULT_INDIVIDUAL_REMEDIATION_COMMITS_ALLOWED
+        }
+    }
+
+    /// Check if third party remediation commits are allowed.
+    pub fn third_party_remediation_commits_are_allowed(&self) -> bool {
+        if let Some(allow_remediation_commits) = &self.allow_remediation_commits {
+            allow_remediation_commits
+                .third_party
+                .unwrap_or(DEFAULT_THIRD_PARTY_REMEDIATION_COMMITS_ALLOWED)
+        } else {
+            DEFAULT_THIRD_PARTY_REMEDIATION_COMMITS_ALLOWED
+        }
+    }
+
+    /// Check if the configuration requires members to sign-off commits.
+    pub fn members_signoff_is_required(&self) -> bool {
+        if let Some(require) = &self.require {
+            require.members.unwrap_or(DEFAULT_MEMBERS_SIGNOFF_REQUIRED)
+        } else {
+            DEFAULT_MEMBERS_SIGNOFF_REQUIRED
         }
     }
 }
 
 /// Allow remediation commits section of the configuration.
-#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all(deserialize = "camelCase"))]
 pub struct ConfigAllowRemediationCommits {
     /// Indicates whether individual remediation commits are allowed or not.
@@ -388,8 +439,17 @@ pub struct ConfigAllowRemediationCommits {
     pub third_party: Option<bool>,
 }
 
+impl Default for ConfigAllowRemediationCommits {
+    fn default() -> Self {
+        Self {
+            individual: Some(DEFAULT_INDIVIDUAL_REMEDIATION_COMMITS_ALLOWED),
+            third_party: Some(DEFAULT_THIRD_PARTY_REMEDIATION_COMMITS_ALLOWED),
+        }
+    }
+}
+
 /// Require section of the configuration.
-#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all(deserialize = "camelCase"))]
 pub struct ConfigRequire {
     /// Indicates whether members are required to sign-off or not.
@@ -397,17 +457,26 @@ pub struct ConfigRequire {
     pub members: Option<bool>,
 }
 
-/// Git user information.
+impl Default for ConfigRequire {
+    fn default() -> Self {
+        Self {
+            members: Some(DEFAULT_MEMBERS_SIGNOFF_REQUIRED),
+        }
+    }
+}
+
+/// User information.
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
-pub struct GitUser {
+pub struct User {
     pub name: String,
     pub email: String,
     pub is_bot: bool,
+    pub login: Option<String>,
 }
 
-impl GitUser {
+impl User {
     /// Check if the user matches the provided user (if any).
-    pub fn matches(&self, user: &Option<GitUser>) -> bool {
+    pub fn matches(&self, user: &Option<User>) -> bool {
         if let Some(user) = user {
             self.name.to_lowercase() == user.name.to_lowercase()
                 && self.email.to_lowercase() == user.email.to_lowercase()

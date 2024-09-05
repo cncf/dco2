@@ -69,11 +69,10 @@ pub struct CheckRunEvent {
 impl CheckRunEvent {
     /// Get context information from event details.
     pub fn ctx(&self) -> Ctx {
-        let (owner, repo) = split_full_name(&self.repository.full_name);
         Ctx {
             inst_id: self.installation.id,
-            owner: owner.to_string(),
-            repo: repo.to_string(),
+            owner: self.repository.owner.login.to_string(),
+            repo: self.repository.name.to_string(),
         }
     }
 }
@@ -100,6 +99,12 @@ pub struct Installation {
     pub id: i64,
 }
 
+/// GitHub organization information.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct Organization {
+    pub login: String,
+}
+
 /// Pull request information.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct PullRequest {
@@ -121,6 +126,7 @@ pub struct PullRequestBase {
 pub struct PullRequestEvent {
     pub action: PullRequestEventAction,
     pub installation: Installation,
+    pub organization: Option<Organization>,
     pub pull_request: PullRequest,
     pub repository: Repository,
 }
@@ -128,11 +134,10 @@ pub struct PullRequestEvent {
 impl PullRequestEvent {
     /// Get context information from event details.
     pub fn ctx(&self) -> Ctx {
-        let (owner, repo) = split_full_name(&self.repository.full_name);
         Ctx {
             inst_id: self.installation.id,
-            owner: owner.to_string(),
-            repo: repo.to_string(),
+            owner: self.repository.owner.login.to_string(),
+            repo: self.repository.name.to_string(),
         }
     }
 }
@@ -158,18 +163,18 @@ pub struct PullRequestHead {
 /// Repository information.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Repository {
-    pub full_name: String,
+    pub name: String,
+    pub owner: RepositoryOwner,
+}
+
+/// Repository owner information.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct RepositoryOwner {
+    pub login: String,
 }
 
 /// Requested action information.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct RequestedAction {
     pub identifier: String,
-}
-
-/// Helper function that splits a repository's full name and returns the owner
-/// and the repo name as a tuple.
-fn split_full_name(full_name: &str) -> (&str, &str) {
-    let mut parts = full_name.split('/');
-    (parts.next().unwrap(), parts.next().unwrap())
 }
