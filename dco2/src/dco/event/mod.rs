@@ -93,11 +93,20 @@ async fn process_pull_request_event(gh_client: DynGHClient, event: &PullRequestE
         .context("error getting repository configuration")?
         .unwrap_or_default();
 
+    // Create a list of members that are not required to sign-off commits
+    let mut members = vec![];
+    if !config.members_signoff_is_required() {
+        members = collect_members(gh_client.clone(), event, &commits)
+            .await
+            .context("error collecting members")?
+    };
+
     // Run DCO check
     let input = CheckInput {
         commits,
         config,
         head_ref: event.pull_request.head.ref_.clone(),
+        members,
     };
     let output = check(&input);
 
@@ -127,4 +136,43 @@ async fn process_pull_request_event(gh_client: DynGHClient, event: &PullRequestE
     gh_client.create_check_run(&ctx, &check_run).await.context("error creating check run")?;
 
     Ok(())
+}
+
+/// Create a list of members that are not required to sign-off commits.
+async fn collect_members(
+    gh_client: DynGHClient,
+    event: &PullRequestEvent,
+    commits: &[Commit],
+) -> Result<Vec<String>> {
+    let mut members = vec![];
+
+    // If the repository belongs to an organization, collect its members
+    let ctx = event.ctx();
+    if let Some(org) = event.organization.as_ref().map(|o| o.login.as_str()) {
+        for commit in commits {
+            if commit.verified.unwrap_or(false) {
+                // Check if the commit's author is a member of the organization
+                if let Some(author_username) = commit.author.as_ref().and_then(|a| a.login.clone()) {
+                    if !members.contains(&author_username) {
+                        // TODO
+                        members.push(author_username)
+                    }
+                }
+
+                // Check if the commit's committer is a member of the organization
+                if let Some(committer_username) = commit.committer.as_ref().and_then(|c| c.login.clone()) {
+                    if !members.contains(&committer_username)
+                        && gh_client.is_organization_member(&ctx, org, &committer_username).await?
+                    {
+                        members.push(committer_username);
+                    }
+                }
+            }
+        }
+    } else {
+        // Otherwise, the only member will be the repository owner
+        members.push(event.repository.owner.login.to_string());
+    }
+
+    Ok(members)
 }

@@ -1,6 +1,6 @@
 //! This module contains the DCO check logic.
 
-use crate::github::{Commit, Config, ConfigAllowRemediationCommits, GitUser};
+use crate::github::{Commit, Config, User};
 use anyhow::{bail, Result};
 use askama::Template;
 use email_address::EmailAddress;
@@ -19,11 +19,12 @@ pub(crate) struct CheckInput {
     pub commits: Vec<Commit>,
     pub config: Config,
     pub head_ref: String,
+    pub members: Vec<String>,
 }
 
 /// Check output.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Template)]
-#[template(path = "output.md")]
+#[template(path = "output.md", whitespace = "suppress")]
 pub(crate) struct CheckOutput {
     pub commits: Vec<CommitCheckOutput>,
     pub head_ref: String,
@@ -66,6 +67,7 @@ pub(crate) enum CommitError {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub(crate) enum CommitSuccessReason {
     FromBot,
+    FromMember,
     IsMerge,
     ValidSignOff,
     ValidSignOffInRemediationCommit,
@@ -75,6 +77,9 @@ impl Display for CommitSuccessReason {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             CommitSuccessReason::FromBot => write!(f, "skipped: sign-off not required in bot commit"),
+            CommitSuccessReason::FromMember => {
+                write!(f, "skipped: sign-off not required for members")
+            }
             CommitSuccessReason::IsMerge => write!(f, "skipped: sign-off not required in merge commit"),
             CommitSuccessReason::ValidSignOff => write!(f, "valid sign-off found"),
             CommitSuccessReason::ValidSignOffInRemediationCommit => {
@@ -93,14 +98,14 @@ pub(crate) fn check(input: &CheckInput) -> CheckOutput {
     };
 
     // Get remediations from all commits
-    let remediations = get_remediations(&input.config.allow_remediation_commits, &input.commits);
+    let remediations = get_remediations(&input.config, &input.commits);
 
     // Check each commit
     for commit in &input.commits {
         let mut commit_output = CommitCheckOutput::new(commit.clone());
 
         // Check if we should skip this commit
-        let (commit_should_be_skipped, reason) = should_skip_commit(commit);
+        let (commit_should_be_skipped, reason) = should_skip_commit(input, commit);
         if commit_should_be_skipped {
             commit_output.success_reason = reason;
             output.commits.push(commit_output);
@@ -148,7 +153,7 @@ pub(crate) fn check(input: &CheckInput) -> CheckOutput {
 }
 
 /// Check if we should skip this commit.
-fn should_skip_commit(commit: &Commit) -> (bool, Option<CommitSuccessReason>) {
+fn should_skip_commit(check_input: &CheckInput, commit: &Commit) -> (bool, Option<CommitSuccessReason>) {
     // Skip merge commits
     if commit.is_merge {
         return (true, Some(CommitSuccessReason::IsMerge));
@@ -158,6 +163,23 @@ fn should_skip_commit(commit: &Commit) -> (bool, Option<CommitSuccessReason>) {
     if let Some(author) = &commit.author {
         if author.is_bot {
             return (true, Some(CommitSuccessReason::FromBot));
+        }
+    }
+
+    // Skip verified commits from members if the feature is enabled
+    if !check_input.config.members_signoff_is_required() && commit.verified.unwrap_or(false) {
+        // Check if the commit's author is a member
+        if let Some(author_username) = &commit.author.as_ref().and_then(|a| a.login.as_ref()) {
+            if check_input.members.contains(author_username) {
+                return (true, Some(CommitSuccessReason::FromMember));
+            }
+        }
+
+        // Check if the commit's committer is a member
+        if let Some(committer_username) = &commit.committer.as_ref().and_then(|c| c.login.as_ref()) {
+            if check_input.members.contains(committer_username) {
+                return (true, Some(CommitSuccessReason::FromMember));
+            }
         }
     }
 
@@ -205,7 +227,7 @@ struct SignOff {
 
 impl SignOff {
     /// Check if the sign-off matches the provided user (if any).
-    fn matches_user(&self, user: &Option<GitUser>) -> bool {
+    fn matches_user(&self, user: &Option<User>) -> bool {
         if let Some(user) = user {
             self.name.to_lowercase() == user.name.to_lowercase()
                 && self.email.to_lowercase() == user.email.to_lowercase()
@@ -251,7 +273,7 @@ static THIRD_PARTY_REMEDIATION: LazyLock<Regex> = LazyLock::new(|| {
 /// Remediation details.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 struct Remediation {
-    pub declarant: GitUser,
+    pub declarant: User,
     pub target_sha: String,
 }
 
@@ -266,7 +288,7 @@ impl Remediation {
         commit: &Commit,
     ) -> Result<Self> {
         // Prepare declarant and representative
-        let declarant = GitUser {
+        let declarant = User {
             name: declarant_name.to_string(),
             email: declarant_email.to_string(),
             ..Default::default()
@@ -278,7 +300,7 @@ impl Remediation {
             let Some(email) = representative_email else {
                 break 'representative None;
             };
-            Some(GitUser {
+            Some(User {
                 name: name.to_string(),
                 email: email.to_string(),
                 ..Default::default()
@@ -314,48 +336,43 @@ impl Remediation {
 }
 
 /// Get remediations found in the list of commits provided.
-fn get_remediations(
-    allow_remediation_commits: &Option<ConfigAllowRemediationCommits>,
-    commits: &[Commit],
-) -> Vec<Remediation> {
+fn get_remediations(config: &Config, commits: &[Commit]) -> Vec<Remediation> {
     let mut remediations = Vec::new();
 
     // Nothing to do if this feature isn't enabled in the config
-    let Some(allow_remediation_commits) = allow_remediation_commits else {
+    if !config.individual_remediation_commits_are_allowed() {
         return remediations;
     };
 
     // Collect remediations from commits
     for commit in commits {
         // Collect individual remediations if this feature is enabled
-        if allow_remediation_commits.individual.unwrap_or(false) {
-            let captures = INDIVIDUAL_REMEDIATION.captures_iter(&commit.message).map(|c| c.extract());
-            for (_, [declarant_name, declarant_email, target_sha]) in captures {
-                if let Ok(remediation) =
-                    Remediation::new(declarant_name, declarant_email, None, None, target_sha, commit)
-                {
-                    remediations.push(remediation);
-                }
+        let captures = INDIVIDUAL_REMEDIATION.captures_iter(&commit.message).map(|c| c.extract());
+        for (_, [declarant_name, declarant_email, target_sha]) in captures {
+            if let Ok(remediation) =
+                Remediation::new(declarant_name, declarant_email, None, None, target_sha, commit)
+            {
+                remediations.push(remediation);
             }
+        }
 
-            // Collect third-party remediations if this feature is enabled
-            if allow_remediation_commits.third_party.unwrap_or(false) {
-                let captures = THIRD_PARTY_REMEDIATION.captures_iter(&commit.message).map(|c| c.extract());
-                for (
-                    _,
-                    [declarant_name, declarant_email, representative_name, representative_email, target_sha],
-                ) in captures
-                {
-                    if let Ok(remediation) = Remediation::new(
-                        declarant_name,
-                        declarant_email,
-                        Some(representative_name),
-                        Some(representative_email),
-                        target_sha,
-                        commit,
-                    ) {
-                        remediations.push(remediation);
-                    }
+        // Collect third-party remediations if this feature is enabled
+        if config.third_party_remediation_commits_are_allowed() {
+            let captures = THIRD_PARTY_REMEDIATION.captures_iter(&commit.message).map(|c| c.extract());
+            for (
+                _,
+                [declarant_name, declarant_email, representative_name, representative_email, target_sha],
+            ) in captures
+            {
+                if let Ok(remediation) = Remediation::new(
+                    declarant_name,
+                    declarant_email,
+                    Some(representative_name),
+                    Some(representative_email),
+                    target_sha,
+                    commit,
+                ) {
+                    remediations.push(remediation);
                 }
             }
         }

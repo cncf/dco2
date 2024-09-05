@@ -8,9 +8,9 @@ use crate::{
     },
     github::{
         CheckRunAction, CheckRunConclusion, CheckRunEvent, CheckRunEventAction, CheckRunEventCheckRun,
-        CheckRunStatus, Commit, Config, Event, GitUser, Installation, MockGHClient, PullRequest,
-        PullRequestBase, PullRequestEvent, PullRequestEventAction, PullRequestHead, Repository,
-        RequestedAction,
+        CheckRunStatus, Commit, Config, Event, Installation, MockGHClient, PullRequest, PullRequestBase,
+        PullRequestEvent, PullRequestEventAction, PullRequestHead, Repository, RepositoryOwner,
+        RequestedAction, User,
     },
 };
 use anyhow::anyhow;
@@ -27,7 +27,10 @@ async fn check_run_event_other_action() {
         },
         installation: Installation { id: 1 },
         repository: Repository {
-            full_name: "owner/repo".to_string(),
+            name: "repo".to_string(),
+            owner: RepositoryOwner {
+                login: "owner".to_string(),
+            },
         },
         requested_action: None,
     };
@@ -46,7 +49,10 @@ async fn check_run_event_requested_action_unknown_identifier() {
         },
         installation: Installation { id: 1 },
         repository: Repository {
-            full_name: "owner/repo".to_string(),
+            name: "repo".to_string(),
+            owner: RepositoryOwner {
+                login: "owner".to_string(),
+            },
         },
         requested_action: Some(RequestedAction {
             identifier: "unknown".to_string(),
@@ -68,7 +74,10 @@ async fn check_run_event_requested_action_override_error_creating_check_run() {
         },
         installation: Installation { id: 1 },
         repository: Repository {
-            full_name: "owner/repo".to_string(),
+            name: "repo".to_string(),
+            owner: RepositoryOwner {
+                login: "owner".to_string(),
+            },
         },
         requested_action: Some(RequestedAction {
             identifier: OVERRIDE_ACTION_IDENTIFIER.to_string(),
@@ -104,7 +113,10 @@ async fn check_run_event_requested_action_override_success() {
         },
         installation: Installation { id: 1 },
         repository: Repository {
-            full_name: "owner/repo".to_string(),
+            name: "repo".to_string(),
+            owner: RepositoryOwner {
+                login: "owner".to_string(),
+            },
         },
         requested_action: Some(RequestedAction {
             identifier: OVERRIDE_ACTION_IDENTIFIER.to_string(),
@@ -136,6 +148,7 @@ async fn pull_request_event_other_action() {
     let event = PullRequestEvent {
         action: PullRequestEventAction::Other,
         installation: Installation { id: 1 },
+        organization: None,
         pull_request: PullRequest {
             base: PullRequestBase {
                 ref_: "base_ref".to_string(),
@@ -148,7 +161,10 @@ async fn pull_request_event_other_action() {
             html_url: "url".to_string(),
         },
         repository: Repository {
-            full_name: "owner/repo".to_string(),
+            name: "repo".to_string(),
+            owner: RepositoryOwner {
+                login: "owner".to_string(),
+            },
         },
     };
 
@@ -163,6 +179,7 @@ async fn pull_request_event_opened_action_error_getting_pr_commits() {
     let event = PullRequestEvent {
         action: PullRequestEventAction::Opened,
         installation: Installation { id: 1 },
+        organization: None,
         pull_request: PullRequest {
             base: PullRequestBase {
                 ref_: "base_ref".to_string(),
@@ -175,7 +192,10 @@ async fn pull_request_event_opened_action_error_getting_pr_commits() {
             html_url: "url".to_string(),
         },
         repository: Repository {
-            full_name: "owner/repo".to_string(),
+            name: "repo".to_string(),
+            owner: RepositoryOwner {
+                login: "owner".to_string(),
+            },
         },
     };
 
@@ -195,6 +215,7 @@ async fn pull_request_event_opened_action_error_getting_repository_configuration
     let event = PullRequestEvent {
         action: PullRequestEventAction::Opened,
         installation: Installation { id: 1 },
+        organization: None,
         pull_request: PullRequest {
             base: PullRequestBase {
                 ref_: "base_ref".to_string(),
@@ -207,7 +228,10 @@ async fn pull_request_event_opened_action_error_getting_repository_configuration
             html_url: "url".to_string(),
         },
         repository: Repository {
-            full_name: "owner/repo".to_string(),
+            name: "repo".to_string(),
+            owner: RepositoryOwner {
+                login: "owner".to_string(),
+            },
         },
     };
 
@@ -218,12 +242,12 @@ async fn pull_request_event_opened_action_error_getting_repository_configuration
         .times(1)
         .returning(|_, _, _| {
             Box::pin(future::ready(Ok(vec![Commit {
-                author: Some(GitUser {
+                author: Some(User {
                     name: "user1".to_string(),
                     email: "user1@email.test".to_string(),
                     ..Default::default()
                 }),
-                committer: Some(GitUser {
+                committer: Some(User {
                     name: "user1".to_string(),
                     email: "user1@email.test".to_string(),
                     ..Default::default()
@@ -252,6 +276,7 @@ async fn pull_request_event_opened_action_error_creating_check_run() {
     let event = PullRequestEvent {
         action: PullRequestEventAction::Opened,
         installation: Installation { id: 1 },
+        organization: None,
         pull_request: PullRequest {
             base: PullRequestBase {
                 ref_: "base_ref".to_string(),
@@ -264,7 +289,10 @@ async fn pull_request_event_opened_action_error_creating_check_run() {
             html_url: "url".to_string(),
         },
         repository: Repository {
-            full_name: "owner/repo".to_string(),
+            name: "repo".to_string(),
+            owner: RepositoryOwner {
+                login: "owner".to_string(),
+            },
         },
     };
 
@@ -275,12 +303,12 @@ async fn pull_request_event_opened_action_error_creating_check_run() {
         .times(1)
         .returning(|_, _, _| {
             Box::pin(future::ready(Ok(vec![Commit {
-                author: Some(GitUser {
+                author: Some(User {
                     name: "user1".to_string(),
                     email: "user1@email.test".to_string(),
                     ..Default::default()
                 }),
-                committer: Some(GitUser {
+                committer: Some(User {
                     name: "user1".to_string(),
                     email: "user1@email.test".to_string(),
                     ..Default::default()
@@ -322,6 +350,7 @@ async fn pull_request_event_opened_action_success_check_passed() {
     let event = PullRequestEvent {
         action: PullRequestEventAction::Opened,
         installation: Installation { id: 1 },
+        organization: None,
         pull_request: PullRequest {
             base: PullRequestBase {
                 ref_: "base_ref".to_string(),
@@ -334,7 +363,10 @@ async fn pull_request_event_opened_action_success_check_passed() {
             html_url: "url".to_string(),
         },
         repository: Repository {
-            full_name: "owner/repo".to_string(),
+            name: "repo".to_string(),
+            owner: RepositoryOwner {
+                login: "owner".to_string(),
+            },
         },
     };
 
@@ -345,12 +377,12 @@ async fn pull_request_event_opened_action_success_check_passed() {
         .times(1)
         .returning(|_, _, _| {
             Box::pin(future::ready(Ok(vec![Commit {
-                author: Some(GitUser {
+                author: Some(User {
                     name: "user1".to_string(),
                     email: "user1@email.test".to_string(),
                     ..Default::default()
                 }),
-                committer: Some(GitUser {
+                committer: Some(User {
                     name: "user1".to_string(),
                     email: "user1@email.test".to_string(),
                     ..Default::default()
@@ -392,6 +424,7 @@ async fn pull_request_event_opened_action_success_check_failed() {
     let event = PullRequestEvent {
         action: PullRequestEventAction::Opened,
         installation: Installation { id: 1 },
+        organization: None,
         pull_request: PullRequest {
             base: PullRequestBase {
                 ref_: "base_ref".to_string(),
@@ -404,7 +437,10 @@ async fn pull_request_event_opened_action_success_check_failed() {
             html_url: "url".to_string(),
         },
         repository: Repository {
-            full_name: "owner/repo".to_string(),
+            name: "repo".to_string(),
+            owner: RepositoryOwner {
+                login: "owner".to_string(),
+            },
         },
     };
 
@@ -415,12 +451,12 @@ async fn pull_request_event_opened_action_success_check_failed() {
         .times(1)
         .returning(|_, _, _| {
             Box::pin(future::ready(Ok(vec![Commit {
-                author: Some(GitUser {
+                author: Some(User {
                     name: "user1".to_string(),
                     email: "user1@email.test".to_string(),
                     ..Default::default()
                 }),
-                committer: Some(GitUser {
+                committer: Some(User {
                     name: "user1".to_string(),
                     email: "user1@email.test".to_string(),
                     ..Default::default()

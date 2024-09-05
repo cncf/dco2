@@ -1,6 +1,6 @@
 use crate::{
     dco::check::{check, CheckInput, CheckOutput, CommitCheckOutput, CommitError, CommitSuccessReason},
-    github::{Commit, Config, ConfigAllowRemediationCommits, GitUser},
+    github::{Commit, Config, ConfigAllowRemediationCommits, User},
 };
 use indoc::indoc;
 use pretty_assertions::assert_eq;
@@ -17,6 +17,7 @@ fn single_commit_no_signoff_is_merge_commit() {
         commits: vec![commit1.clone()],
         config: Default::default(),
         head_ref: "main".to_string(),
+        members: vec![],
     };
     let output = check(&input);
 
@@ -37,7 +38,7 @@ fn single_commit_no_signoff_is_merge_commit() {
 #[test]
 fn single_commit_no_signoff_author_is_bot() {
     let commit1 = Commit {
-        author: Some(GitUser {
+        author: Some(User {
             is_bot: true,
             ..Default::default()
         }),
@@ -48,6 +49,7 @@ fn single_commit_no_signoff_author_is_bot() {
         commits: vec![commit1.clone()],
         config: Default::default(),
         head_ref: "main".to_string(),
+        members: vec![],
     };
     let output = check(&input);
 
@@ -68,12 +70,12 @@ fn single_commit_no_signoff_author_is_bot() {
 #[test]
 fn single_commit_valid_signoff_author_match() {
     let commit1 = Commit {
-        author: Some(GitUser {
+        author: Some(User {
             name: "user1".to_string(),
             email: "user1@email.test".to_string(),
             ..Default::default()
         }),
-        committer: Some(GitUser {
+        committer: Some(User {
             name: "user2".to_string(),
             email: "user2@email.test".to_string(),
             ..Default::default()
@@ -91,6 +93,7 @@ fn single_commit_valid_signoff_author_match() {
         commits: vec![commit1.clone()],
         config: Default::default(),
         head_ref: "main".to_string(),
+        members: vec![],
     };
     let output = check(&input);
 
@@ -111,12 +114,12 @@ fn single_commit_valid_signoff_author_match() {
 #[test]
 fn single_commit_valid_signoff_committer_match() {
     let commit1 = Commit {
-        author: Some(GitUser {
+        author: Some(User {
             name: "user2".to_string(),
             email: "user2@email.test".to_string(),
             ..Default::default()
         }),
-        committer: Some(GitUser {
+        committer: Some(User {
             name: "user1".to_string(),
             email: "user1@email.test".to_string(),
             ..Default::default()
@@ -134,6 +137,7 @@ fn single_commit_valid_signoff_committer_match() {
         commits: vec![commit1.clone()],
         config: Default::default(),
         head_ref: "main".to_string(),
+        members: vec![],
     };
     let output = check(&input);
 
@@ -154,12 +158,12 @@ fn single_commit_valid_signoff_committer_match() {
 #[test]
 fn single_commit_valid_signoff_multiple_signoffs() {
     let commit1 = Commit {
-        author: Some(GitUser {
+        author: Some(User {
             name: "user1".to_string(),
             email: "user1@email.test".to_string(),
             ..Default::default()
         }),
-        committer: Some(GitUser {
+        committer: Some(User {
             name: "user1".to_string(),
             email: "user1@email.test".to_string(),
             ..Default::default()
@@ -179,6 +183,7 @@ fn single_commit_valid_signoff_multiple_signoffs() {
         commits: vec![commit1.clone()],
         config: Default::default(),
         head_ref: "main".to_string(),
+        members: vec![],
     };
     let output = check(&input);
 
@@ -199,12 +204,12 @@ fn single_commit_valid_signoff_multiple_signoffs() {
 #[test]
 fn single_commit_valid_signoff_signoff_case_insensitive() {
     let commit1 = Commit {
-        author: Some(GitUser {
+        author: Some(User {
             name: "user1".to_string(),
             email: "user1@email.test".to_string(),
             ..Default::default()
         }),
-        committer: Some(GitUser {
+        committer: Some(User {
             name: "user1".to_string(),
             email: "user1@email.test".to_string(),
             ..Default::default()
@@ -222,6 +227,7 @@ fn single_commit_valid_signoff_signoff_case_insensitive() {
         commits: vec![commit1.clone()],
         config: Default::default(),
         head_ref: "main".to_string(),
+        members: vec![],
     };
     let output = check(&input);
 
@@ -242,12 +248,12 @@ fn single_commit_valid_signoff_signoff_case_insensitive() {
 #[test]
 fn single_commit_valid_signoff_signoff_trailing_whitespace() {
     let commit1 = Commit {
-        author: Some(GitUser {
+        author: Some(User {
             name: "user1".to_string(),
             email: "user1@email.test".to_string(),
             ..Default::default()
         }),
-        committer: Some(GitUser {
+        committer: Some(User {
             name: "user1".to_string(),
             email: "user1@email.test".to_string(),
             ..Default::default()
@@ -260,6 +266,7 @@ fn single_commit_valid_signoff_signoff_trailing_whitespace() {
         commits: vec![commit1.clone()],
         config: Default::default(),
         head_ref: "main".to_string(),
+        members: vec![],
     };
     let output = check(&input);
 
@@ -280,12 +287,12 @@ fn single_commit_valid_signoff_signoff_trailing_whitespace() {
 #[test]
 fn single_commit_valid_signoff_email_contains_subdomain() {
     let commit1 = Commit {
-        author: Some(GitUser {
+        author: Some(User {
             name: "user1".to_string(),
             email: "user1@email.some.test".to_string(),
             ..Default::default()
         }),
-        committer: Some(GitUser {
+        committer: Some(User {
             name: "user1".to_string(),
             email: "user1@email.some.test".to_string(),
             ..Default::default()
@@ -303,6 +310,7 @@ fn single_commit_valid_signoff_email_contains_subdomain() {
         commits: vec![commit1.clone()],
         config: Default::default(),
         head_ref: "main".to_string(),
+        members: vec![],
     };
     let output = check(&input);
 
@@ -323,12 +331,12 @@ fn single_commit_valid_signoff_email_contains_subdomain() {
 #[test]
 fn single_commit_valid_signoff_email_contains_plus_alias() {
     let commit1 = Commit {
-        author: Some(GitUser {
+        author: Some(User {
             name: "user1".to_string(),
             email: "user1+alias@email.test".to_string(),
             ..Default::default()
         }),
-        committer: Some(GitUser {
+        committer: Some(User {
             name: "user1".to_string(),
             email: "user1+alias@email.test".to_string(),
             ..Default::default()
@@ -346,6 +354,7 @@ fn single_commit_valid_signoff_email_contains_plus_alias() {
         commits: vec![commit1.clone()],
         config: Default::default(),
         head_ref: "main".to_string(),
+        members: vec![],
     };
     let output = check(&input);
 
@@ -366,12 +375,12 @@ fn single_commit_valid_signoff_email_contains_plus_alias() {
 #[test]
 fn single_commit_invalid_author_email() {
     let commit1 = Commit {
-        author: Some(GitUser {
+        author: Some(User {
             name: "user1".to_string(),
             email: "invalid".to_string(),
             ..Default::default()
         }),
-        committer: Some(GitUser {
+        committer: Some(User {
             name: "user2".to_string(),
             email: "user2@email.test".to_string(),
             ..Default::default()
@@ -389,6 +398,7 @@ fn single_commit_invalid_author_email() {
         commits: vec![commit1.clone()],
         config: Default::default(),
         head_ref: "main".to_string(),
+        members: vec![],
     };
     let output = check(&input);
 
@@ -409,12 +419,12 @@ fn single_commit_invalid_author_email() {
 #[test]
 fn single_commit_invalid_author_email_and_no_signoff() {
     let commit1 = Commit {
-        author: Some(GitUser {
+        author: Some(User {
             name: "user1".to_string(),
             email: "invalid".to_string(),
             ..Default::default()
         }),
-        committer: Some(GitUser {
+        committer: Some(User {
             name: "user2".to_string(),
             email: "user2@email.test".to_string(),
             ..Default::default()
@@ -427,6 +437,7 @@ fn single_commit_invalid_author_email_and_no_signoff() {
         commits: vec![commit1.clone()],
         config: Default::default(),
         head_ref: "main".to_string(),
+        members: vec![],
     };
     let output = check(&input);
 
@@ -447,12 +458,12 @@ fn single_commit_invalid_author_email_and_no_signoff() {
 #[test]
 fn single_commit_invalid_author_email_also_used_in_signoff() {
     let commit1 = Commit {
-        author: Some(GitUser {
+        author: Some(User {
             name: "user1".to_string(),
             email: "invalid".to_string(),
             ..Default::default()
         }),
-        committer: Some(GitUser {
+        committer: Some(User {
             name: "user2".to_string(),
             email: "user2@email.test".to_string(),
             ..Default::default()
@@ -470,6 +481,7 @@ fn single_commit_invalid_author_email_also_used_in_signoff() {
         commits: vec![commit1.clone()],
         config: Default::default(),
         head_ref: "main".to_string(),
+        members: vec![],
     };
     let output = check(&input);
 
@@ -490,12 +502,12 @@ fn single_commit_invalid_author_email_also_used_in_signoff() {
 #[test]
 fn single_commit_invalid_committer_email() {
     let commit1 = Commit {
-        author: Some(GitUser {
+        author: Some(User {
             name: "user1".to_string(),
             email: "user1@email.test".to_string(),
             ..Default::default()
         }),
-        committer: Some(GitUser {
+        committer: Some(User {
             name: "user2".to_string(),
             email: "invalid".to_string(),
             ..Default::default()
@@ -513,6 +525,7 @@ fn single_commit_invalid_committer_email() {
         commits: vec![commit1.clone()],
         config: Default::default(),
         head_ref: "main".to_string(),
+        members: vec![],
     };
     let output = check(&input);
 
@@ -533,12 +546,12 @@ fn single_commit_invalid_committer_email() {
 #[test]
 fn single_commit_invalid_committer_email_and_no_signoff() {
     let commit1 = Commit {
-        author: Some(GitUser {
+        author: Some(User {
             name: "user1".to_string(),
             email: "user1@email.test".to_string(),
             ..Default::default()
         }),
-        committer: Some(GitUser {
+        committer: Some(User {
             name: "user2".to_string(),
             email: "invalid".to_string(),
             ..Default::default()
@@ -551,6 +564,7 @@ fn single_commit_invalid_committer_email_and_no_signoff() {
         commits: vec![commit1.clone()],
         config: Default::default(),
         head_ref: "main".to_string(),
+        members: vec![],
     };
     let output = check(&input);
 
@@ -571,12 +585,12 @@ fn single_commit_invalid_committer_email_and_no_signoff() {
 #[test]
 fn single_commit_invalid_committer_email_also_used_in_signoff() {
     let commit1 = Commit {
-        author: Some(GitUser {
+        author: Some(User {
             name: "user1".to_string(),
             email: "user1@email.test".to_string(),
             ..Default::default()
         }),
-        committer: Some(GitUser {
+        committer: Some(User {
             name: "user2".to_string(),
             email: "invalid".to_string(),
             ..Default::default()
@@ -594,6 +608,7 @@ fn single_commit_invalid_committer_email_also_used_in_signoff() {
         commits: vec![commit1.clone()],
         config: Default::default(),
         head_ref: "main".to_string(),
+        members: vec![],
     };
     let output = check(&input);
 
@@ -614,12 +629,12 @@ fn single_commit_invalid_committer_email_also_used_in_signoff() {
 #[test]
 fn single_commit_invalid_author_and_committer_email_same_email() {
     let commit1 = Commit {
-        author: Some(GitUser {
+        author: Some(User {
             name: "user1".to_string(),
             email: "invalid".to_string(),
             ..Default::default()
         }),
-        committer: Some(GitUser {
+        committer: Some(User {
             name: "user1".to_string(),
             email: "invalid".to_string(),
             ..Default::default()
@@ -637,6 +652,7 @@ fn single_commit_invalid_author_and_committer_email_same_email() {
         commits: vec![commit1.clone()],
         config: Default::default(),
         head_ref: "main".to_string(),
+        members: vec![],
     };
     let output = check(&input);
 
@@ -657,12 +673,12 @@ fn single_commit_invalid_author_and_committer_email_same_email() {
 #[test]
 fn single_commit_invalid_author_and_committer_email_different_emails() {
     let commit1 = Commit {
-        author: Some(GitUser {
+        author: Some(User {
             name: "user1".to_string(),
             email: "invalid".to_string(),
             ..Default::default()
         }),
-        committer: Some(GitUser {
+        committer: Some(User {
             name: "user1".to_string(),
             email: "invalid2".to_string(),
             ..Default::default()
@@ -680,6 +696,7 @@ fn single_commit_invalid_author_and_committer_email_different_emails() {
         commits: vec![commit1.clone()],
         config: Default::default(),
         head_ref: "main".to_string(),
+        members: vec![],
     };
     let output = check(&input);
 
@@ -703,12 +720,12 @@ fn single_commit_invalid_author_and_committer_email_different_emails() {
 #[test]
 fn single_commit_signoff_not_found() {
     let commit1 = Commit {
-        author: Some(GitUser {
+        author: Some(User {
             name: "user1".to_string(),
             email: "user1@email.test".to_string(),
             ..Default::default()
         }),
-        committer: Some(GitUser {
+        committer: Some(User {
             name: "user1".to_string(),
             email: "user1@email.test".to_string(),
             ..Default::default()
@@ -721,6 +738,7 @@ fn single_commit_signoff_not_found() {
         commits: vec![commit1.clone()],
         config: Default::default(),
         head_ref: "main".to_string(),
+        members: vec![],
     };
     let output = check(&input);
 
@@ -741,12 +759,12 @@ fn single_commit_signoff_not_found() {
 #[test]
 fn single_commit_invalid_signoff_multiple_signoffs() {
     let commit1 = Commit {
-        author: Some(GitUser {
+        author: Some(User {
             name: "user1".to_string(),
             email: "user1@email.test".to_string(),
             ..Default::default()
         }),
-        committer: Some(GitUser {
+        committer: Some(User {
             name: "user1".to_string(),
             email: "user1@email.test".to_string(),
             ..Default::default()
@@ -766,6 +784,7 @@ fn single_commit_invalid_signoff_multiple_signoffs() {
         commits: vec![commit1.clone()],
         config: Default::default(),
         head_ref: "main".to_string(),
+        members: vec![],
     };
     let output = check(&input);
 
@@ -786,12 +805,12 @@ fn single_commit_invalid_signoff_multiple_signoffs() {
 #[test]
 fn single_commit_invalid_signoff_name_mismatch() {
     let commit1 = Commit {
-        author: Some(GitUser {
+        author: Some(User {
             name: "user1".to_string(),
             email: "user1@email.test".to_string(),
             ..Default::default()
         }),
-        committer: Some(GitUser {
+        committer: Some(User {
             name: "user1".to_string(),
             email: "user1@email.test".to_string(),
             ..Default::default()
@@ -809,6 +828,7 @@ fn single_commit_invalid_signoff_name_mismatch() {
         commits: vec![commit1.clone()],
         config: Default::default(),
         head_ref: "main".to_string(),
+        members: vec![],
     };
     let output = check(&input);
 
@@ -829,12 +849,12 @@ fn single_commit_invalid_signoff_name_mismatch() {
 #[test]
 fn single_commit_invalid_signoff_email_mismatch() {
     let commit1 = Commit {
-        author: Some(GitUser {
+        author: Some(User {
             name: "user1".to_string(),
             email: "user1@email.test".to_string(),
             ..Default::default()
         }),
-        committer: Some(GitUser {
+        committer: Some(User {
             name: "user1".to_string(),
             email: "user1@email.test".to_string(),
             ..Default::default()
@@ -852,6 +872,7 @@ fn single_commit_invalid_signoff_email_mismatch() {
         commits: vec![commit1.clone()],
         config: Default::default(),
         head_ref: "main".to_string(),
+        members: vec![],
     };
     let output = check(&input);
 
@@ -872,12 +893,12 @@ fn single_commit_invalid_signoff_email_mismatch() {
 #[test]
 fn single_commit_invalid_signoff_name_and_email_mismatch() {
     let commit1 = Commit {
-        author: Some(GitUser {
+        author: Some(User {
             name: "user1".to_string(),
             email: "user1@email.test".to_string(),
             ..Default::default()
         }),
-        committer: Some(GitUser {
+        committer: Some(User {
             name: "user1".to_string(),
             email: "user1@email.test".to_string(),
             ..Default::default()
@@ -895,6 +916,7 @@ fn single_commit_invalid_signoff_name_and_email_mismatch() {
         commits: vec![commit1.clone()],
         config: Default::default(),
         head_ref: "main".to_string(),
+        members: vec![],
     };
     let output = check(&input);
 
@@ -915,12 +937,12 @@ fn single_commit_invalid_signoff_name_and_email_mismatch() {
 #[test]
 fn single_commit_invalid_signoff_extra_whitespace_around_name() {
     let commit1 = Commit {
-        author: Some(GitUser {
+        author: Some(User {
             name: "user1".to_string(),
             email: "user1@email.test".to_string(),
             ..Default::default()
         }),
-        committer: Some(GitUser {
+        committer: Some(User {
             name: "user1".to_string(),
             email: "user1@email.test".to_string(),
             ..Default::default()
@@ -938,6 +960,7 @@ fn single_commit_invalid_signoff_extra_whitespace_around_name() {
         commits: vec![commit1.clone()],
         config: Default::default(),
         head_ref: "main".to_string(),
+        members: vec![],
     };
     let output = check(&input);
 
@@ -958,12 +981,12 @@ fn single_commit_invalid_signoff_extra_whitespace_around_name() {
 #[test]
 fn single_commit_invalid_signoff_extra_whitespace_around_email() {
     let commit1 = Commit {
-        author: Some(GitUser {
+        author: Some(User {
             name: "user1".to_string(),
             email: "user1@email.test".to_string(),
             ..Default::default()
         }),
-        committer: Some(GitUser {
+        committer: Some(User {
             name: "user1".to_string(),
             email: "user1@email.test".to_string(),
             ..Default::default()
@@ -981,6 +1004,7 @@ fn single_commit_invalid_signoff_extra_whitespace_around_email() {
         commits: vec![commit1.clone()],
         config: Default::default(),
         head_ref: "main".to_string(),
+        members: vec![],
     };
     let output = check(&input);
 
@@ -1001,12 +1025,12 @@ fn single_commit_invalid_signoff_extra_whitespace_around_email() {
 #[test]
 fn single_commit_invalid_signoff_missing_name_in_signoff() {
     let commit1 = Commit {
-        author: Some(GitUser {
+        author: Some(User {
             name: "user1".to_string(),
             email: "user1@email.test".to_string(),
             ..Default::default()
         }),
-        committer: Some(GitUser {
+        committer: Some(User {
             name: "user1".to_string(),
             email: "user1@email.test".to_string(),
             ..Default::default()
@@ -1024,6 +1048,7 @@ fn single_commit_invalid_signoff_missing_name_in_signoff() {
         commits: vec![commit1.clone()],
         config: Default::default(),
         head_ref: "main".to_string(),
+        members: vec![],
     };
     let output = check(&input);
 
@@ -1044,12 +1069,12 @@ fn single_commit_invalid_signoff_missing_name_in_signoff() {
 #[test]
 fn single_commit_invalid_signoff_missing_email_in_signoff() {
     let commit1 = Commit {
-        author: Some(GitUser {
+        author: Some(User {
             name: "user1".to_string(),
             email: "user1@email.test".to_string(),
             ..Default::default()
         }),
-        committer: Some(GitUser {
+        committer: Some(User {
             name: "user1".to_string(),
             email: "user1@email.test".to_string(),
             ..Default::default()
@@ -1067,6 +1092,7 @@ fn single_commit_invalid_signoff_missing_email_in_signoff() {
         commits: vec![commit1.clone()],
         config: Default::default(),
         head_ref: "main".to_string(),
+        members: vec![],
     };
     let output = check(&input);
 
@@ -1087,12 +1113,12 @@ fn single_commit_invalid_signoff_missing_email_in_signoff() {
 #[test]
 fn single_commit_invalid_signoff_missing_email_brackets_in_signoff() {
     let commit1 = Commit {
-        author: Some(GitUser {
+        author: Some(User {
             name: "user1".to_string(),
             email: "user1@email.test".to_string(),
             ..Default::default()
         }),
-        committer: Some(GitUser {
+        committer: Some(User {
             name: "user1".to_string(),
             email: "user1@email.test".to_string(),
             ..Default::default()
@@ -1110,6 +1136,7 @@ fn single_commit_invalid_signoff_missing_email_brackets_in_signoff() {
         commits: vec![commit1.clone()],
         config: Default::default(),
         head_ref: "main".to_string(),
+        members: vec![],
     };
     let output = check(&input);
 
@@ -1130,12 +1157,12 @@ fn single_commit_invalid_signoff_missing_email_brackets_in_signoff() {
 #[test]
 fn single_commit_invalid_signoff_missing_name_and_email_in_signoff() {
     let commit1 = Commit {
-        author: Some(GitUser {
+        author: Some(User {
             name: "user1".to_string(),
             email: "user1@email.test".to_string(),
             ..Default::default()
         }),
-        committer: Some(GitUser {
+        committer: Some(User {
             name: "user1".to_string(),
             email: "user1@email.test".to_string(),
             ..Default::default()
@@ -1153,6 +1180,7 @@ fn single_commit_invalid_signoff_missing_name_and_email_in_signoff() {
         commits: vec![commit1.clone()],
         config: Default::default(),
         head_ref: "main".to_string(),
+        members: vec![],
     };
     let output = check(&input);
 
@@ -1173,12 +1201,12 @@ fn single_commit_invalid_signoff_missing_name_and_email_in_signoff() {
 #[test]
 fn single_commit_invalid_signoff_name_and_email_swapped_in_signoff() {
     let commit1 = Commit {
-        author: Some(GitUser {
+        author: Some(User {
             name: "user1".to_string(),
             email: "user1@email.test".to_string(),
             ..Default::default()
         }),
-        committer: Some(GitUser {
+        committer: Some(User {
             name: "user1".to_string(),
             email: "user1@email.test".to_string(),
             ..Default::default()
@@ -1196,6 +1224,7 @@ fn single_commit_invalid_signoff_name_and_email_swapped_in_signoff() {
         commits: vec![commit1.clone()],
         config: Default::default(),
         head_ref: "main".to_string(),
+        members: vec![],
     };
     let output = check(&input);
 
@@ -1216,12 +1245,12 @@ fn single_commit_invalid_signoff_name_and_email_swapped_in_signoff() {
 #[test]
 fn single_commit_invalid_signoff_invalid_email_in_signoff() {
     let commit1 = Commit {
-        author: Some(GitUser {
+        author: Some(User {
             name: "user1".to_string(),
             email: "user1@email.test".to_string(),
             ..Default::default()
         }),
-        committer: Some(GitUser {
+        committer: Some(User {
             name: "user1".to_string(),
             email: "user1@email.test".to_string(),
             ..Default::default()
@@ -1239,6 +1268,7 @@ fn single_commit_invalid_signoff_invalid_email_in_signoff() {
         commits: vec![commit1.clone()],
         config: Default::default(),
         head_ref: "main".to_string(),
+        members: vec![],
     };
     let output = check(&input);
 
@@ -1259,12 +1289,12 @@ fn single_commit_invalid_signoff_invalid_email_in_signoff() {
 #[test]
 fn single_commit_invalid_signoff_email_alias_used_in_signoff_but_not_in_author_email() {
     let commit1 = Commit {
-        author: Some(GitUser {
+        author: Some(User {
             name: "user1".to_string(),
             email: "user1@email.test".to_string(),
             ..Default::default()
         }),
-        committer: Some(GitUser {
+        committer: Some(User {
             name: "user1".to_string(),
             email: "user1@email.test".to_string(),
             ..Default::default()
@@ -1282,6 +1312,7 @@ fn single_commit_invalid_signoff_email_alias_used_in_signoff_but_not_in_author_e
         commits: vec![commit1.clone()],
         config: Default::default(),
         head_ref: "main".to_string(),
+        members: vec![],
     };
     let output = check(&input);
 
@@ -1302,12 +1333,12 @@ fn single_commit_invalid_signoff_email_alias_used_in_signoff_but_not_in_author_e
 #[test]
 fn two_commits_valid_signoff_in_both() {
     let commit1 = Commit {
-        author: Some(GitUser {
+        author: Some(User {
             name: "user1".to_string(),
             email: "user1@email.test".to_string(),
             ..Default::default()
         }),
-        committer: Some(GitUser {
+        committer: Some(User {
             name: "user1".to_string(),
             email: "user1@email.test".to_string(),
             ..Default::default()
@@ -1326,6 +1357,7 @@ fn two_commits_valid_signoff_in_both() {
         commits: vec![commit1.clone(), commit2.clone()],
         config: Default::default(),
         head_ref: "main".to_string(),
+        members: vec![],
     };
     let output = check(&input);
 
@@ -1353,12 +1385,12 @@ fn two_commits_valid_signoff_in_both() {
 #[test]
 fn two_commits_no_signoff_in_first_valid_signoff_in_second() {
     let commit1 = Commit {
-        author: Some(GitUser {
+        author: Some(User {
             name: "user1".to_string(),
             email: "user1@email.test".to_string(),
             ..Default::default()
         }),
-        committer: Some(GitUser {
+        committer: Some(User {
             name: "user1".to_string(),
             email: "user1@email.test".to_string(),
             ..Default::default()
@@ -1367,12 +1399,12 @@ fn two_commits_no_signoff_in_first_valid_signoff_in_second() {
         ..Default::default()
     };
     let commit2 = Commit {
-        author: Some(GitUser {
+        author: Some(User {
             name: "user1".to_string(),
             email: "user1@email.test".to_string(),
             ..Default::default()
         }),
-        committer: Some(GitUser {
+        committer: Some(User {
             name: "user1".to_string(),
             email: "user1@email.test".to_string(),
             ..Default::default()
@@ -1390,6 +1422,7 @@ fn two_commits_no_signoff_in_first_valid_signoff_in_second() {
         commits: vec![commit1.clone(), commit2.clone()],
         config: Default::default(),
         head_ref: "main".to_string(),
+        members: vec![],
     };
     let output = check(&input);
 
@@ -1417,12 +1450,12 @@ fn two_commits_no_signoff_in_first_valid_signoff_in_second() {
 #[test]
 fn two_commits_valid_signoff_in_first_no_signoff_in_second() {
     let commit1 = Commit {
-        author: Some(GitUser {
+        author: Some(User {
             name: "user1".to_string(),
             email: "user1@email.test".to_string(),
             ..Default::default()
         }),
-        committer: Some(GitUser {
+        committer: Some(User {
             name: "user1".to_string(),
             email: "user1@email.test".to_string(),
             ..Default::default()
@@ -1436,12 +1469,12 @@ fn two_commits_valid_signoff_in_first_no_signoff_in_second() {
         ..Default::default()
     };
     let commit2 = Commit {
-        author: Some(GitUser {
+        author: Some(User {
             name: "user1".to_string(),
             email: "user1@email.test".to_string(),
             ..Default::default()
         }),
-        committer: Some(GitUser {
+        committer: Some(User {
             name: "user1".to_string(),
             email: "user1@email.test".to_string(),
             ..Default::default()
@@ -1454,6 +1487,7 @@ fn two_commits_valid_signoff_in_first_no_signoff_in_second() {
         commits: vec![commit1.clone(), commit2.clone()],
         config: Default::default(),
         head_ref: "main".to_string(),
+        members: vec![],
     };
     let output = check(&input);
 
@@ -1481,12 +1515,12 @@ fn two_commits_valid_signoff_in_first_no_signoff_in_second() {
 #[test]
 fn two_commits_invalid_signoff_in_first_valid_signoff_in_second() {
     let commit1 = Commit {
-        author: Some(GitUser {
+        author: Some(User {
             name: "user1".to_string(),
             email: "user1@email.test".to_string(),
             ..Default::default()
         }),
-        committer: Some(GitUser {
+        committer: Some(User {
             name: "user1".to_string(),
             email: "user1@email.test".to_string(),
             ..Default::default()
@@ -1500,12 +1534,12 @@ fn two_commits_invalid_signoff_in_first_valid_signoff_in_second() {
         ..Default::default()
     };
     let commit2 = Commit {
-        author: Some(GitUser {
+        author: Some(User {
             name: "user1".to_string(),
             email: "user1@email.test".to_string(),
             ..Default::default()
         }),
-        committer: Some(GitUser {
+        committer: Some(User {
             name: "user1".to_string(),
             email: "user1@email.test".to_string(),
             ..Default::default()
@@ -1523,6 +1557,7 @@ fn two_commits_invalid_signoff_in_first_valid_signoff_in_second() {
         commits: vec![commit1.clone(), commit2.clone()],
         config: Default::default(),
         head_ref: "main".to_string(),
+        members: vec![],
     };
     let output = check(&input);
 
@@ -1550,12 +1585,12 @@ fn two_commits_invalid_signoff_in_first_valid_signoff_in_second() {
 #[test]
 fn two_commits_valid_signoff_in_first_invalid_signoff_in_second() {
     let commit1 = Commit {
-        author: Some(GitUser {
+        author: Some(User {
             name: "user1".to_string(),
             email: "user1@email.test".to_string(),
             ..Default::default()
         }),
-        committer: Some(GitUser {
+        committer: Some(User {
             name: "user1".to_string(),
             email: "user1@email.test".to_string(),
             ..Default::default()
@@ -1569,12 +1604,12 @@ fn two_commits_valid_signoff_in_first_invalid_signoff_in_second() {
         ..Default::default()
     };
     let commit2 = Commit {
-        author: Some(GitUser {
+        author: Some(User {
             name: "user1".to_string(),
             email: "user1@email.test".to_string(),
             ..Default::default()
         }),
-        committer: Some(GitUser {
+        committer: Some(User {
             name: "user1".to_string(),
             email: "user1@email.test".to_string(),
             ..Default::default()
@@ -1592,6 +1627,7 @@ fn two_commits_valid_signoff_in_first_invalid_signoff_in_second() {
         commits: vec![commit1.clone(), commit2.clone()],
         config: Default::default(),
         head_ref: "main".to_string(),
+        members: vec![],
     };
     let output = check(&input);
 
@@ -1619,12 +1655,12 @@ fn two_commits_valid_signoff_in_first_invalid_signoff_in_second() {
 #[test]
 fn two_commits_no_signoff_in_first_invalid_signoff_in_second() {
     let commit1 = Commit {
-        author: Some(GitUser {
+        author: Some(User {
             name: "user1".to_string(),
             email: "user1@email.test".to_string(),
             ..Default::default()
         }),
-        committer: Some(GitUser {
+        committer: Some(User {
             name: "user1".to_string(),
             email: "user1@email.test".to_string(),
             ..Default::default()
@@ -1633,12 +1669,12 @@ fn two_commits_no_signoff_in_first_invalid_signoff_in_second() {
         ..Default::default()
     };
     let commit2 = Commit {
-        author: Some(GitUser {
+        author: Some(User {
             name: "user1".to_string(),
             email: "user1@email.test".to_string(),
             ..Default::default()
         }),
-        committer: Some(GitUser {
+        committer: Some(User {
             name: "user1".to_string(),
             email: "user1@email.test".to_string(),
             ..Default::default()
@@ -1656,6 +1692,7 @@ fn two_commits_no_signoff_in_first_invalid_signoff_in_second() {
         commits: vec![commit1.clone(), commit2.clone()],
         config: Default::default(),
         head_ref: "main".to_string(),
+        members: vec![],
     };
     let output = check(&input);
 
@@ -1683,12 +1720,12 @@ fn two_commits_no_signoff_in_first_invalid_signoff_in_second() {
 #[test]
 fn two_commits_invalid_signoff_in_first_no_signoff_in_second() {
     let commit1 = Commit {
-        author: Some(GitUser {
+        author: Some(User {
             name: "user1".to_string(),
             email: "user1@email.test".to_string(),
             ..Default::default()
         }),
-        committer: Some(GitUser {
+        committer: Some(User {
             name: "user1".to_string(),
             email: "user1@email.test".to_string(),
             ..Default::default()
@@ -1702,12 +1739,12 @@ fn two_commits_invalid_signoff_in_first_no_signoff_in_second() {
         ..Default::default()
     };
     let commit2 = Commit {
-        author: Some(GitUser {
+        author: Some(User {
             name: "user1".to_string(),
             email: "user1@email.test".to_string(),
             ..Default::default()
         }),
-        committer: Some(GitUser {
+        committer: Some(User {
             name: "user1".to_string(),
             email: "user1@email.test".to_string(),
             ..Default::default()
@@ -1720,6 +1757,7 @@ fn two_commits_invalid_signoff_in_first_no_signoff_in_second() {
         commits: vec![commit1.clone(), commit2.clone()],
         config: Default::default(),
         head_ref: "main".to_string(),
+        members: vec![],
     };
     let output = check(&input);
 
@@ -1748,12 +1786,12 @@ fn two_commits_invalid_signoff_in_first_no_signoff_in_second() {
 fn two_commits_no_signoff_in_first_valid_remediation_commit_in_second_but_remediation_not_enabled_in_config()
 {
     let commit1 = Commit {
-        author: Some(GitUser {
+        author: Some(User {
             name: "user1".to_string(),
             email: "user1@email.test".to_string(),
             ..Default::default()
         }),
-        committer: Some(GitUser {
+        committer: Some(User {
             name: "user1".to_string(),
             email: "user1@email.test".to_string(),
             ..Default::default()
@@ -1763,12 +1801,12 @@ fn two_commits_no_signoff_in_first_valid_remediation_commit_in_second_but_remedi
         ..Default::default()
     };
     let commit2 = Commit {
-        author: Some(GitUser {
+        author: Some(User {
             name: "user1".to_string(),
             email: "user1@email.test".to_string(),
             ..Default::default()
         }),
-        committer: Some(GitUser {
+        committer: Some(User {
             name: "user1".to_string(),
             email: "user1@email.test".to_string(),
             ..Default::default()
@@ -1788,6 +1826,7 @@ fn two_commits_no_signoff_in_first_valid_remediation_commit_in_second_but_remedi
         commits: vec![commit1.clone(), commit2.clone()],
         config: Default::default(),
         head_ref: "main".to_string(),
+        members: vec![],
     };
     let output = check(&input);
 
@@ -1815,12 +1854,12 @@ fn two_commits_no_signoff_in_first_valid_remediation_commit_in_second_but_remedi
 #[test]
 fn two_commits_no_signoff_in_first_valid_remediation_commit_matching_author_in_second() {
     let commit1 = Commit {
-        author: Some(GitUser {
+        author: Some(User {
             name: "user1".to_string(),
             email: "user1@email.test".to_string(),
             ..Default::default()
         }),
-        committer: Some(GitUser {
+        committer: Some(User {
             name: "user2".to_string(),
             email: "user2@email.test".to_string(),
             ..Default::default()
@@ -1830,12 +1869,12 @@ fn two_commits_no_signoff_in_first_valid_remediation_commit_matching_author_in_s
         ..Default::default()
     };
     let commit2 = Commit {
-        author: Some(GitUser {
+        author: Some(User {
             name: "user1".to_string(),
             email: "user1@email.test".to_string(),
             ..Default::default()
         }),
-        committer: Some(GitUser {
+        committer: Some(User {
             name: "user1".to_string(),
             email: "user1@email.test".to_string(),
             ..Default::default()
@@ -1861,6 +1900,7 @@ fn two_commits_no_signoff_in_first_valid_remediation_commit_matching_author_in_s
             ..Default::default()
         },
         head_ref: "main".to_string(),
+        members: vec![],
     };
     let output = check(&input);
 
@@ -1888,12 +1928,12 @@ fn two_commits_no_signoff_in_first_valid_remediation_commit_matching_author_in_s
 #[test]
 fn two_commits_no_signoff_in_first_valid_remediation_commit_matching_committer_in_second() {
     let commit1 = Commit {
-        author: Some(GitUser {
+        author: Some(User {
             name: "user2".to_string(),
             email: "user2@email.test".to_string(),
             ..Default::default()
         }),
-        committer: Some(GitUser {
+        committer: Some(User {
             name: "user1".to_string(),
             email: "user1@email.test".to_string(),
             ..Default::default()
@@ -1903,12 +1943,12 @@ fn two_commits_no_signoff_in_first_valid_remediation_commit_matching_committer_i
         ..Default::default()
     };
     let commit2 = Commit {
-        author: Some(GitUser {
+        author: Some(User {
             name: "user1".to_string(),
             email: "user1@email.test".to_string(),
             ..Default::default()
         }),
-        committer: Some(GitUser {
+        committer: Some(User {
             name: "user1".to_string(),
             email: "user1@email.test".to_string(),
             ..Default::default()
@@ -1934,6 +1974,7 @@ fn two_commits_no_signoff_in_first_valid_remediation_commit_matching_committer_i
             ..Default::default()
         },
         head_ref: "main".to_string(),
+        members: vec![],
     };
     let output = check(&input);
 
@@ -1961,12 +2002,12 @@ fn two_commits_no_signoff_in_first_valid_remediation_commit_matching_committer_i
 #[test]
 fn two_commits_invalid_signoff_incorrect_name_in_first_valid_remediation_commit_in_second() {
     let commit1 = Commit {
-        author: Some(GitUser {
+        author: Some(User {
             name: "user1".to_string(),
             email: "user1@email.test".to_string(),
             ..Default::default()
         }),
-        committer: Some(GitUser {
+        committer: Some(User {
             name: "user1".to_string(),
             email: "user1@email.test".to_string(),
             ..Default::default()
@@ -1981,12 +2022,12 @@ fn two_commits_invalid_signoff_incorrect_name_in_first_valid_remediation_commit_
         ..Default::default()
     };
     let commit2 = Commit {
-        author: Some(GitUser {
+        author: Some(User {
             name: "user1".to_string(),
             email: "user1@email.test".to_string(),
             ..Default::default()
         }),
-        committer: Some(GitUser {
+        committer: Some(User {
             name: "user1".to_string(),
             email: "user1@email.test".to_string(),
             ..Default::default()
@@ -2012,6 +2053,7 @@ fn two_commits_invalid_signoff_incorrect_name_in_first_valid_remediation_commit_
             ..Default::default()
         },
         head_ref: "main".to_string(),
+        members: vec![],
     };
     let output = check(&input);
 
@@ -2039,12 +2081,12 @@ fn two_commits_invalid_signoff_incorrect_name_in_first_valid_remediation_commit_
 #[test]
 fn two_commits_invalid_signoff_incorrect_email_in_first_valid_remediation_commit_in_second() {
     let commit1 = Commit {
-        author: Some(GitUser {
+        author: Some(User {
             name: "user1".to_string(),
             email: "user1@email.test".to_string(),
             ..Default::default()
         }),
-        committer: Some(GitUser {
+        committer: Some(User {
             name: "user1".to_string(),
             email: "user1@email.test".to_string(),
             ..Default::default()
@@ -2059,12 +2101,12 @@ fn two_commits_invalid_signoff_incorrect_email_in_first_valid_remediation_commit
         ..Default::default()
     };
     let commit2 = Commit {
-        author: Some(GitUser {
+        author: Some(User {
             name: "user1".to_string(),
             email: "user1@email.test".to_string(),
             ..Default::default()
         }),
-        committer: Some(GitUser {
+        committer: Some(User {
             name: "user1".to_string(),
             email: "user1@email.test".to_string(),
             ..Default::default()
@@ -2090,6 +2132,7 @@ fn two_commits_invalid_signoff_incorrect_email_in_first_valid_remediation_commit
             ..Default::default()
         },
         head_ref: "main".to_string(),
+        members: vec![],
     };
     let output = check(&input);
 
@@ -2117,12 +2160,12 @@ fn two_commits_invalid_signoff_incorrect_email_in_first_valid_remediation_commit
 #[test]
 fn two_commits_valid_signoff_in_first_redundant_remediation_commit_in_second() {
     let commit1 = Commit {
-        author: Some(GitUser {
+        author: Some(User {
             name: "user1".to_string(),
             email: "user1@email.test".to_string(),
             ..Default::default()
         }),
-        committer: Some(GitUser {
+        committer: Some(User {
             name: "user1".to_string(),
             email: "user1@email.test".to_string(),
             ..Default::default()
@@ -2137,12 +2180,12 @@ fn two_commits_valid_signoff_in_first_redundant_remediation_commit_in_second() {
         ..Default::default()
     };
     let commit2 = Commit {
-        author: Some(GitUser {
+        author: Some(User {
             name: "user1".to_string(),
             email: "user1@email.test".to_string(),
             ..Default::default()
         }),
-        committer: Some(GitUser {
+        committer: Some(User {
             name: "user1".to_string(),
             email: "user1@email.test".to_string(),
             ..Default::default()
@@ -2168,6 +2211,7 @@ fn two_commits_valid_signoff_in_first_redundant_remediation_commit_in_second() {
             ..Default::default()
         },
         head_ref: "main".to_string(),
+        members: vec![],
     };
     let output = check(&input);
 
@@ -2195,12 +2239,12 @@ fn two_commits_valid_signoff_in_first_redundant_remediation_commit_in_second() {
 #[test]
 fn two_commits_valid_signoff_in_first_remediation_commit_non_existent_sha_in_second() {
     let commit1 = Commit {
-        author: Some(GitUser {
+        author: Some(User {
             name: "user1".to_string(),
             email: "user1@email.test".to_string(),
             ..Default::default()
         }),
-        committer: Some(GitUser {
+        committer: Some(User {
             name: "user1".to_string(),
             email: "user1@email.test".to_string(),
             ..Default::default()
@@ -2215,12 +2259,12 @@ fn two_commits_valid_signoff_in_first_remediation_commit_non_existent_sha_in_sec
         ..Default::default()
     };
     let commit2 = Commit {
-        author: Some(GitUser {
+        author: Some(User {
             name: "user1".to_string(),
             email: "user1@email.test".to_string(),
             ..Default::default()
         }),
-        committer: Some(GitUser {
+        committer: Some(User {
             name: "user1".to_string(),
             email: "user1@email.test".to_string(),
             ..Default::default()
@@ -2246,6 +2290,7 @@ fn two_commits_valid_signoff_in_first_remediation_commit_non_existent_sha_in_sec
             ..Default::default()
         },
         head_ref: "main".to_string(),
+        members: vec![],
     };
     let output = check(&input);
 
@@ -2273,12 +2318,12 @@ fn two_commits_valid_signoff_in_first_remediation_commit_non_existent_sha_in_sec
 #[test]
 fn two_commits_no_signoff_in_first_remediation_commit_no_signoff_in_second() {
     let commit1 = Commit {
-        author: Some(GitUser {
+        author: Some(User {
             name: "user1".to_string(),
             email: "user1@email.test".to_string(),
             ..Default::default()
         }),
-        committer: Some(GitUser {
+        committer: Some(User {
             name: "user1".to_string(),
             email: "user1@email.test".to_string(),
             ..Default::default()
@@ -2288,12 +2333,12 @@ fn two_commits_no_signoff_in_first_remediation_commit_no_signoff_in_second() {
         ..Default::default()
     };
     let commit2 = Commit {
-        author: Some(GitUser {
+        author: Some(User {
             name: "user1".to_string(),
             email: "user1@email.test".to_string(),
             ..Default::default()
         }),
-        committer: Some(GitUser {
+        committer: Some(User {
             name: "user1".to_string(),
             email: "user1@email.test".to_string(),
             ..Default::default()
@@ -2317,6 +2362,7 @@ fn two_commits_no_signoff_in_first_remediation_commit_no_signoff_in_second() {
             ..Default::default()
         },
         head_ref: "main".to_string(),
+        members: vec![],
     };
     let output = check(&input);
 
@@ -2344,12 +2390,12 @@ fn two_commits_no_signoff_in_first_remediation_commit_no_signoff_in_second() {
 #[test]
 fn two_commits_no_signoff_in_first_remediation_commit_different_name_in_second() {
     let commit1 = Commit {
-        author: Some(GitUser {
+        author: Some(User {
             name: "user1".to_string(),
             email: "user1@email.test".to_string(),
             ..Default::default()
         }),
-        committer: Some(GitUser {
+        committer: Some(User {
             name: "user1".to_string(),
             email: "user1@email.test".to_string(),
             ..Default::default()
@@ -2359,12 +2405,12 @@ fn two_commits_no_signoff_in_first_remediation_commit_different_name_in_second()
         ..Default::default()
     };
     let commit2 = Commit {
-        author: Some(GitUser {
+        author: Some(User {
             name: "userx".to_string(),
             email: "user1@email.test".to_string(),
             ..Default::default()
         }),
-        committer: Some(GitUser {
+        committer: Some(User {
             name: "userx".to_string(),
             email: "user1@email.test".to_string(),
             ..Default::default()
@@ -2390,6 +2436,7 @@ fn two_commits_no_signoff_in_first_remediation_commit_different_name_in_second()
             ..Default::default()
         },
         head_ref: "main".to_string(),
+        members: vec![],
     };
     let output = check(&input);
 
@@ -2417,12 +2464,12 @@ fn two_commits_no_signoff_in_first_remediation_commit_different_name_in_second()
 #[test]
 fn two_commits_no_signoff_in_first_remediation_commit_different_email_in_second() {
     let commit1 = Commit {
-        author: Some(GitUser {
+        author: Some(User {
             name: "user1".to_string(),
             email: "user1@email.test".to_string(),
             ..Default::default()
         }),
-        committer: Some(GitUser {
+        committer: Some(User {
             name: "user1".to_string(),
             email: "user1@email.test".to_string(),
             ..Default::default()
@@ -2432,12 +2479,12 @@ fn two_commits_no_signoff_in_first_remediation_commit_different_email_in_second(
         ..Default::default()
     };
     let commit2 = Commit {
-        author: Some(GitUser {
+        author: Some(User {
             name: "user1".to_string(),
             email: "userx@email.test".to_string(),
             ..Default::default()
         }),
-        committer: Some(GitUser {
+        committer: Some(User {
             name: "user1".to_string(),
             email: "userx@email.test".to_string(),
             ..Default::default()
@@ -2463,6 +2510,7 @@ fn two_commits_no_signoff_in_first_remediation_commit_different_email_in_second(
             ..Default::default()
         },
         head_ref: "main".to_string(),
+        members: vec![],
     };
     let output = check(&input);
 
@@ -2490,12 +2538,12 @@ fn two_commits_no_signoff_in_first_remediation_commit_different_email_in_second(
 #[test]
 fn two_commits_no_signoff_in_first_remediation_commit_different_name_and_email_in_second() {
     let commit1 = Commit {
-        author: Some(GitUser {
+        author: Some(User {
             name: "user1".to_string(),
             email: "user1@email.test".to_string(),
             ..Default::default()
         }),
-        committer: Some(GitUser {
+        committer: Some(User {
             name: "user1".to_string(),
             email: "user1@email.test".to_string(),
             ..Default::default()
@@ -2505,12 +2553,12 @@ fn two_commits_no_signoff_in_first_remediation_commit_different_name_and_email_i
         ..Default::default()
     };
     let commit2 = Commit {
-        author: Some(GitUser {
+        author: Some(User {
             name: "userx".to_string(),
             email: "userx@email.test".to_string(),
             ..Default::default()
         }),
-        committer: Some(GitUser {
+        committer: Some(User {
             name: "userx".to_string(),
             email: "userx@email.test".to_string(),
             ..Default::default()
@@ -2536,6 +2584,7 @@ fn two_commits_no_signoff_in_first_remediation_commit_different_name_and_email_i
             ..Default::default()
         },
         head_ref: "main".to_string(),
+        members: vec![],
     };
     let output = check(&input);
 
@@ -2563,12 +2612,12 @@ fn two_commits_no_signoff_in_first_remediation_commit_different_name_and_email_i
 #[test]
 fn two_commits_no_signoff_in_first_remediation_commit_different_name_in_signoff_in_second() {
     let commit1 = Commit {
-        author: Some(GitUser {
+        author: Some(User {
             name: "user1".to_string(),
             email: "user1@email.test".to_string(),
             ..Default::default()
         }),
-        committer: Some(GitUser {
+        committer: Some(User {
             name: "user1".to_string(),
             email: "user1@email.test".to_string(),
             ..Default::default()
@@ -2578,12 +2627,12 @@ fn two_commits_no_signoff_in_first_remediation_commit_different_name_in_signoff_
         ..Default::default()
     };
     let commit2 = Commit {
-        author: Some(GitUser {
+        author: Some(User {
             name: "user1".to_string(),
             email: "user1@email.test".to_string(),
             ..Default::default()
         }),
-        committer: Some(GitUser {
+        committer: Some(User {
             name: "user1".to_string(),
             email: "user1@email.test".to_string(),
             ..Default::default()
@@ -2609,6 +2658,7 @@ fn two_commits_no_signoff_in_first_remediation_commit_different_name_in_signoff_
             ..Default::default()
         },
         head_ref: "main".to_string(),
+        members: vec![],
     };
     let output = check(&input);
 
@@ -2636,12 +2686,12 @@ fn two_commits_no_signoff_in_first_remediation_commit_different_name_in_signoff_
 #[test]
 fn two_commits_no_signoff_in_first_remediation_commit_different_email_in_signoff_in_second() {
     let commit1 = Commit {
-        author: Some(GitUser {
+        author: Some(User {
             name: "user1".to_string(),
             email: "user1@email.test".to_string(),
             ..Default::default()
         }),
-        committer: Some(GitUser {
+        committer: Some(User {
             name: "user1".to_string(),
             email: "user1@email.test".to_string(),
             ..Default::default()
@@ -2651,12 +2701,12 @@ fn two_commits_no_signoff_in_first_remediation_commit_different_email_in_signoff
         ..Default::default()
     };
     let commit2 = Commit {
-        author: Some(GitUser {
+        author: Some(User {
             name: "user1".to_string(),
             email: "user1@email.test".to_string(),
             ..Default::default()
         }),
-        committer: Some(GitUser {
+        committer: Some(User {
             name: "user1".to_string(),
             email: "user1@email.test".to_string(),
             ..Default::default()
@@ -2682,6 +2732,7 @@ fn two_commits_no_signoff_in_first_remediation_commit_different_email_in_signoff
             ..Default::default()
         },
         head_ref: "main".to_string(),
+        members: vec![],
     };
     let output = check(&input);
 
@@ -2709,12 +2760,12 @@ fn two_commits_no_signoff_in_first_remediation_commit_different_email_in_signoff
 #[test]
 fn two_commits_no_signoff_in_first_remediation_commit_different_name_and_email_in_signoff_in_second() {
     let commit1 = Commit {
-        author: Some(GitUser {
+        author: Some(User {
             name: "user1".to_string(),
             email: "user1@email.test".to_string(),
             ..Default::default()
         }),
-        committer: Some(GitUser {
+        committer: Some(User {
             name: "user1".to_string(),
             email: "user1@email.test".to_string(),
             ..Default::default()
@@ -2724,12 +2775,12 @@ fn two_commits_no_signoff_in_first_remediation_commit_different_name_and_email_i
         ..Default::default()
     };
     let commit2 = Commit {
-        author: Some(GitUser {
+        author: Some(User {
             name: "user1".to_string(),
             email: "user1@email.test".to_string(),
             ..Default::default()
         }),
-        committer: Some(GitUser {
+        committer: Some(User {
             name: "user1".to_string(),
             email: "user1@email.test".to_string(),
             ..Default::default()
@@ -2755,6 +2806,7 @@ fn two_commits_no_signoff_in_first_remediation_commit_different_name_and_email_i
             ..Default::default()
         },
         head_ref: "main".to_string(),
+        members: vec![],
     };
     let output = check(&input);
 
@@ -2782,12 +2834,12 @@ fn two_commits_no_signoff_in_first_remediation_commit_different_name_and_email_i
 #[test]
 fn two_commits_no_signoff_in_first_remediation_commit_different_name_in_remediation_in_second() {
     let commit1 = Commit {
-        author: Some(GitUser {
+        author: Some(User {
             name: "user1".to_string(),
             email: "user1@email.test".to_string(),
             ..Default::default()
         }),
-        committer: Some(GitUser {
+        committer: Some(User {
             name: "user1".to_string(),
             email: "user1@email.test".to_string(),
             ..Default::default()
@@ -2797,12 +2849,12 @@ fn two_commits_no_signoff_in_first_remediation_commit_different_name_in_remediat
         ..Default::default()
     };
     let commit2 = Commit {
-        author: Some(GitUser {
+        author: Some(User {
             name: "user1".to_string(),
             email: "user1@email.test".to_string(),
             ..Default::default()
         }),
-        committer: Some(GitUser {
+        committer: Some(User {
             name: "user1".to_string(),
             email: "user1@email.test".to_string(),
             ..Default::default()
@@ -2828,6 +2880,7 @@ fn two_commits_no_signoff_in_first_remediation_commit_different_name_in_remediat
             ..Default::default()
         },
         head_ref: "main".to_string(),
+        members: vec![],
     };
     let output = check(&input);
 
@@ -2855,12 +2908,12 @@ fn two_commits_no_signoff_in_first_remediation_commit_different_name_in_remediat
 #[test]
 fn two_commits_no_signoff_in_first_remediation_commit_different_email_in_remediation_in_second() {
     let commit1 = Commit {
-        author: Some(GitUser {
+        author: Some(User {
             name: "user1".to_string(),
             email: "user1@email.test".to_string(),
             ..Default::default()
         }),
-        committer: Some(GitUser {
+        committer: Some(User {
             name: "user1".to_string(),
             email: "user1@email.test".to_string(),
             ..Default::default()
@@ -2870,12 +2923,12 @@ fn two_commits_no_signoff_in_first_remediation_commit_different_email_in_remedia
         ..Default::default()
     };
     let commit2 = Commit {
-        author: Some(GitUser {
+        author: Some(User {
             name: "user1".to_string(),
             email: "user1@email.test".to_string(),
             ..Default::default()
         }),
-        committer: Some(GitUser {
+        committer: Some(User {
             name: "user1".to_string(),
             email: "user1@email.test".to_string(),
             ..Default::default()
@@ -2901,6 +2954,7 @@ fn two_commits_no_signoff_in_first_remediation_commit_different_email_in_remedia
             ..Default::default()
         },
         head_ref: "main".to_string(),
+        members: vec![],
     };
     let output = check(&input);
 
@@ -2928,12 +2982,12 @@ fn two_commits_no_signoff_in_first_remediation_commit_different_email_in_remedia
 #[test]
 fn two_commits_no_signoff_in_first_remediation_commit_different_name_and_email_in_remediation_in_second() {
     let commit1 = Commit {
-        author: Some(GitUser {
+        author: Some(User {
             name: "user1".to_string(),
             email: "user1@email.test".to_string(),
             ..Default::default()
         }),
-        committer: Some(GitUser {
+        committer: Some(User {
             name: "user1".to_string(),
             email: "user1@email.test".to_string(),
             ..Default::default()
@@ -2943,12 +2997,12 @@ fn two_commits_no_signoff_in_first_remediation_commit_different_name_and_email_i
         ..Default::default()
     };
     let commit2 = Commit {
-        author: Some(GitUser {
+        author: Some(User {
             name: "user1".to_string(),
             email: "user1@email.test".to_string(),
             ..Default::default()
         }),
-        committer: Some(GitUser {
+        committer: Some(User {
             name: "user1".to_string(),
             email: "user1@email.test".to_string(),
             ..Default::default()
@@ -2974,6 +3028,7 @@ fn two_commits_no_signoff_in_first_remediation_commit_different_name_and_email_i
             ..Default::default()
         },
         head_ref: "main".to_string(),
+        members: vec![],
     };
     let output = check(&input);
 
@@ -3001,12 +3056,12 @@ fn two_commits_no_signoff_in_first_remediation_commit_different_name_and_email_i
 #[test]
 fn two_commits_no_signoff_in_first_remediation_commit_sha_mismatch_in_second() {
     let commit1 = Commit {
-        author: Some(GitUser {
+        author: Some(User {
             name: "user1".to_string(),
             email: "user1@email.test".to_string(),
             ..Default::default()
         }),
-        committer: Some(GitUser {
+        committer: Some(User {
             name: "user1".to_string(),
             email: "user1@email.test".to_string(),
             ..Default::default()
@@ -3016,12 +3071,12 @@ fn two_commits_no_signoff_in_first_remediation_commit_sha_mismatch_in_second() {
         ..Default::default()
     };
     let commit2 = Commit {
-        author: Some(GitUser {
+        author: Some(User {
             name: "user1".to_string(),
             email: "user1@email.test".to_string(),
             ..Default::default()
         }),
-        committer: Some(GitUser {
+        committer: Some(User {
             name: "user1".to_string(),
             email: "user1@email.test".to_string(),
             ..Default::default()
@@ -3047,6 +3102,7 @@ fn two_commits_no_signoff_in_first_remediation_commit_sha_mismatch_in_second() {
             ..Default::default()
         },
         head_ref: "main".to_string(),
+        members: vec![],
     };
     let output = check(&input);
 
@@ -3075,12 +3131,12 @@ fn two_commits_no_signoff_in_first_remediation_commit_sha_mismatch_in_second() {
 fn two_commits_no_signoff_in_first_3p_valid_remediation_commit_in_second_but_remediation_not_enabled_in_config(
 ) {
     let commit1 = Commit {
-        author: Some(GitUser {
+        author: Some(User {
             name: "user1".to_string(),
             email: "user1@email.test".to_string(),
             ..Default::default()
         }),
-        committer: Some(GitUser {
+        committer: Some(User {
             name: "user1".to_string(),
             email: "user1@email.test".to_string(),
             ..Default::default()
@@ -3090,12 +3146,12 @@ fn two_commits_no_signoff_in_first_3p_valid_remediation_commit_in_second_but_rem
         ..Default::default()
     };
     let commit2 = Commit {
-        author: Some(GitUser {
+        author: Some(User {
             name: "user2".to_string(),
             email: "user2@email.test".to_string(),
             ..Default::default()
         }),
-        committer: Some(GitUser {
+        committer: Some(User {
             name: "user2".to_string(),
             email: "user2@email.test".to_string(),
             ..Default::default()
@@ -3115,6 +3171,7 @@ fn two_commits_no_signoff_in_first_3p_valid_remediation_commit_in_second_but_rem
         commits: vec![commit1.clone(), commit2.clone()],
         config: Default::default(),
         head_ref: "main".to_string(),
+        members: vec![],
     };
     let output = check(&input);
 
@@ -3143,12 +3200,12 @@ fn two_commits_no_signoff_in_first_3p_valid_remediation_commit_in_second_but_rem
 fn two_commits_no_signoff_in_first_3p_valid_remediation_commit_in_second_but_3p_remediation_not_enabled_in_config(
 ) {
     let commit1 = Commit {
-        author: Some(GitUser {
+        author: Some(User {
             name: "user1".to_string(),
             email: "user1@email.test".to_string(),
             ..Default::default()
         }),
-        committer: Some(GitUser {
+        committer: Some(User {
             name: "user1".to_string(),
             email: "user1@email.test".to_string(),
             ..Default::default()
@@ -3158,12 +3215,12 @@ fn two_commits_no_signoff_in_first_3p_valid_remediation_commit_in_second_but_3p_
         ..Default::default()
     };
     let commit2 = Commit {
-        author: Some(GitUser {
+        author: Some(User {
             name: "user2".to_string(),
             email: "user2@email.test".to_string(),
             ..Default::default()
         }),
-        committer: Some(GitUser {
+        committer: Some(User {
             name: "user2".to_string(),
             email: "user2@email.test".to_string(),
             ..Default::default()
@@ -3189,6 +3246,7 @@ fn two_commits_no_signoff_in_first_3p_valid_remediation_commit_in_second_but_3p_
             ..Default::default()
         },
         head_ref: "main".to_string(),
+        members: vec![],
     };
     let output = check(&input);
 
@@ -3216,12 +3274,12 @@ fn two_commits_no_signoff_in_first_3p_valid_remediation_commit_in_second_but_3p_
 #[test]
 fn two_commits_no_signoff_in_first_3p_valid_remediation_commit_from_same_author_and_committer_in_second() {
     let commit1 = Commit {
-        author: Some(GitUser {
+        author: Some(User {
             name: "user1".to_string(),
             email: "user1@email.test".to_string(),
             ..Default::default()
         }),
-        committer: Some(GitUser {
+        committer: Some(User {
             name: "user1".to_string(),
             email: "user1@email.test".to_string(),
             ..Default::default()
@@ -3231,12 +3289,12 @@ fn two_commits_no_signoff_in_first_3p_valid_remediation_commit_from_same_author_
         ..Default::default()
     };
     let commit2 = Commit {
-        author: Some(GitUser {
+        author: Some(User {
             name: "user1".to_string(),
             email: "user1@email.test".to_string(),
             ..Default::default()
         }),
-        committer: Some(GitUser {
+        committer: Some(User {
             name: "user1".to_string(),
             email: "user1@email.test".to_string(),
             ..Default::default()
@@ -3262,6 +3320,7 @@ fn two_commits_no_signoff_in_first_3p_valid_remediation_commit_from_same_author_
             ..Default::default()
         },
         head_ref: "main".to_string(),
+        members: vec![],
     };
     let output = check(&input);
 
@@ -3290,12 +3349,12 @@ fn two_commits_no_signoff_in_first_3p_valid_remediation_commit_from_same_author_
 fn two_commits_no_signoff_in_first_3p_valid_remediation_commit_from_different_author_and_committer_in_second()
 {
     let commit1 = Commit {
-        author: Some(GitUser {
+        author: Some(User {
             name: "user1".to_string(),
             email: "user1@email.test".to_string(),
             ..Default::default()
         }),
-        committer: Some(GitUser {
+        committer: Some(User {
             name: "user1".to_string(),
             email: "user1@email.test".to_string(),
             ..Default::default()
@@ -3305,12 +3364,12 @@ fn two_commits_no_signoff_in_first_3p_valid_remediation_commit_from_different_au
         ..Default::default()
     };
     let commit2 = Commit {
-        author: Some(GitUser {
+        author: Some(User {
             name: "user2".to_string(),
             email: "user2@email.test".to_string(),
             ..Default::default()
         }),
-        committer: Some(GitUser {
+        committer: Some(User {
             name: "user2".to_string(),
             email: "user2@email.test".to_string(),
             ..Default::default()
@@ -3336,6 +3395,7 @@ fn two_commits_no_signoff_in_first_3p_valid_remediation_commit_from_different_au
             ..Default::default()
         },
         head_ref: "main".to_string(),
+        members: vec![],
     };
     let output = check(&input);
 
@@ -3363,12 +3423,12 @@ fn two_commits_no_signoff_in_first_3p_valid_remediation_commit_from_different_au
 #[test]
 fn two_commits_no_signoff_in_first_3p_valid_remediation_commit_from_committer_in_second() {
     let commit1 = Commit {
-        author: Some(GitUser {
+        author: Some(User {
             name: "user1".to_string(),
             email: "user1@email.test".to_string(),
             ..Default::default()
         }),
-        committer: Some(GitUser {
+        committer: Some(User {
             name: "user2".to_string(),
             email: "user2@email.test".to_string(),
             ..Default::default()
@@ -3378,12 +3438,12 @@ fn two_commits_no_signoff_in_first_3p_valid_remediation_commit_from_committer_in
         ..Default::default()
     };
     let commit2 = Commit {
-        author: Some(GitUser {
+        author: Some(User {
             name: "user2".to_string(),
             email: "user2@email.test".to_string(),
             ..Default::default()
         }),
-        committer: Some(GitUser {
+        committer: Some(User {
             name: "user2".to_string(),
             email: "user2@email.test".to_string(),
             ..Default::default()
@@ -3409,6 +3469,7 @@ fn two_commits_no_signoff_in_first_3p_valid_remediation_commit_from_committer_in
             ..Default::default()
         },
         head_ref: "main".to_string(),
+        members: vec![],
     };
     let output = check(&input);
 
@@ -3436,12 +3497,12 @@ fn two_commits_no_signoff_in_first_3p_valid_remediation_commit_from_committer_in
 #[test]
 fn two_commits_no_signoff_in_first_3p_valid_remediation_commit_in_second_individual_remediations_disabled() {
     let commit1 = Commit {
-        author: Some(GitUser {
+        author: Some(User {
             name: "user1".to_string(),
             email: "user1@email.test".to_string(),
             ..Default::default()
         }),
-        committer: Some(GitUser {
+        committer: Some(User {
             name: "user1".to_string(),
             email: "user1@email.test".to_string(),
             ..Default::default()
@@ -3451,12 +3512,12 @@ fn two_commits_no_signoff_in_first_3p_valid_remediation_commit_in_second_individ
         ..Default::default()
     };
     let commit2 = Commit {
-        author: Some(GitUser {
+        author: Some(User {
             name: "user1".to_string(),
             email: "user1@email.test".to_string(),
             ..Default::default()
         }),
-        committer: Some(GitUser {
+        committer: Some(User {
             name: "user1".to_string(),
             email: "user1@email.test".to_string(),
             ..Default::default()
@@ -3482,6 +3543,7 @@ fn two_commits_no_signoff_in_first_3p_valid_remediation_commit_in_second_individ
             ..Default::default()
         },
         head_ref: "main".to_string(),
+        members: vec![],
     };
     let output = check(&input);
 
@@ -3509,12 +3571,12 @@ fn two_commits_no_signoff_in_first_3p_valid_remediation_commit_in_second_individ
 #[test]
 fn two_commits_no_signoff_in_first_3p_remediation_commit_declarant_name_mismatch_in_second() {
     let commit1 = Commit {
-        author: Some(GitUser {
+        author: Some(User {
             name: "user1".to_string(),
             email: "user1@email.test".to_string(),
             ..Default::default()
         }),
-        committer: Some(GitUser {
+        committer: Some(User {
             name: "user1".to_string(),
             email: "user1@email.test".to_string(),
             ..Default::default()
@@ -3524,12 +3586,12 @@ fn two_commits_no_signoff_in_first_3p_remediation_commit_declarant_name_mismatch
         ..Default::default()
     };
     let commit2 = Commit {
-        author: Some(GitUser {
+        author: Some(User {
             name: "user1".to_string(),
             email: "user1@email.test".to_string(),
             ..Default::default()
         }),
-        committer: Some(GitUser {
+        committer: Some(User {
             name: "user1".to_string(),
             email: "user1@email.test".to_string(),
             ..Default::default()
@@ -3555,6 +3617,7 @@ fn two_commits_no_signoff_in_first_3p_remediation_commit_declarant_name_mismatch
             ..Default::default()
         },
         head_ref: "main".to_string(),
+        members: vec![],
     };
     let output = check(&input);
 
@@ -3582,12 +3645,12 @@ fn two_commits_no_signoff_in_first_3p_remediation_commit_declarant_name_mismatch
 #[test]
 fn two_commits_no_signoff_in_first_3p_remediation_commit_declarant_email_mismatch_in_second() {
     let commit1 = Commit {
-        author: Some(GitUser {
+        author: Some(User {
             name: "user1".to_string(),
             email: "user1@email.test".to_string(),
             ..Default::default()
         }),
-        committer: Some(GitUser {
+        committer: Some(User {
             name: "user1".to_string(),
             email: "user1@email.test".to_string(),
             ..Default::default()
@@ -3597,12 +3660,12 @@ fn two_commits_no_signoff_in_first_3p_remediation_commit_declarant_email_mismatc
         ..Default::default()
     };
     let commit2 = Commit {
-        author: Some(GitUser {
+        author: Some(User {
             name: "user1".to_string(),
             email: "user1@email.test".to_string(),
             ..Default::default()
         }),
-        committer: Some(GitUser {
+        committer: Some(User {
             name: "user1".to_string(),
             email: "user1@email.test".to_string(),
             ..Default::default()
@@ -3628,6 +3691,7 @@ fn two_commits_no_signoff_in_first_3p_remediation_commit_declarant_email_mismatc
             ..Default::default()
         },
         head_ref: "main".to_string(),
+        members: vec![],
     };
     let output = check(&input);
 
@@ -3655,12 +3719,12 @@ fn two_commits_no_signoff_in_first_3p_remediation_commit_declarant_email_mismatc
 #[test]
 fn two_commits_no_signoff_in_first_3p_remediation_commit_sha_mismatch_in_second() {
     let commit1 = Commit {
-        author: Some(GitUser {
+        author: Some(User {
             name: "user1".to_string(),
             email: "user1@email.test".to_string(),
             ..Default::default()
         }),
-        committer: Some(GitUser {
+        committer: Some(User {
             name: "user1".to_string(),
             email: "user1@email.test".to_string(),
             ..Default::default()
@@ -3670,12 +3734,12 @@ fn two_commits_no_signoff_in_first_3p_remediation_commit_sha_mismatch_in_second(
         ..Default::default()
     };
     let commit2 = Commit {
-        author: Some(GitUser {
+        author: Some(User {
             name: "user1".to_string(),
             email: "user1@email.test".to_string(),
             ..Default::default()
         }),
-        committer: Some(GitUser {
+        committer: Some(User {
             name: "user1".to_string(),
             email: "user1@email.test".to_string(),
             ..Default::default()
@@ -3701,6 +3765,7 @@ fn two_commits_no_signoff_in_first_3p_remediation_commit_sha_mismatch_in_second(
             ..Default::default()
         },
         head_ref: "main".to_string(),
+        members: vec![],
     };
     let output = check(&input);
 
@@ -3728,12 +3793,12 @@ fn two_commits_no_signoff_in_first_3p_remediation_commit_sha_mismatch_in_second(
 #[test]
 fn two_commits_no_signoff_in_first_invalid_3p_remediation_commit_in_second() {
     let commit1 = Commit {
-        author: Some(GitUser {
+        author: Some(User {
             name: "user1".to_string(),
             email: "user1@email.test".to_string(),
             ..Default::default()
         }),
-        committer: Some(GitUser {
+        committer: Some(User {
             name: "user1".to_string(),
             email: "user1@email.test".to_string(),
             ..Default::default()
@@ -3743,12 +3808,12 @@ fn two_commits_no_signoff_in_first_invalid_3p_remediation_commit_in_second() {
         ..Default::default()
     };
     let commit2 = Commit {
-        author: Some(GitUser {
+        author: Some(User {
             name: "user1".to_string(),
             email: "user1@email.test".to_string(),
             ..Default::default()
         }),
-        committer: Some(GitUser {
+        committer: Some(User {
             name: "user1".to_string(),
             email: "user1@email.test".to_string(),
             ..Default::default()
@@ -3774,6 +3839,7 @@ fn two_commits_no_signoff_in_first_invalid_3p_remediation_commit_in_second() {
             ..Default::default()
         },
         head_ref: "main".to_string(),
+        members: vec![],
     };
     let output = check(&input);
 
@@ -3801,12 +3867,12 @@ fn two_commits_no_signoff_in_first_invalid_3p_remediation_commit_in_second() {
 #[test]
 fn two_commits_no_signoff_in_first_3p_remediation_commit_representative_name_mismatch_in_second() {
     let commit1 = Commit {
-        author: Some(GitUser {
+        author: Some(User {
             name: "user1".to_string(),
             email: "user1@email.test".to_string(),
             ..Default::default()
         }),
-        committer: Some(GitUser {
+        committer: Some(User {
             name: "user1".to_string(),
             email: "user1@email.test".to_string(),
             ..Default::default()
@@ -3816,12 +3882,12 @@ fn two_commits_no_signoff_in_first_3p_remediation_commit_representative_name_mis
         ..Default::default()
     };
     let commit2 = Commit {
-        author: Some(GitUser {
+        author: Some(User {
             name: "user1".to_string(),
             email: "user1@email.test".to_string(),
             ..Default::default()
         }),
-        committer: Some(GitUser {
+        committer: Some(User {
             name: "user1".to_string(),
             email: "user1@email.test".to_string(),
             ..Default::default()
@@ -3847,6 +3913,7 @@ fn two_commits_no_signoff_in_first_3p_remediation_commit_representative_name_mis
             ..Default::default()
         },
         head_ref: "main".to_string(),
+        members: vec![],
     };
     let output = check(&input);
 
@@ -3874,12 +3941,12 @@ fn two_commits_no_signoff_in_first_3p_remediation_commit_representative_name_mis
 #[test]
 fn two_commits_no_signoff_in_first_3p_remediation_commit_representative_email_mismatch_in_second() {
     let commit1 = Commit {
-        author: Some(GitUser {
+        author: Some(User {
             name: "user1".to_string(),
             email: "user1@email.test".to_string(),
             ..Default::default()
         }),
-        committer: Some(GitUser {
+        committer: Some(User {
             name: "user1".to_string(),
             email: "user1@email.test".to_string(),
             ..Default::default()
@@ -3889,12 +3956,12 @@ fn two_commits_no_signoff_in_first_3p_remediation_commit_representative_email_mi
         ..Default::default()
     };
     let commit2 = Commit {
-        author: Some(GitUser {
+        author: Some(User {
             name: "user1".to_string(),
             email: "user1@email.test".to_string(),
             ..Default::default()
         }),
-        committer: Some(GitUser {
+        committer: Some(User {
             name: "user1".to_string(),
             email: "user1@email.test".to_string(),
             ..Default::default()
@@ -3920,6 +3987,7 @@ fn two_commits_no_signoff_in_first_3p_remediation_commit_representative_email_mi
             ..Default::default()
         },
         head_ref: "main".to_string(),
+        members: vec![],
     };
     let output = check(&input);
 
@@ -3947,12 +4015,12 @@ fn two_commits_no_signoff_in_first_3p_remediation_commit_representative_email_mi
 #[test]
 fn two_commits_no_signoff_in_first_3p_remediation_commit_no_signoff_in_second() {
     let commit1 = Commit {
-        author: Some(GitUser {
+        author: Some(User {
             name: "user1".to_string(),
             email: "user1@email.test".to_string(),
             ..Default::default()
         }),
-        committer: Some(GitUser {
+        committer: Some(User {
             name: "user1".to_string(),
             email: "user1@email.test".to_string(),
             ..Default::default()
@@ -3962,12 +4030,12 @@ fn two_commits_no_signoff_in_first_3p_remediation_commit_no_signoff_in_second() 
         ..Default::default()
     };
     let commit2 = Commit {
-        author: Some(GitUser {
+        author: Some(User {
             name: "user1".to_string(),
             email: "user1@email.test".to_string(),
             ..Default::default()
         }),
-        committer: Some(GitUser {
+        committer: Some(User {
             name: "user1".to_string(),
             email: "user1@email.test".to_string(),
             ..Default::default()
@@ -3991,6 +4059,7 @@ fn two_commits_no_signoff_in_first_3p_remediation_commit_no_signoff_in_second() 
             ..Default::default()
         },
         head_ref: "main".to_string(),
+        members: vec![],
     };
     let output = check(&input);
 
@@ -4018,12 +4087,12 @@ fn two_commits_no_signoff_in_first_3p_remediation_commit_no_signoff_in_second() 
 #[test]
 fn three_commits_valid_signoff_in_all() {
     let commit1 = Commit {
-        author: Some(GitUser {
+        author: Some(User {
             name: "user1".to_string(),
             email: "user1@email.test".to_string(),
             ..Default::default()
         }),
-        committer: Some(GitUser {
+        committer: Some(User {
             name: "user1".to_string(),
             email: "user1@email.test".to_string(),
             ..Default::default()
@@ -4043,6 +4112,7 @@ fn three_commits_valid_signoff_in_all() {
         commits: vec![commit1.clone(), commit2.clone(), commit3.clone()],
         config: Default::default(),
         head_ref: "main".to_string(),
+        members: vec![],
     };
     let output = check(&input);
 
@@ -4075,12 +4145,12 @@ fn three_commits_valid_signoff_in_all() {
 #[test]
 fn three_commits_valid_signoff_first_and_second_no_signoff_third() {
     let commit1 = Commit {
-        author: Some(GitUser {
+        author: Some(User {
             name: "user1".to_string(),
             email: "user1@email.test".to_string(),
             ..Default::default()
         }),
-        committer: Some(GitUser {
+        committer: Some(User {
             name: "user1".to_string(),
             email: "user1@email.test".to_string(),
             ..Default::default()
@@ -4095,12 +4165,12 @@ fn three_commits_valid_signoff_first_and_second_no_signoff_third() {
     };
     let commit2 = commit1.clone();
     let commit3 = Commit {
-        author: Some(GitUser {
+        author: Some(User {
             name: "user1".to_string(),
             email: "user1@email.test".to_string(),
             ..Default::default()
         }),
-        committer: Some(GitUser {
+        committer: Some(User {
             name: "user1".to_string(),
             email: "user1@email.test".to_string(),
             ..Default::default()
@@ -4113,6 +4183,7 @@ fn three_commits_valid_signoff_first_and_second_no_signoff_third() {
         commits: vec![commit1.clone(), commit2.clone(), commit3.clone()],
         config: Default::default(),
         head_ref: "main".to_string(),
+        members: vec![],
     };
     let output = check(&input);
 
@@ -4145,12 +4216,12 @@ fn three_commits_valid_signoff_first_and_second_no_signoff_third() {
 #[test]
 fn three_commits_invalid_signoff_first_no_signoff_second_valid_signoff_third() {
     let commit1 = Commit {
-        author: Some(GitUser {
+        author: Some(User {
             name: "user1".to_string(),
             email: "user1@email.test".to_string(),
             ..Default::default()
         }),
-        committer: Some(GitUser {
+        committer: Some(User {
             name: "user1".to_string(),
             email: "user1@email.test".to_string(),
             ..Default::default()
@@ -4164,12 +4235,12 @@ fn three_commits_invalid_signoff_first_no_signoff_second_valid_signoff_third() {
         ..Default::default()
     };
     let commit2 = Commit {
-        author: Some(GitUser {
+        author: Some(User {
             name: "user1".to_string(),
             email: "user1@email.test".to_string(),
             ..Default::default()
         }),
-        committer: Some(GitUser {
+        committer: Some(User {
             name: "user1".to_string(),
             email: "user1@email.test".to_string(),
             ..Default::default()
@@ -4178,12 +4249,12 @@ fn three_commits_invalid_signoff_first_no_signoff_second_valid_signoff_third() {
         ..Default::default()
     };
     let commit3 = Commit {
-        author: Some(GitUser {
+        author: Some(User {
             name: "user1".to_string(),
             email: "user1@email.test".to_string(),
             ..Default::default()
         }),
-        committer: Some(GitUser {
+        committer: Some(User {
             name: "user1".to_string(),
             email: "user1@email.test".to_string(),
             ..Default::default()
@@ -4201,6 +4272,7 @@ fn three_commits_invalid_signoff_first_no_signoff_second_valid_signoff_third() {
         commits: vec![commit1.clone(), commit2.clone(), commit3.clone()],
         config: Default::default(),
         head_ref: "main".to_string(),
+        members: vec![],
     };
     let output = check(&input);
 
@@ -4233,12 +4305,12 @@ fn three_commits_invalid_signoff_first_no_signoff_second_valid_signoff_third() {
 #[test]
 fn three_commits_valid_signoff_first_invalid_signoff_second_valid_signoff_third() {
     let commit1 = Commit {
-        author: Some(GitUser {
+        author: Some(User {
             name: "user1".to_string(),
             email: "user1@email.test".to_string(),
             ..Default::default()
         }),
-        committer: Some(GitUser {
+        committer: Some(User {
             name: "user1".to_string(),
             email: "user1@email.test".to_string(),
             ..Default::default()
@@ -4252,12 +4324,12 @@ fn three_commits_valid_signoff_first_invalid_signoff_second_valid_signoff_third(
         ..Default::default()
     };
     let commit2 = Commit {
-        author: Some(GitUser {
+        author: Some(User {
             name: "user1".to_string(),
             email: "user1@email.test".to_string(),
             ..Default::default()
         }),
-        committer: Some(GitUser {
+        committer: Some(User {
             name: "user1".to_string(),
             email: "user1@email.test".to_string(),
             ..Default::default()
@@ -4276,6 +4348,7 @@ fn three_commits_valid_signoff_first_invalid_signoff_second_valid_signoff_third(
         commits: vec![commit1.clone(), commit2.clone(), commit3.clone()],
         config: Default::default(),
         head_ref: "main".to_string(),
+        members: vec![],
     };
     let output = check(&input);
 
@@ -4309,12 +4382,12 @@ fn three_commits_valid_signoff_first_invalid_signoff_second_valid_signoff_third(
 fn three_commits_no_signoff_in_first_remediation_commit_without_signoff_in_second_valid_remediation_commit_in_third(
 ) {
     let commit1 = Commit {
-        author: Some(GitUser {
+        author: Some(User {
             name: "user1".to_string(),
             email: "user1@email.test".to_string(),
             ..Default::default()
         }),
-        committer: Some(GitUser {
+        committer: Some(User {
             name: "user1".to_string(),
             email: "user1@email.test".to_string(),
             ..Default::default()
@@ -4324,12 +4397,12 @@ fn three_commits_no_signoff_in_first_remediation_commit_without_signoff_in_secon
         ..Default::default()
     };
     let commit2 = Commit {
-        author: Some(GitUser {
+        author: Some(User {
             name: "user1".to_string(),
             email: "user1@email.test".to_string(),
             ..Default::default()
         }),
-        committer: Some(GitUser {
+        committer: Some(User {
             name: "user1".to_string(),
             email: "user1@email.test".to_string(),
             ..Default::default()
@@ -4344,12 +4417,12 @@ fn three_commits_no_signoff_in_first_remediation_commit_without_signoff_in_secon
         ..Default::default()
     };
     let commit3 = Commit {
-        author: Some(GitUser {
+        author: Some(User {
             name: "user1".to_string(),
             email: "user1@email.test".to_string(),
             ..Default::default()
         }),
-        committer: Some(GitUser {
+        committer: Some(User {
             name: "user1".to_string(),
             email: "user1@email.test".to_string(),
             ..Default::default()
@@ -4375,6 +4448,7 @@ fn three_commits_no_signoff_in_first_remediation_commit_without_signoff_in_secon
             ..Default::default()
         },
         head_ref: "main".to_string(),
+        members: vec![],
     };
     let output = check(&input);
 
@@ -4407,12 +4481,12 @@ fn three_commits_no_signoff_in_first_remediation_commit_without_signoff_in_secon
 #[test]
 fn three_commits_no_signoff_in_first_no_signoff_in_second_valid_remediation_commit_for_both_in_third() {
     let commit1 = Commit {
-        author: Some(GitUser {
+        author: Some(User {
             name: "user1".to_string(),
             email: "user1@email.test".to_string(),
             ..Default::default()
         }),
-        committer: Some(GitUser {
+        committer: Some(User {
             name: "user1".to_string(),
             email: "user1@email.test".to_string(),
             ..Default::default()
@@ -4422,12 +4496,12 @@ fn three_commits_no_signoff_in_first_no_signoff_in_second_valid_remediation_comm
         ..Default::default()
     };
     let commit2 = Commit {
-        author: Some(GitUser {
+        author: Some(User {
             name: "user1".to_string(),
             email: "user1@email.test".to_string(),
             ..Default::default()
         }),
-        committer: Some(GitUser {
+        committer: Some(User {
             name: "user1".to_string(),
             email: "user1@email.test".to_string(),
             ..Default::default()
@@ -4437,12 +4511,12 @@ fn three_commits_no_signoff_in_first_no_signoff_in_second_valid_remediation_comm
         ..Default::default()
     };
     let commit3 = Commit {
-        author: Some(GitUser {
+        author: Some(User {
             name: "user1".to_string(),
             email: "user1@email.test".to_string(),
             ..Default::default()
         }),
-        committer: Some(GitUser {
+        committer: Some(User {
             name: "user1".to_string(),
             email: "user1@email.test".to_string(),
             ..Default::default()
@@ -4469,6 +4543,7 @@ fn three_commits_no_signoff_in_first_no_signoff_in_second_valid_remediation_comm
             ..Default::default()
         },
         head_ref: "main".to_string(),
+        members: vec![],
     };
     let output = check(&input);
 
@@ -4502,12 +4577,12 @@ fn three_commits_no_signoff_in_first_no_signoff_in_second_valid_remediation_comm
 fn three_commits_valid_signoff_in_first_redundant_remediation_commit_in_second_redundant_3p_remediation_commit_in_third(
 ) {
     let commit1 = Commit {
-        author: Some(GitUser {
+        author: Some(User {
             name: "user1".to_string(),
             email: "user1@email.test".to_string(),
             ..Default::default()
         }),
-        committer: Some(GitUser {
+        committer: Some(User {
             name: "user1".to_string(),
             email: "user1@email.test".to_string(),
             ..Default::default()
@@ -4522,12 +4597,12 @@ fn three_commits_valid_signoff_in_first_redundant_remediation_commit_in_second_r
         ..Default::default()
     };
     let commit2 = Commit {
-        author: Some(GitUser {
+        author: Some(User {
             name: "user1".to_string(),
             email: "user1@email.test".to_string(),
             ..Default::default()
         }),
-        committer: Some(GitUser {
+        committer: Some(User {
             name: "user1".to_string(),
             email: "user1@email.test".to_string(),
             ..Default::default()
@@ -4544,12 +4619,12 @@ fn three_commits_valid_signoff_in_first_redundant_remediation_commit_in_second_r
         ..Default::default()
     };
     let commit3 = Commit {
-        author: Some(GitUser {
+        author: Some(User {
             name: "user1".to_string(),
             email: "user1@email.test".to_string(),
             ..Default::default()
         }),
-        committer: Some(GitUser {
+        committer: Some(User {
             name: "user1".to_string(),
             email: "user1@email.test".to_string(),
             ..Default::default()
@@ -4575,6 +4650,7 @@ fn three_commits_valid_signoff_in_first_redundant_remediation_commit_in_second_r
             ..Default::default()
         },
         head_ref: "main".to_string(),
+        members: vec![],
     };
     let output = check(&input);
 
@@ -4608,12 +4684,12 @@ fn three_commits_valid_signoff_in_first_redundant_remediation_commit_in_second_r
 fn three_commits_no_signoff_in_first_valid_remediation_commit_in_second_redundant_3p_remediation_commit_in_third(
 ) {
     let commit1 = Commit {
-        author: Some(GitUser {
+        author: Some(User {
             name: "user1".to_string(),
             email: "user1@email.test".to_string(),
             ..Default::default()
         }),
-        committer: Some(GitUser {
+        committer: Some(User {
             name: "user1".to_string(),
             email: "user1@email.test".to_string(),
             ..Default::default()
@@ -4623,12 +4699,12 @@ fn three_commits_no_signoff_in_first_valid_remediation_commit_in_second_redundan
         ..Default::default()
     };
     let commit2 = Commit {
-        author: Some(GitUser {
+        author: Some(User {
             name: "user1".to_string(),
             email: "user1@email.test".to_string(),
             ..Default::default()
         }),
-        committer: Some(GitUser {
+        committer: Some(User {
             name: "user1".to_string(),
             email: "user1@email.test".to_string(),
             ..Default::default()
@@ -4645,12 +4721,12 @@ fn three_commits_no_signoff_in_first_valid_remediation_commit_in_second_redundan
         ..Default::default()
     };
     let commit3 = Commit {
-        author: Some(GitUser {
+        author: Some(User {
             name: "user1".to_string(),
             email: "user1@email.test".to_string(),
             ..Default::default()
         }),
-        committer: Some(GitUser {
+        committer: Some(User {
             name: "user1".to_string(),
             email: "user1@email.test".to_string(),
             ..Default::default()
@@ -4676,6 +4752,7 @@ fn three_commits_no_signoff_in_first_valid_remediation_commit_in_second_redundan
             ..Default::default()
         },
         head_ref: "main".to_string(),
+        members: vec![],
     };
     let output = check(&input);
 
@@ -4709,12 +4786,12 @@ fn three_commits_no_signoff_in_first_valid_remediation_commit_in_second_redundan
 fn three_commits_no_signoff_in_first_remediation_commit_no_signoff_in_second_valid_3p_remediation_commit_in_third(
 ) {
     let commit1 = Commit {
-        author: Some(GitUser {
+        author: Some(User {
             name: "user1".to_string(),
             email: "user1@email.test".to_string(),
             ..Default::default()
         }),
-        committer: Some(GitUser {
+        committer: Some(User {
             name: "user1".to_string(),
             email: "user1@email.test".to_string(),
             ..Default::default()
@@ -4724,12 +4801,12 @@ fn three_commits_no_signoff_in_first_remediation_commit_no_signoff_in_second_val
         ..Default::default()
     };
     let commit2 = Commit {
-        author: Some(GitUser {
+        author: Some(User {
             name: "user1".to_string(),
             email: "user1@email.test".to_string(),
             ..Default::default()
         }),
-        committer: Some(GitUser {
+        committer: Some(User {
             name: "user1".to_string(),
             email: "user1@email.test".to_string(),
             ..Default::default()
@@ -4744,12 +4821,12 @@ fn three_commits_no_signoff_in_first_remediation_commit_no_signoff_in_second_val
         ..Default::default()
     };
     let commit3 = Commit {
-        author: Some(GitUser {
+        author: Some(User {
             name: "user1".to_string(),
             email: "user1@email.test".to_string(),
             ..Default::default()
         }),
-        committer: Some(GitUser {
+        committer: Some(User {
             name: "user1".to_string(),
             email: "user1@email.test".to_string(),
             ..Default::default()
@@ -4775,6 +4852,7 @@ fn three_commits_no_signoff_in_first_remediation_commit_no_signoff_in_second_val
             ..Default::default()
         },
         head_ref: "main".to_string(),
+        members: vec![],
     };
     let output = check(&input);
 
@@ -4808,12 +4886,12 @@ fn three_commits_no_signoff_in_first_remediation_commit_no_signoff_in_second_val
 fn three_commits_no_signoff_in_first_3p_remediation_commit_no_signoff_in_second_valid_remediation_commit_in_third(
 ) {
     let commit1 = Commit {
-        author: Some(GitUser {
+        author: Some(User {
             name: "user1".to_string(),
             email: "user1@email.test".to_string(),
             ..Default::default()
         }),
-        committer: Some(GitUser {
+        committer: Some(User {
             name: "user1".to_string(),
             email: "user1@email.test".to_string(),
             ..Default::default()
@@ -4823,12 +4901,12 @@ fn three_commits_no_signoff_in_first_3p_remediation_commit_no_signoff_in_second_
         ..Default::default()
     };
     let commit2 = Commit {
-        author: Some(GitUser {
+        author: Some(User {
             name: "user1".to_string(),
             email: "user1@email.test".to_string(),
             ..Default::default()
         }),
-        committer: Some(GitUser {
+        committer: Some(User {
             name: "user1".to_string(),
             email: "user1@email.test".to_string(),
             ..Default::default()
@@ -4843,12 +4921,12 @@ fn three_commits_no_signoff_in_first_3p_remediation_commit_no_signoff_in_second_
         ..Default::default()
     };
     let commit3 = Commit {
-        author: Some(GitUser {
+        author: Some(User {
             name: "user1".to_string(),
             email: "user1@email.test".to_string(),
             ..Default::default()
         }),
-        committer: Some(GitUser {
+        committer: Some(User {
             name: "user1".to_string(),
             email: "user1@email.test".to_string(),
             ..Default::default()
@@ -4874,6 +4952,7 @@ fn three_commits_no_signoff_in_first_3p_remediation_commit_no_signoff_in_second_
             ..Default::default()
         },
         head_ref: "main".to_string(),
+        members: vec![],
     };
     let output = check(&input);
 
@@ -4907,12 +4986,12 @@ fn three_commits_no_signoff_in_first_3p_remediation_commit_no_signoff_in_second_
 fn three_commits_no_signoff_in_first_3p_remediation_commit_no_signoff_in_second_valid_3p_remediation_commit_in_third(
 ) {
     let commit1 = Commit {
-        author: Some(GitUser {
+        author: Some(User {
             name: "user1".to_string(),
             email: "user1@email.test".to_string(),
             ..Default::default()
         }),
-        committer: Some(GitUser {
+        committer: Some(User {
             name: "user1".to_string(),
             email: "user1@email.test".to_string(),
             ..Default::default()
@@ -4922,12 +5001,12 @@ fn three_commits_no_signoff_in_first_3p_remediation_commit_no_signoff_in_second_
         ..Default::default()
     };
     let commit2 = Commit {
-        author: Some(GitUser {
+        author: Some(User {
             name: "user1".to_string(),
             email: "user1@email.test".to_string(),
             ..Default::default()
         }),
-        committer: Some(GitUser {
+        committer: Some(User {
             name: "user1".to_string(),
             email: "user1@email.test".to_string(),
             ..Default::default()
@@ -4942,12 +5021,12 @@ fn three_commits_no_signoff_in_first_3p_remediation_commit_no_signoff_in_second_
         ..Default::default()
     };
     let commit3 = Commit {
-        author: Some(GitUser {
+        author: Some(User {
             name: "user1".to_string(),
             email: "user1@email.test".to_string(),
             ..Default::default()
         }),
-        committer: Some(GitUser {
+        committer: Some(User {
             name: "user1".to_string(),
             email: "user1@email.test".to_string(),
             ..Default::default()
@@ -4973,6 +5052,7 @@ fn three_commits_no_signoff_in_first_3p_remediation_commit_no_signoff_in_second_
             ..Default::default()
         },
         head_ref: "main".to_string(),
+        members: vec![],
     };
     let output = check(&input);
 
@@ -5006,12 +5086,12 @@ fn three_commits_no_signoff_in_first_3p_remediation_commit_no_signoff_in_second_
 fn three_commits_no_signoff_in_first_3p_remediation_commit_no_signoff_in_second_3p_remediation_commit_no_signoff_in_third(
 ) {
     let commit1 = Commit {
-        author: Some(GitUser {
+        author: Some(User {
             name: "user1".to_string(),
             email: "user1@email.test".to_string(),
             ..Default::default()
         }),
-        committer: Some(GitUser {
+        committer: Some(User {
             name: "user1".to_string(),
             email: "user1@email.test".to_string(),
             ..Default::default()
@@ -5021,12 +5101,12 @@ fn three_commits_no_signoff_in_first_3p_remediation_commit_no_signoff_in_second_
         ..Default::default()
     };
     let commit2 = Commit {
-        author: Some(GitUser {
+        author: Some(User {
             name: "user1".to_string(),
             email: "user1@email.test".to_string(),
             ..Default::default()
         }),
-        committer: Some(GitUser {
+        committer: Some(User {
             name: "user1".to_string(),
             email: "user1@email.test".to_string(),
             ..Default::default()
@@ -5041,12 +5121,12 @@ fn three_commits_no_signoff_in_first_3p_remediation_commit_no_signoff_in_second_
         ..Default::default()
     };
     let commit3 = Commit {
-        author: Some(GitUser {
+        author: Some(User {
             name: "user1".to_string(),
             email: "user1@email.test".to_string(),
             ..Default::default()
         }),
-        committer: Some(GitUser {
+        committer: Some(User {
             name: "user1".to_string(),
             email: "user1@email.test".to_string(),
             ..Default::default()
@@ -5070,6 +5150,7 @@ fn three_commits_no_signoff_in_first_3p_remediation_commit_no_signoff_in_second_
             ..Default::default()
         },
         head_ref: "main".to_string(),
+        members: vec![],
     };
     let output = check(&input);
 
