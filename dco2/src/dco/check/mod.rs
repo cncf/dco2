@@ -27,6 +27,7 @@ pub(crate) struct CheckInput {
 #[template(path = "output.md", whitespace = "suppress")]
 pub(crate) struct CheckOutput {
     pub commits: Vec<CommitCheckOutput>,
+    pub config: Config,
     pub head_ref: String,
     pub num_commits_with_errors: usize,
 }
@@ -93,6 +94,7 @@ impl Display for CommitSuccessReason {
 pub(crate) fn check(input: &CheckInput) -> CheckOutput {
     let mut output = CheckOutput {
         commits: Vec::new(),
+        config: input.config.clone(),
         head_ref: input.head_ref.clone(),
         num_commits_with_errors: 0,
     };

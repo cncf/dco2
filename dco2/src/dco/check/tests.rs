@@ -29,6 +29,7 @@ fn single_commit_no_signoff_is_merge_commit() {
                 errors: vec![],
                 success_reason: Some(CommitSuccessReason::IsMerge),
             }],
+            config: Default::default(),
             head_ref: "main".to_string(),
             num_commits_with_errors: 0,
         }
@@ -61,6 +62,7 @@ fn single_commit_no_signoff_author_is_bot() {
                 errors: vec![],
                 success_reason: Some(CommitSuccessReason::FromBot),
             }],
+            config: Default::default(),
             head_ref: "main".to_string(),
             num_commits_with_errors: 0,
         }
@@ -105,6 +107,7 @@ fn single_commit_valid_signoff_author_match() {
                 errors: vec![],
                 success_reason: Some(CommitSuccessReason::ValidSignOff),
             }],
+            config: Default::default(),
             head_ref: "main".to_string(),
             num_commits_with_errors: 0,
         }
@@ -149,6 +152,7 @@ fn single_commit_valid_signoff_committer_match() {
                 errors: vec![],
                 success_reason: Some(CommitSuccessReason::ValidSignOff),
             }],
+            config: Default::default(),
             head_ref: "main".to_string(),
             num_commits_with_errors: 0,
         }
@@ -195,6 +199,7 @@ fn single_commit_valid_signoff_multiple_signoffs() {
                 errors: vec![],
                 success_reason: Some(CommitSuccessReason::ValidSignOff),
             }],
+            config: Default::default(),
             head_ref: "main".to_string(),
             num_commits_with_errors: 0,
         }
@@ -239,6 +244,7 @@ fn single_commit_valid_signoff_signoff_case_insensitive() {
                 errors: vec![],
                 success_reason: Some(CommitSuccessReason::ValidSignOff),
             }],
+            config: Default::default(),
             head_ref: "main".to_string(),
             num_commits_with_errors: 0,
         }
@@ -278,6 +284,7 @@ fn single_commit_valid_signoff_signoff_trailing_whitespace() {
                 errors: vec![],
                 success_reason: Some(CommitSuccessReason::ValidSignOff),
             }],
+            config: Default::default(),
             head_ref: "main".to_string(),
             num_commits_with_errors: 0,
         }
@@ -322,6 +329,7 @@ fn single_commit_valid_signoff_email_contains_subdomain() {
                 errors: vec![],
                 success_reason: Some(CommitSuccessReason::ValidSignOff),
             }],
+            config: Default::default(),
             head_ref: "main".to_string(),
             num_commits_with_errors: 0,
         }
@@ -366,6 +374,7 @@ fn single_commit_valid_signoff_email_contains_plus_alias() {
                 errors: vec![],
                 success_reason: Some(CommitSuccessReason::ValidSignOff),
             }],
+            config: Default::default(),
             head_ref: "main".to_string(),
             num_commits_with_errors: 0,
         }
@@ -410,6 +419,7 @@ fn single_commit_invalid_author_email() {
                 errors: vec![CommitError::InvalidAuthorEmail],
                 success_reason: None,
             }],
+            config: Default::default(),
             head_ref: "main".to_string(),
             num_commits_with_errors: 1,
         }
@@ -449,6 +459,7 @@ fn single_commit_invalid_author_email_and_no_signoff() {
                 errors: vec![CommitError::InvalidAuthorEmail, CommitError::SignOffNotFound],
                 success_reason: None,
             }],
+            config: Default::default(),
             head_ref: "main".to_string(),
             num_commits_with_errors: 1,
         }
@@ -493,6 +504,7 @@ fn single_commit_invalid_author_email_also_used_in_signoff() {
                 errors: vec![CommitError::InvalidAuthorEmail],
                 success_reason: None,
             }],
+            config: Default::default(),
             head_ref: "main".to_string(),
             num_commits_with_errors: 1,
         }
@@ -537,6 +549,7 @@ fn single_commit_invalid_committer_email() {
                 errors: vec![CommitError::InvalidCommitterEmail],
                 success_reason: None,
             }],
+            config: Default::default(),
             head_ref: "main".to_string(),
             num_commits_with_errors: 1,
         }
@@ -576,6 +589,7 @@ fn single_commit_invalid_committer_email_and_no_signoff() {
                 errors: vec![CommitError::InvalidCommitterEmail, CommitError::SignOffNotFound],
                 success_reason: None,
             }],
+            config: Default::default(),
             head_ref: "main".to_string(),
             num_commits_with_errors: 1,
         }
@@ -620,6 +634,7 @@ fn single_commit_invalid_committer_email_also_used_in_signoff() {
                 errors: vec![CommitError::InvalidCommitterEmail],
                 success_reason: None,
             }],
+            config: Default::default(),
             head_ref: "main".to_string(),
             num_commits_with_errors: 1,
         }
@@ -664,6 +679,7 @@ fn single_commit_invalid_author_and_committer_email_same_email() {
                 errors: vec![CommitError::InvalidCommitterEmail],
                 success_reason: None,
             }],
+            config: Default::default(),
             head_ref: "main".to_string(),
             num_commits_with_errors: 1,
         }
@@ -711,6 +727,7 @@ fn single_commit_invalid_author_and_committer_email_different_emails() {
                 ],
                 success_reason: None,
             }],
+            config: Default::default(),
             head_ref: "main".to_string(),
             num_commits_with_errors: 1,
         }
@@ -750,6 +767,7 @@ fn single_commit_signoff_not_found() {
                 errors: vec![CommitError::SignOffNotFound],
                 success_reason: None,
             }],
+            config: Default::default(),
             head_ref: "main".to_string(),
             num_commits_with_errors: 1,
         }
@@ -796,6 +814,7 @@ fn single_commit_invalid_signoff_multiple_signoffs() {
                 errors: vec![CommitError::SignOffMismatch],
                 success_reason: None,
             }],
+            config: Default::default(),
             head_ref: "main".to_string(),
             num_commits_with_errors: 1,
         }
@@ -840,6 +859,7 @@ fn single_commit_invalid_signoff_name_mismatch() {
                 errors: vec![CommitError::SignOffMismatch],
                 success_reason: None,
             }],
+            config: Default::default(),
             head_ref: "main".to_string(),
             num_commits_with_errors: 1,
         }
@@ -884,6 +904,7 @@ fn single_commit_invalid_signoff_email_mismatch() {
                 errors: vec![CommitError::SignOffMismatch],
                 success_reason: None,
             }],
+            config: Default::default(),
             head_ref: "main".to_string(),
             num_commits_with_errors: 1,
         }
@@ -928,6 +949,7 @@ fn single_commit_invalid_signoff_name_and_email_mismatch() {
                 errors: vec![CommitError::SignOffMismatch],
                 success_reason: None,
             }],
+            config: Default::default(),
             head_ref: "main".to_string(),
             num_commits_with_errors: 1,
         }
@@ -972,6 +994,7 @@ fn single_commit_invalid_signoff_extra_whitespace_around_name() {
                 errors: vec![CommitError::SignOffMismatch],
                 success_reason: None,
             }],
+            config: Default::default(),
             head_ref: "main".to_string(),
             num_commits_with_errors: 1,
         }
@@ -1016,6 +1039,7 @@ fn single_commit_invalid_signoff_extra_whitespace_around_email() {
                 errors: vec![CommitError::SignOffMismatch],
                 success_reason: None,
             }],
+            config: Default::default(),
             head_ref: "main".to_string(),
             num_commits_with_errors: 1,
         }
@@ -1060,6 +1084,7 @@ fn single_commit_invalid_signoff_missing_name_in_signoff() {
                 errors: vec![CommitError::SignOffNotFound],
                 success_reason: None,
             }],
+            config: Default::default(),
             head_ref: "main".to_string(),
             num_commits_with_errors: 1,
         }
@@ -1104,6 +1129,7 @@ fn single_commit_invalid_signoff_missing_email_in_signoff() {
                 errors: vec![CommitError::SignOffNotFound],
                 success_reason: None,
             }],
+            config: Default::default(),
             head_ref: "main".to_string(),
             num_commits_with_errors: 1,
         }
@@ -1148,6 +1174,7 @@ fn single_commit_invalid_signoff_missing_email_brackets_in_signoff() {
                 errors: vec![CommitError::SignOffNotFound],
                 success_reason: None,
             }],
+            config: Default::default(),
             head_ref: "main".to_string(),
             num_commits_with_errors: 1,
         }
@@ -1192,6 +1219,7 @@ fn single_commit_invalid_signoff_missing_name_and_email_in_signoff() {
                 errors: vec![CommitError::SignOffNotFound],
                 success_reason: None,
             }],
+            config: Default::default(),
             head_ref: "main".to_string(),
             num_commits_with_errors: 1,
         }
@@ -1236,6 +1264,7 @@ fn single_commit_invalid_signoff_name_and_email_swapped_in_signoff() {
                 errors: vec![CommitError::SignOffMismatch],
                 success_reason: None,
             }],
+            config: Default::default(),
             head_ref: "main".to_string(),
             num_commits_with_errors: 1,
         }
@@ -1280,6 +1309,7 @@ fn single_commit_invalid_signoff_invalid_email_in_signoff() {
                 errors: vec![CommitError::SignOffMismatch],
                 success_reason: None,
             }],
+            config: Default::default(),
             head_ref: "main".to_string(),
             num_commits_with_errors: 1,
         }
@@ -1324,6 +1354,7 @@ fn single_commit_invalid_signoff_email_alias_used_in_signoff_but_not_in_author_e
                 errors: vec![CommitError::SignOffMismatch],
                 success_reason: None,
             }],
+            config: Default::default(),
             head_ref: "main".to_string(),
             num_commits_with_errors: 1,
         }
@@ -1376,6 +1407,7 @@ fn two_commits_valid_signoff_in_both() {
                     success_reason: Some(CommitSuccessReason::ValidSignOff),
                 }
             ],
+            config: Default::default(),
             head_ref: "main".to_string(),
             num_commits_with_errors: 0,
         }
@@ -1441,6 +1473,7 @@ fn two_commits_no_signoff_in_first_valid_signoff_in_second() {
                     success_reason: Some(CommitSuccessReason::ValidSignOff),
                 }
             ],
+            config: Default::default(),
             head_ref: "main".to_string(),
             num_commits_with_errors: 1,
         }
@@ -1506,6 +1539,7 @@ fn two_commits_valid_signoff_in_first_no_signoff_in_second() {
                     success_reason: None,
                 }
             ],
+            config: Default::default(),
             head_ref: "main".to_string(),
             num_commits_with_errors: 1,
         }
@@ -1576,6 +1610,7 @@ fn two_commits_invalid_signoff_in_first_valid_signoff_in_second() {
                     success_reason: Some(CommitSuccessReason::ValidSignOff),
                 }
             ],
+            config: Default::default(),
             head_ref: "main".to_string(),
             num_commits_with_errors: 1,
         }
@@ -1646,6 +1681,7 @@ fn two_commits_valid_signoff_in_first_invalid_signoff_in_second() {
                     success_reason: None,
                 }
             ],
+            config: Default::default(),
             head_ref: "main".to_string(),
             num_commits_with_errors: 1,
         }
@@ -1711,6 +1747,7 @@ fn two_commits_no_signoff_in_first_invalid_signoff_in_second() {
                     success_reason: None,
                 }
             ],
+            config: Default::default(),
             head_ref: "main".to_string(),
             num_commits_with_errors: 2,
         }
@@ -1776,6 +1813,7 @@ fn two_commits_invalid_signoff_in_first_no_signoff_in_second() {
                     success_reason: None,
                 }
             ],
+            config: Default::default(),
             head_ref: "main".to_string(),
             num_commits_with_errors: 2,
         }
@@ -1845,6 +1883,7 @@ fn two_commits_no_signoff_in_first_valid_remediation_commit_in_second_but_remedi
                     success_reason: Some(CommitSuccessReason::ValidSignOff),
                 }
             ],
+            config: Default::default(),
             head_ref: "main".to_string(),
             num_commits_with_errors: 1,
         }
@@ -1890,15 +1929,16 @@ fn two_commits_no_signoff_in_first_valid_remediation_commit_matching_author_in_s
         ..Default::default()
     };
 
+    let config = Config {
+        allow_remediation_commits: Some(ConfigAllowRemediationCommits {
+            individual: Some(true),
+            ..Default::default()
+        }),
+        ..Default::default()
+    };
     let input = CheckInput {
         commits: vec![commit1.clone(), commit2.clone()],
-        config: Config {
-            allow_remediation_commits: Some(ConfigAllowRemediationCommits {
-                individual: Some(true),
-                ..Default::default()
-            }),
-            ..Default::default()
-        },
+        config: config.clone(),
         head_ref: "main".to_string(),
         members: vec![],
     };
@@ -1919,6 +1959,7 @@ fn two_commits_no_signoff_in_first_valid_remediation_commit_matching_author_in_s
                     success_reason: Some(CommitSuccessReason::ValidSignOff),
                 }
             ],
+            config,
             head_ref: "main".to_string(),
             num_commits_with_errors: 0,
         }
@@ -1964,15 +2005,16 @@ fn two_commits_no_signoff_in_first_valid_remediation_commit_matching_committer_i
         ..Default::default()
     };
 
+    let config = Config {
+        allow_remediation_commits: Some(ConfigAllowRemediationCommits {
+            individual: Some(true),
+            ..Default::default()
+        }),
+        ..Default::default()
+    };
     let input = CheckInput {
         commits: vec![commit1.clone(), commit2.clone()],
-        config: Config {
-            allow_remediation_commits: Some(ConfigAllowRemediationCommits {
-                individual: Some(true),
-                ..Default::default()
-            }),
-            ..Default::default()
-        },
+        config: config.clone(),
         head_ref: "main".to_string(),
         members: vec![],
     };
@@ -1993,6 +2035,7 @@ fn two_commits_no_signoff_in_first_valid_remediation_commit_matching_committer_i
                     success_reason: Some(CommitSuccessReason::ValidSignOff),
                 }
             ],
+            config,
             head_ref: "main".to_string(),
             num_commits_with_errors: 0,
         }
@@ -2043,15 +2086,16 @@ fn two_commits_invalid_signoff_incorrect_name_in_first_valid_remediation_commit_
         ..Default::default()
     };
 
+    let config = Config {
+        allow_remediation_commits: Some(ConfigAllowRemediationCommits {
+            individual: Some(true),
+            ..Default::default()
+        }),
+        ..Default::default()
+    };
     let input = CheckInput {
         commits: vec![commit1.clone(), commit2.clone()],
-        config: Config {
-            allow_remediation_commits: Some(ConfigAllowRemediationCommits {
-                individual: Some(true),
-                ..Default::default()
-            }),
-            ..Default::default()
-        },
+        config: config.clone(),
         head_ref: "main".to_string(),
         members: vec![],
     };
@@ -2072,6 +2116,7 @@ fn two_commits_invalid_signoff_incorrect_name_in_first_valid_remediation_commit_
                     success_reason: Some(CommitSuccessReason::ValidSignOff),
                 }
             ],
+            config,
             head_ref: "main".to_string(),
             num_commits_with_errors: 0,
         }
@@ -2122,15 +2167,16 @@ fn two_commits_invalid_signoff_incorrect_email_in_first_valid_remediation_commit
         ..Default::default()
     };
 
+    let config = Config {
+        allow_remediation_commits: Some(ConfigAllowRemediationCommits {
+            individual: Some(true),
+            ..Default::default()
+        }),
+        ..Default::default()
+    };
     let input = CheckInput {
         commits: vec![commit1.clone(), commit2.clone()],
-        config: Config {
-            allow_remediation_commits: Some(ConfigAllowRemediationCommits {
-                individual: Some(true),
-                ..Default::default()
-            }),
-            ..Default::default()
-        },
+        config: config.clone(),
         head_ref: "main".to_string(),
         members: vec![],
     };
@@ -2151,6 +2197,7 @@ fn two_commits_invalid_signoff_incorrect_email_in_first_valid_remediation_commit
                     success_reason: Some(CommitSuccessReason::ValidSignOff),
                 }
             ],
+            config,
             head_ref: "main".to_string(),
             num_commits_with_errors: 0,
         }
@@ -2201,15 +2248,16 @@ fn two_commits_valid_signoff_in_first_redundant_remediation_commit_in_second() {
         ..Default::default()
     };
 
+    let config = Config {
+        allow_remediation_commits: Some(ConfigAllowRemediationCommits {
+            individual: Some(true),
+            ..Default::default()
+        }),
+        ..Default::default()
+    };
     let input = CheckInput {
         commits: vec![commit1.clone(), commit2.clone()],
-        config: Config {
-            allow_remediation_commits: Some(ConfigAllowRemediationCommits {
-                individual: Some(true),
-                ..Default::default()
-            }),
-            ..Default::default()
-        },
+        config: config.clone(),
         head_ref: "main".to_string(),
         members: vec![],
     };
@@ -2230,6 +2278,7 @@ fn two_commits_valid_signoff_in_first_redundant_remediation_commit_in_second() {
                     success_reason: Some(CommitSuccessReason::ValidSignOff),
                 }
             ],
+            config,
             head_ref: "main".to_string(),
             num_commits_with_errors: 0,
         }
@@ -2280,15 +2329,16 @@ fn two_commits_valid_signoff_in_first_remediation_commit_non_existent_sha_in_sec
         ..Default::default()
     };
 
+    let config = Config {
+        allow_remediation_commits: Some(ConfigAllowRemediationCommits {
+            individual: Some(true),
+            ..Default::default()
+        }),
+        ..Default::default()
+    };
     let input = CheckInput {
         commits: vec![commit1.clone(), commit2.clone()],
-        config: Config {
-            allow_remediation_commits: Some(ConfigAllowRemediationCommits {
-                individual: Some(true),
-                ..Default::default()
-            }),
-            ..Default::default()
-        },
+        config: config.clone(),
         head_ref: "main".to_string(),
         members: vec![],
     };
@@ -2309,6 +2359,7 @@ fn two_commits_valid_signoff_in_first_remediation_commit_non_existent_sha_in_sec
                     success_reason: Some(CommitSuccessReason::ValidSignOff),
                 }
             ],
+            config,
             head_ref: "main".to_string(),
             num_commits_with_errors: 0,
         }
@@ -2352,15 +2403,16 @@ fn two_commits_no_signoff_in_first_remediation_commit_no_signoff_in_second() {
         ..Default::default()
     };
 
+    let config = Config {
+        allow_remediation_commits: Some(ConfigAllowRemediationCommits {
+            individual: Some(true),
+            ..Default::default()
+        }),
+        ..Default::default()
+    };
     let input = CheckInput {
         commits: vec![commit1.clone(), commit2.clone()],
-        config: Config {
-            allow_remediation_commits: Some(ConfigAllowRemediationCommits {
-                individual: Some(true),
-                ..Default::default()
-            }),
-            ..Default::default()
-        },
+        config: config.clone(),
         head_ref: "main".to_string(),
         members: vec![],
     };
@@ -2381,6 +2433,7 @@ fn two_commits_no_signoff_in_first_remediation_commit_no_signoff_in_second() {
                     success_reason: None,
                 }
             ],
+            config,
             head_ref: "main".to_string(),
             num_commits_with_errors: 1,
         }
@@ -2426,15 +2479,16 @@ fn two_commits_no_signoff_in_first_remediation_commit_different_name_in_second()
         ..Default::default()
     };
 
+    let config = Config {
+        allow_remediation_commits: Some(ConfigAllowRemediationCommits {
+            individual: Some(true),
+            ..Default::default()
+        }),
+        ..Default::default()
+    };
     let input = CheckInput {
         commits: vec![commit1.clone(), commit2.clone()],
-        config: Config {
-            allow_remediation_commits: Some(ConfigAllowRemediationCommits {
-                individual: Some(true),
-                ..Default::default()
-            }),
-            ..Default::default()
-        },
+        config: config.clone(),
         head_ref: "main".to_string(),
         members: vec![],
     };
@@ -2455,6 +2509,7 @@ fn two_commits_no_signoff_in_first_remediation_commit_different_name_in_second()
                     success_reason: Some(CommitSuccessReason::ValidSignOff),
                 }
             ],
+            config,
             head_ref: "main".to_string(),
             num_commits_with_errors: 1,
         }
@@ -2500,15 +2555,16 @@ fn two_commits_no_signoff_in_first_remediation_commit_different_email_in_second(
         ..Default::default()
     };
 
+    let config = Config {
+        allow_remediation_commits: Some(ConfigAllowRemediationCommits {
+            individual: Some(true),
+            ..Default::default()
+        }),
+        ..Default::default()
+    };
     let input = CheckInput {
         commits: vec![commit1.clone(), commit2.clone()],
-        config: Config {
-            allow_remediation_commits: Some(ConfigAllowRemediationCommits {
-                individual: Some(true),
-                ..Default::default()
-            }),
-            ..Default::default()
-        },
+        config: config.clone(),
         head_ref: "main".to_string(),
         members: vec![],
     };
@@ -2529,6 +2585,7 @@ fn two_commits_no_signoff_in_first_remediation_commit_different_email_in_second(
                     success_reason: Some(CommitSuccessReason::ValidSignOff),
                 }
             ],
+            config,
             head_ref: "main".to_string(),
             num_commits_with_errors: 1,
         }
@@ -2574,15 +2631,16 @@ fn two_commits_no_signoff_in_first_remediation_commit_different_name_and_email_i
         ..Default::default()
     };
 
+    let config = Config {
+        allow_remediation_commits: Some(ConfigAllowRemediationCommits {
+            individual: Some(true),
+            ..Default::default()
+        }),
+        ..Default::default()
+    };
     let input = CheckInput {
         commits: vec![commit1.clone(), commit2.clone()],
-        config: Config {
-            allow_remediation_commits: Some(ConfigAllowRemediationCommits {
-                individual: Some(true),
-                ..Default::default()
-            }),
-            ..Default::default()
-        },
+        config: config.clone(),
         head_ref: "main".to_string(),
         members: vec![],
     };
@@ -2603,6 +2661,7 @@ fn two_commits_no_signoff_in_first_remediation_commit_different_name_and_email_i
                     success_reason: Some(CommitSuccessReason::ValidSignOff),
                 }
             ],
+            config,
             head_ref: "main".to_string(),
             num_commits_with_errors: 1,
         }
@@ -2648,15 +2707,16 @@ fn two_commits_no_signoff_in_first_remediation_commit_different_name_in_signoff_
         ..Default::default()
     };
 
+    let config = Config {
+        allow_remediation_commits: Some(ConfigAllowRemediationCommits {
+            individual: Some(true),
+            ..Default::default()
+        }),
+        ..Default::default()
+    };
     let input = CheckInput {
         commits: vec![commit1.clone(), commit2.clone()],
-        config: Config {
-            allow_remediation_commits: Some(ConfigAllowRemediationCommits {
-                individual: Some(true),
-                ..Default::default()
-            }),
-            ..Default::default()
-        },
+        config: config.clone(),
         head_ref: "main".to_string(),
         members: vec![],
     };
@@ -2677,6 +2737,7 @@ fn two_commits_no_signoff_in_first_remediation_commit_different_name_in_signoff_
                     success_reason: None,
                 }
             ],
+            config,
             head_ref: "main".to_string(),
             num_commits_with_errors: 1,
         }
@@ -2722,15 +2783,16 @@ fn two_commits_no_signoff_in_first_remediation_commit_different_email_in_signoff
         ..Default::default()
     };
 
+    let config = Config {
+        allow_remediation_commits: Some(ConfigAllowRemediationCommits {
+            individual: Some(true),
+            ..Default::default()
+        }),
+        ..Default::default()
+    };
     let input = CheckInput {
         commits: vec![commit1.clone(), commit2.clone()],
-        config: Config {
-            allow_remediation_commits: Some(ConfigAllowRemediationCommits {
-                individual: Some(true),
-                ..Default::default()
-            }),
-            ..Default::default()
-        },
+        config: config.clone(),
         head_ref: "main".to_string(),
         members: vec![],
     };
@@ -2751,6 +2813,7 @@ fn two_commits_no_signoff_in_first_remediation_commit_different_email_in_signoff
                     success_reason: None,
                 }
             ],
+            config,
             head_ref: "main".to_string(),
             num_commits_with_errors: 1,
         }
@@ -2796,15 +2859,16 @@ fn two_commits_no_signoff_in_first_remediation_commit_different_name_and_email_i
         ..Default::default()
     };
 
+    let config = Config {
+        allow_remediation_commits: Some(ConfigAllowRemediationCommits {
+            individual: Some(true),
+            ..Default::default()
+        }),
+        ..Default::default()
+    };
     let input = CheckInput {
         commits: vec![commit1.clone(), commit2.clone()],
-        config: Config {
-            allow_remediation_commits: Some(ConfigAllowRemediationCommits {
-                individual: Some(true),
-                ..Default::default()
-            }),
-            ..Default::default()
-        },
+        config: config.clone(),
         head_ref: "main".to_string(),
         members: vec![],
     };
@@ -2825,6 +2889,7 @@ fn two_commits_no_signoff_in_first_remediation_commit_different_name_and_email_i
                     success_reason: None,
                 }
             ],
+            config,
             head_ref: "main".to_string(),
             num_commits_with_errors: 1,
         }
@@ -2870,15 +2935,16 @@ fn two_commits_no_signoff_in_first_remediation_commit_different_name_in_remediat
         ..Default::default()
     };
 
+    let config = Config {
+        allow_remediation_commits: Some(ConfigAllowRemediationCommits {
+            individual: Some(true),
+            ..Default::default()
+        }),
+        ..Default::default()
+    };
     let input = CheckInput {
         commits: vec![commit1.clone(), commit2.clone()],
-        config: Config {
-            allow_remediation_commits: Some(ConfigAllowRemediationCommits {
-                individual: Some(true),
-                ..Default::default()
-            }),
-            ..Default::default()
-        },
+        config: config.clone(),
         head_ref: "main".to_string(),
         members: vec![],
     };
@@ -2899,6 +2965,7 @@ fn two_commits_no_signoff_in_first_remediation_commit_different_name_in_remediat
                     success_reason: Some(CommitSuccessReason::ValidSignOff),
                 }
             ],
+            config,
             head_ref: "main".to_string(),
             num_commits_with_errors: 1,
         }
@@ -2944,15 +3011,16 @@ fn two_commits_no_signoff_in_first_remediation_commit_different_email_in_remedia
         ..Default::default()
     };
 
+    let config = Config {
+        allow_remediation_commits: Some(ConfigAllowRemediationCommits {
+            individual: Some(true),
+            ..Default::default()
+        }),
+        ..Default::default()
+    };
     let input = CheckInput {
         commits: vec![commit1.clone(), commit2.clone()],
-        config: Config {
-            allow_remediation_commits: Some(ConfigAllowRemediationCommits {
-                individual: Some(true),
-                ..Default::default()
-            }),
-            ..Default::default()
-        },
+        config: config.clone(),
         head_ref: "main".to_string(),
         members: vec![],
     };
@@ -2973,6 +3041,7 @@ fn two_commits_no_signoff_in_first_remediation_commit_different_email_in_remedia
                     success_reason: Some(CommitSuccessReason::ValidSignOff),
                 }
             ],
+            config,
             head_ref: "main".to_string(),
             num_commits_with_errors: 1,
         }
@@ -3018,15 +3087,16 @@ fn two_commits_no_signoff_in_first_remediation_commit_different_name_and_email_i
         ..Default::default()
     };
 
+    let config = Config {
+        allow_remediation_commits: Some(ConfigAllowRemediationCommits {
+            individual: Some(true),
+            ..Default::default()
+        }),
+        ..Default::default()
+    };
     let input = CheckInput {
         commits: vec![commit1.clone(), commit2.clone()],
-        config: Config {
-            allow_remediation_commits: Some(ConfigAllowRemediationCommits {
-                individual: Some(true),
-                ..Default::default()
-            }),
-            ..Default::default()
-        },
+        config: config.clone(),
         head_ref: "main".to_string(),
         members: vec![],
     };
@@ -3047,6 +3117,7 @@ fn two_commits_no_signoff_in_first_remediation_commit_different_name_and_email_i
                     success_reason: Some(CommitSuccessReason::ValidSignOff),
                 }
             ],
+            config,
             head_ref: "main".to_string(),
             num_commits_with_errors: 1,
         }
@@ -3092,15 +3163,16 @@ fn two_commits_no_signoff_in_first_remediation_commit_sha_mismatch_in_second() {
         ..Default::default()
     };
 
+    let config = Config {
+        allow_remediation_commits: Some(ConfigAllowRemediationCommits {
+            individual: Some(true),
+            ..Default::default()
+        }),
+        ..Default::default()
+    };
     let input = CheckInput {
         commits: vec![commit1.clone(), commit2.clone()],
-        config: Config {
-            allow_remediation_commits: Some(ConfigAllowRemediationCommits {
-                individual: Some(true),
-                ..Default::default()
-            }),
-            ..Default::default()
-        },
+        config: config.clone(),
         head_ref: "main".to_string(),
         members: vec![],
     };
@@ -3121,6 +3193,7 @@ fn two_commits_no_signoff_in_first_remediation_commit_sha_mismatch_in_second() {
                     success_reason: Some(CommitSuccessReason::ValidSignOff),
                 }
             ],
+            config,
             head_ref: "main".to_string(),
             num_commits_with_errors: 1,
         }
@@ -3190,6 +3263,7 @@ fn two_commits_no_signoff_in_first_3p_valid_remediation_commit_in_second_but_rem
                     success_reason: Some(CommitSuccessReason::ValidSignOff),
                 }
             ],
+            config: Default::default(),
             head_ref: "main".to_string(),
             num_commits_with_errors: 1,
         }
@@ -3236,15 +3310,16 @@ fn two_commits_no_signoff_in_first_3p_valid_remediation_commit_in_second_but_3p_
         ..Default::default()
     };
 
+    let config = Config {
+        allow_remediation_commits: Some(ConfigAllowRemediationCommits {
+            individual: Some(true),
+            ..Default::default()
+        }),
+        ..Default::default()
+    };
     let input = CheckInput {
         commits: vec![commit1.clone(), commit2.clone()],
-        config: Config {
-            allow_remediation_commits: Some(ConfigAllowRemediationCommits {
-                individual: Some(true),
-                ..Default::default()
-            }),
-            ..Default::default()
-        },
+        config: config.clone(),
         head_ref: "main".to_string(),
         members: vec![],
     };
@@ -3265,6 +3340,7 @@ fn two_commits_no_signoff_in_first_3p_valid_remediation_commit_in_second_but_3p_
                     success_reason: Some(CommitSuccessReason::ValidSignOff),
                 }
             ],
+            config,
             head_ref: "main".to_string(),
             num_commits_with_errors: 1,
         }
@@ -3310,15 +3386,16 @@ fn two_commits_no_signoff_in_first_3p_valid_remediation_commit_from_same_author_
         ..Default::default()
     };
 
+    let config = Config {
+        allow_remediation_commits: Some(ConfigAllowRemediationCommits {
+            individual: Some(true),
+            third_party: Some(true),
+        }),
+        ..Default::default()
+    };
     let input = CheckInput {
         commits: vec![commit1.clone(), commit2.clone()],
-        config: Config {
-            allow_remediation_commits: Some(ConfigAllowRemediationCommits {
-                individual: Some(true),
-                third_party: Some(true),
-            }),
-            ..Default::default()
-        },
+        config: config.clone(),
         head_ref: "main".to_string(),
         members: vec![],
     };
@@ -3339,6 +3416,7 @@ fn two_commits_no_signoff_in_first_3p_valid_remediation_commit_from_same_author_
                     success_reason: Some(CommitSuccessReason::ValidSignOff),
                 }
             ],
+            config,
             head_ref: "main".to_string(),
             num_commits_with_errors: 0,
         }
@@ -3385,15 +3463,16 @@ fn two_commits_no_signoff_in_first_3p_valid_remediation_commit_from_different_au
         ..Default::default()
     };
 
+    let config = Config {
+        allow_remediation_commits: Some(ConfigAllowRemediationCommits {
+            individual: Some(true),
+            third_party: Some(true),
+        }),
+        ..Default::default()
+    };
     let input = CheckInput {
         commits: vec![commit1.clone(), commit2.clone()],
-        config: Config {
-            allow_remediation_commits: Some(ConfigAllowRemediationCommits {
-                individual: Some(true),
-                third_party: Some(true),
-            }),
-            ..Default::default()
-        },
+        config: config.clone(),
         head_ref: "main".to_string(),
         members: vec![],
     };
@@ -3414,6 +3493,7 @@ fn two_commits_no_signoff_in_first_3p_valid_remediation_commit_from_different_au
                     success_reason: Some(CommitSuccessReason::ValidSignOff),
                 }
             ],
+            config,
             head_ref: "main".to_string(),
             num_commits_with_errors: 0,
         }
@@ -3459,15 +3539,16 @@ fn two_commits_no_signoff_in_first_3p_valid_remediation_commit_from_committer_in
         ..Default::default()
     };
 
+    let config = Config {
+        allow_remediation_commits: Some(ConfigAllowRemediationCommits {
+            individual: Some(true),
+            third_party: Some(true),
+        }),
+        ..Default::default()
+    };
     let input = CheckInput {
         commits: vec![commit1.clone(), commit2.clone()],
-        config: Config {
-            allow_remediation_commits: Some(ConfigAllowRemediationCommits {
-                individual: Some(true),
-                third_party: Some(true),
-            }),
-            ..Default::default()
-        },
+        config: config.clone(),
         head_ref: "main".to_string(),
         members: vec![],
     };
@@ -3488,6 +3569,7 @@ fn two_commits_no_signoff_in_first_3p_valid_remediation_commit_from_committer_in
                     success_reason: Some(CommitSuccessReason::ValidSignOff),
                 }
             ],
+            config,
             head_ref: "main".to_string(),
             num_commits_with_errors: 0,
         }
@@ -3533,15 +3615,16 @@ fn two_commits_no_signoff_in_first_3p_valid_remediation_commit_in_second_individ
         ..Default::default()
     };
 
+    let config = Config {
+        allow_remediation_commits: Some(ConfigAllowRemediationCommits {
+            individual: Some(false),
+            third_party: Some(true),
+        }),
+        ..Default::default()
+    };
     let input = CheckInput {
         commits: vec![commit1.clone(), commit2.clone()],
-        config: Config {
-            allow_remediation_commits: Some(ConfigAllowRemediationCommits {
-                individual: Some(false),
-                third_party: Some(true),
-            }),
-            ..Default::default()
-        },
+        config: config.clone(),
         head_ref: "main".to_string(),
         members: vec![],
     };
@@ -3562,6 +3645,7 @@ fn two_commits_no_signoff_in_first_3p_valid_remediation_commit_in_second_individ
                     success_reason: Some(CommitSuccessReason::ValidSignOff),
                 }
             ],
+            config,
             head_ref: "main".to_string(),
             num_commits_with_errors: 1,
         }
@@ -3607,15 +3691,16 @@ fn two_commits_no_signoff_in_first_3p_remediation_commit_declarant_name_mismatch
         ..Default::default()
     };
 
+    let config = Config {
+        allow_remediation_commits: Some(ConfigAllowRemediationCommits {
+            individual: Some(true),
+            third_party: Some(true),
+        }),
+        ..Default::default()
+    };
     let input = CheckInput {
         commits: vec![commit1.clone(), commit2.clone()],
-        config: Config {
-            allow_remediation_commits: Some(ConfigAllowRemediationCommits {
-                individual: Some(true),
-                third_party: Some(true),
-            }),
-            ..Default::default()
-        },
+        config: config.clone(),
         head_ref: "main".to_string(),
         members: vec![],
     };
@@ -3636,6 +3721,7 @@ fn two_commits_no_signoff_in_first_3p_remediation_commit_declarant_name_mismatch
                     success_reason: Some(CommitSuccessReason::ValidSignOff),
                 }
             ],
+            config,
             head_ref: "main".to_string(),
             num_commits_with_errors: 1,
         }
@@ -3681,15 +3767,16 @@ fn two_commits_no_signoff_in_first_3p_remediation_commit_declarant_email_mismatc
         ..Default::default()
     };
 
+    let config = Config {
+        allow_remediation_commits: Some(ConfigAllowRemediationCommits {
+            individual: Some(true),
+            third_party: Some(true),
+        }),
+        ..Default::default()
+    };
     let input = CheckInput {
         commits: vec![commit1.clone(), commit2.clone()],
-        config: Config {
-            allow_remediation_commits: Some(ConfigAllowRemediationCommits {
-                individual: Some(true),
-                third_party: Some(true),
-            }),
-            ..Default::default()
-        },
+        config: config.clone(),
         head_ref: "main".to_string(),
         members: vec![],
     };
@@ -3710,6 +3797,7 @@ fn two_commits_no_signoff_in_first_3p_remediation_commit_declarant_email_mismatc
                     success_reason: Some(CommitSuccessReason::ValidSignOff),
                 }
             ],
+            config,
             head_ref: "main".to_string(),
             num_commits_with_errors: 1,
         }
@@ -3755,15 +3843,16 @@ fn two_commits_no_signoff_in_first_3p_remediation_commit_sha_mismatch_in_second(
         ..Default::default()
     };
 
+    let config = Config {
+        allow_remediation_commits: Some(ConfigAllowRemediationCommits {
+            individual: Some(true),
+            third_party: Some(true),
+        }),
+        ..Default::default()
+    };
     let input = CheckInput {
         commits: vec![commit1.clone(), commit2.clone()],
-        config: Config {
-            allow_remediation_commits: Some(ConfigAllowRemediationCommits {
-                individual: Some(true),
-                third_party: Some(true),
-            }),
-            ..Default::default()
-        },
+        config: config.clone(),
         head_ref: "main".to_string(),
         members: vec![],
     };
@@ -3784,6 +3873,7 @@ fn two_commits_no_signoff_in_first_3p_remediation_commit_sha_mismatch_in_second(
                     success_reason: Some(CommitSuccessReason::ValidSignOff),
                 }
             ],
+            config,
             head_ref: "main".to_string(),
             num_commits_with_errors: 1,
         }
@@ -3829,15 +3919,16 @@ fn two_commits_no_signoff_in_first_invalid_3p_remediation_commit_in_second() {
         ..Default::default()
     };
 
+    let config = Config {
+        allow_remediation_commits: Some(ConfigAllowRemediationCommits {
+            individual: Some(true),
+            third_party: Some(true),
+        }),
+        ..Default::default()
+    };
     let input = CheckInput {
         commits: vec![commit1.clone(), commit2.clone()],
-        config: Config {
-            allow_remediation_commits: Some(ConfigAllowRemediationCommits {
-                individual: Some(true),
-                third_party: Some(true),
-            }),
-            ..Default::default()
-        },
+        config: config.clone(),
         head_ref: "main".to_string(),
         members: vec![],
     };
@@ -3858,6 +3949,7 @@ fn two_commits_no_signoff_in_first_invalid_3p_remediation_commit_in_second() {
                     success_reason: Some(CommitSuccessReason::ValidSignOff),
                 }
             ],
+            config,
             head_ref: "main".to_string(),
             num_commits_with_errors: 1,
         }
@@ -3903,15 +3995,16 @@ fn two_commits_no_signoff_in_first_3p_remediation_commit_representative_name_mis
         ..Default::default()
     };
 
+    let config = Config {
+        allow_remediation_commits: Some(ConfigAllowRemediationCommits {
+            individual: Some(true),
+            third_party: Some(true),
+        }),
+        ..Default::default()
+    };
     let input = CheckInput {
         commits: vec![commit1.clone(), commit2.clone()],
-        config: Config {
-            allow_remediation_commits: Some(ConfigAllowRemediationCommits {
-                individual: Some(true),
-                third_party: Some(true),
-            }),
-            ..Default::default()
-        },
+        config: config.clone(),
         head_ref: "main".to_string(),
         members: vec![],
     };
@@ -3932,6 +4025,7 @@ fn two_commits_no_signoff_in_first_3p_remediation_commit_representative_name_mis
                     success_reason: Some(CommitSuccessReason::ValidSignOff),
                 }
             ],
+            config,
             head_ref: "main".to_string(),
             num_commits_with_errors: 1,
         }
@@ -3977,15 +4071,16 @@ fn two_commits_no_signoff_in_first_3p_remediation_commit_representative_email_mi
         ..Default::default()
     };
 
+    let config = Config {
+        allow_remediation_commits: Some(ConfigAllowRemediationCommits {
+            individual: Some(true),
+            third_party: Some(true),
+        }),
+        ..Default::default()
+    };
     let input = CheckInput {
         commits: vec![commit1.clone(), commit2.clone()],
-        config: Config {
-            allow_remediation_commits: Some(ConfigAllowRemediationCommits {
-                individual: Some(true),
-                third_party: Some(true),
-            }),
-            ..Default::default()
-        },
+        config: config.clone(),
         head_ref: "main".to_string(),
         members: vec![],
     };
@@ -4006,6 +4101,7 @@ fn two_commits_no_signoff_in_first_3p_remediation_commit_representative_email_mi
                     success_reason: Some(CommitSuccessReason::ValidSignOff),
                 }
             ],
+            config,
             head_ref: "main".to_string(),
             num_commits_with_errors: 1,
         }
@@ -4049,15 +4145,16 @@ fn two_commits_no_signoff_in_first_3p_remediation_commit_no_signoff_in_second() 
         ..Default::default()
     };
 
+    let config = Config {
+        allow_remediation_commits: Some(ConfigAllowRemediationCommits {
+            individual: Some(true),
+            third_party: Some(true),
+        }),
+        ..Default::default()
+    };
     let input = CheckInput {
         commits: vec![commit1.clone(), commit2.clone()],
-        config: Config {
-            allow_remediation_commits: Some(ConfigAllowRemediationCommits {
-                individual: Some(true),
-                third_party: Some(true),
-            }),
-            ..Default::default()
-        },
+        config: config.clone(),
         head_ref: "main".to_string(),
         members: vec![],
     };
@@ -4078,6 +4175,7 @@ fn two_commits_no_signoff_in_first_3p_remediation_commit_no_signoff_in_second() 
                     success_reason: None,
                 }
             ],
+            config,
             head_ref: "main".to_string(),
             num_commits_with_errors: 2,
         }
@@ -4136,6 +4234,7 @@ fn three_commits_valid_signoff_in_all() {
                     success_reason: Some(CommitSuccessReason::ValidSignOff),
                 }
             ],
+            config: Default::default(),
             head_ref: "main".to_string(),
             num_commits_with_errors: 0,
         }
@@ -4207,6 +4306,7 @@ fn three_commits_valid_signoff_first_and_second_no_signoff_third() {
                     success_reason: None,
                 }
             ],
+            config: Default::default(),
             head_ref: "main".to_string(),
             num_commits_with_errors: 1,
         }
@@ -4296,6 +4396,7 @@ fn three_commits_invalid_signoff_first_no_signoff_second_valid_signoff_third() {
                     success_reason: Some(CommitSuccessReason::ValidSignOff),
                 }
             ],
+            config: Default::default(),
             head_ref: "main".to_string(),
             num_commits_with_errors: 2,
         }
@@ -4372,6 +4473,7 @@ fn three_commits_valid_signoff_first_invalid_signoff_second_valid_signoff_third(
                     success_reason: Some(CommitSuccessReason::ValidSignOff),
                 }
             ],
+            config: Default::default(),
             head_ref: "main".to_string(),
             num_commits_with_errors: 1,
         }
@@ -4438,15 +4540,16 @@ fn three_commits_no_signoff_in_first_remediation_commit_without_signoff_in_secon
         ..Default::default()
     };
 
+    let config = Config {
+        allow_remediation_commits: Some(ConfigAllowRemediationCommits {
+            individual: Some(true),
+            ..Default::default()
+        }),
+        ..Default::default()
+    };
     let input = CheckInput {
         commits: vec![commit1.clone(), commit2.clone(), commit3.clone()],
-        config: Config {
-            allow_remediation_commits: Some(ConfigAllowRemediationCommits {
-                individual: Some(true),
-                ..Default::default()
-            }),
-            ..Default::default()
-        },
+        config: config.clone(),
         head_ref: "main".to_string(),
         members: vec![],
     };
@@ -4472,6 +4575,7 @@ fn three_commits_no_signoff_in_first_remediation_commit_without_signoff_in_secon
                     success_reason: Some(CommitSuccessReason::ValidSignOff),
                 }
             ],
+            config,
             head_ref: "main".to_string(),
             num_commits_with_errors: 0,
         }
@@ -4533,15 +4637,16 @@ fn three_commits_no_signoff_in_first_no_signoff_in_second_valid_remediation_comm
         ..Default::default()
     };
 
+    let config = Config {
+        allow_remediation_commits: Some(ConfigAllowRemediationCommits {
+            individual: Some(true),
+            ..Default::default()
+        }),
+        ..Default::default()
+    };
     let input = CheckInput {
         commits: vec![commit1.clone(), commit2.clone(), commit3.clone()],
-        config: Config {
-            allow_remediation_commits: Some(ConfigAllowRemediationCommits {
-                individual: Some(true),
-                third_party: Some(true),
-            }),
-            ..Default::default()
-        },
+        config: config.clone(),
         head_ref: "main".to_string(),
         members: vec![],
     };
@@ -4567,6 +4672,7 @@ fn three_commits_no_signoff_in_first_no_signoff_in_second_valid_remediation_comm
                     success_reason: Some(CommitSuccessReason::ValidSignOff),
                 }
             ],
+            config,
             head_ref: "main".to_string(),
             num_commits_with_errors: 0,
         }
@@ -4640,15 +4746,16 @@ fn three_commits_valid_signoff_in_first_redundant_remediation_commit_in_second_r
         ..Default::default()
     };
 
+    let config = Config {
+        allow_remediation_commits: Some(ConfigAllowRemediationCommits {
+            individual: Some(true),
+            third_party: Some(true),
+        }),
+        ..Default::default()
+    };
     let input = CheckInput {
         commits: vec![commit1.clone(), commit2.clone(), commit3.clone()],
-        config: Config {
-            allow_remediation_commits: Some(ConfigAllowRemediationCommits {
-                individual: Some(true),
-                third_party: Some(true),
-            }),
-            ..Default::default()
-        },
+        config: config.clone(),
         head_ref: "main".to_string(),
         members: vec![],
     };
@@ -4674,6 +4781,7 @@ fn three_commits_valid_signoff_in_first_redundant_remediation_commit_in_second_r
                     success_reason: Some(CommitSuccessReason::ValidSignOff),
                 }
             ],
+            config,
             head_ref: "main".to_string(),
             num_commits_with_errors: 0,
         }
@@ -4742,15 +4850,16 @@ fn three_commits_no_signoff_in_first_valid_remediation_commit_in_second_redundan
         ..Default::default()
     };
 
+    let config = Config {
+        allow_remediation_commits: Some(ConfigAllowRemediationCommits {
+            individual: Some(true),
+            third_party: Some(true),
+        }),
+        ..Default::default()
+    };
     let input = CheckInput {
         commits: vec![commit1.clone(), commit2.clone(), commit3.clone()],
-        config: Config {
-            allow_remediation_commits: Some(ConfigAllowRemediationCommits {
-                individual: Some(true),
-                third_party: Some(true),
-            }),
-            ..Default::default()
-        },
+        config: config.clone(),
         head_ref: "main".to_string(),
         members: vec![],
     };
@@ -4776,6 +4885,7 @@ fn three_commits_no_signoff_in_first_valid_remediation_commit_in_second_redundan
                     success_reason: Some(CommitSuccessReason::ValidSignOff),
                 }
             ],
+            config,
             head_ref: "main".to_string(),
             num_commits_with_errors: 0,
         }
@@ -4842,15 +4952,16 @@ fn three_commits_no_signoff_in_first_remediation_commit_no_signoff_in_second_val
         ..Default::default()
     };
 
+    let config = Config {
+        allow_remediation_commits: Some(ConfigAllowRemediationCommits {
+            individual: Some(true),
+            third_party: Some(true),
+        }),
+        ..Default::default()
+    };
     let input = CheckInput {
         commits: vec![commit1.clone(), commit2.clone(), commit3.clone()],
-        config: Config {
-            allow_remediation_commits: Some(ConfigAllowRemediationCommits {
-                individual: Some(true),
-                third_party: Some(true),
-            }),
-            ..Default::default()
-        },
+        config: config.clone(),
         head_ref: "main".to_string(),
         members: vec![],
     };
@@ -4876,6 +4987,7 @@ fn three_commits_no_signoff_in_first_remediation_commit_no_signoff_in_second_val
                     success_reason: Some(CommitSuccessReason::ValidSignOff),
                 }
             ],
+            config,
             head_ref: "main".to_string(),
             num_commits_with_errors: 0,
         }
@@ -4942,15 +5054,16 @@ fn three_commits_no_signoff_in_first_3p_remediation_commit_no_signoff_in_second_
         ..Default::default()
     };
 
+    let config = Config {
+        allow_remediation_commits: Some(ConfigAllowRemediationCommits {
+            individual: Some(true),
+            third_party: Some(true),
+        }),
+        ..Default::default()
+    };
     let input = CheckInput {
         commits: vec![commit1.clone(), commit2.clone(), commit3.clone()],
-        config: Config {
-            allow_remediation_commits: Some(ConfigAllowRemediationCommits {
-                individual: Some(true),
-                third_party: Some(true),
-            }),
-            ..Default::default()
-        },
+        config: config.clone(),
         head_ref: "main".to_string(),
         members: vec![],
     };
@@ -4976,6 +5089,7 @@ fn three_commits_no_signoff_in_first_3p_remediation_commit_no_signoff_in_second_
                     success_reason: Some(CommitSuccessReason::ValidSignOff),
                 }
             ],
+            config,
             head_ref: "main".to_string(),
             num_commits_with_errors: 0,
         }
@@ -5042,15 +5156,16 @@ fn three_commits_no_signoff_in_first_3p_remediation_commit_no_signoff_in_second_
         ..Default::default()
     };
 
+    let config = Config {
+        allow_remediation_commits: Some(ConfigAllowRemediationCommits {
+            individual: Some(true),
+            third_party: Some(true),
+        }),
+        ..Default::default()
+    };
     let input = CheckInput {
         commits: vec![commit1.clone(), commit2.clone(), commit3.clone()],
-        config: Config {
-            allow_remediation_commits: Some(ConfigAllowRemediationCommits {
-                individual: Some(true),
-                third_party: Some(true),
-            }),
-            ..Default::default()
-        },
+        config: config.clone(),
         head_ref: "main".to_string(),
         members: vec![],
     };
@@ -5076,6 +5191,7 @@ fn three_commits_no_signoff_in_first_3p_remediation_commit_no_signoff_in_second_
                     success_reason: Some(CommitSuccessReason::ValidSignOff),
                 }
             ],
+            config,
             head_ref: "main".to_string(),
             num_commits_with_errors: 0,
         }
@@ -5140,15 +5256,16 @@ fn three_commits_no_signoff_in_first_3p_remediation_commit_no_signoff_in_second_
         ..Default::default()
     };
 
+    let config = Config {
+        allow_remediation_commits: Some(ConfigAllowRemediationCommits {
+            individual: Some(true),
+            third_party: Some(true),
+        }),
+        ..Default::default()
+    };
     let input = CheckInput {
         commits: vec![commit1.clone(), commit2.clone(), commit3.clone()],
-        config: Config {
-            allow_remediation_commits: Some(ConfigAllowRemediationCommits {
-                individual: Some(true),
-                third_party: Some(true),
-            }),
-            ..Default::default()
-        },
+        config: config.clone(),
         head_ref: "main".to_string(),
         members: vec![],
     };
@@ -5174,6 +5291,7 @@ fn three_commits_no_signoff_in_first_3p_remediation_commit_no_signoff_in_second_
                     success_reason: None,
                 }
             ],
+            config,
             head_ref: "main".to_string(),
             num_commits_with_errors: 1,
         }
