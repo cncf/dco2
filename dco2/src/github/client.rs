@@ -1,6 +1,6 @@
 //! This module defines an abstraction layer over the GitHub API.
 
-use anyhow::Result;
+use anyhow::{bail, Result};
 use async_trait::async_trait;
 use base64::{engine::general_purpose::STANDARD as b64, Engine as _};
 use chrono::{DateTime, Utc};
@@ -129,10 +129,20 @@ impl GHClient for GHClientOctorust {
         let client = self.setup_client(ctx.inst_id)?;
 
         // Get configuration file content
-        let resp = client.repos().get_content_file(&ctx.owner, &ctx.repo, CONFIG_FILE_PATH, "").await?;
-        if resp.status == StatusCode::NOT_FOUND {
-            return Ok(None);
-        }
+        let resp = match client.repos().get_content_file(&ctx.owner, &ctx.repo, CONFIG_FILE_PATH, "").await {
+            Ok(resp) => resp,
+            Err(octorust::ClientError::HttpError {
+                status,
+                headers: _,
+                error,
+            }) => {
+                if status == StatusCode::NOT_FOUND {
+                    return Ok(None);
+                }
+                bail!(error);
+            }
+            Err(err) => bail!(err),
+        };
 
         // Decode and parse configuration
         let mut b64data = resp.body.content.as_bytes().to_owned();
