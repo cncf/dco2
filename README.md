@@ -26,7 +26,7 @@ Signed-off-by: User1 <user1@email.test>
 Git includes a `-s` command line option to append this line automatically to your commit message (provided you have configured your `user.name` and `user.email` in your git configuration):
 
 ```text
-git commit -s -m 'This is my commit message'
+git commit -s -m 'Commit message'
 ```
 
 Once installed, this application will create a check indicating whether or not all commits in a Pull Request contain a valid `Signed-off-by` line.
@@ -69,25 +69,28 @@ Individual remediation commits **must** be authored by the same person who autho
 An individual remediation commit to add a sign-off to two commits created by `User1` would look like this:
 
 ```text
-Sample individual remediation commit
+DCO remediation commit for User1 <user1@email.test>
 
-I, User1 <user1@email.test>, hereby add my Signed-off-by to this commit: COMMIT1_SHA
-I, User1 <user1@email.test>, hereby add my Signed-off-by to this commit: COMMIT2_SHA
+I, User1 <user1@email.test>, hereby add my Signed-off-by to this commit: <COMMIT1_SHA>
+I, User1 <user1@email.test>, hereby add my Signed-off-by to this commit: <COMMIT2_SHA>
 
 Signed-off-by: User1 <user1@email.test>
 ```
 
 #### Third-party
 
-Third-party remediation commits **must** be authored by someone else on behalf of the failing commit's author.
+Third-party remediation commits **must** be authored by an authorized individual on behalf of the failing commit's author.
+
+> [!IMPORTANT]
+> If you are about to add a third-party DCO remediation commit under DCO section (b) or (c), be sure you are authorized by your employer to take this action. Generally speaking, maintainers and other project contributors cannot sign off on behalf of project contributors, unless there is some relationship which permits this action. It is your responsibility to verify this.
 
 A third-party remediation commit to add a sign-off to two commits created by `User1` would look like this:
 
 ```text
-Sample third-party remediation commit
+Third-party DCO remediation commit for User1 <user1@email.test>
 
-On behalf of User1 <user1@email.test>, I, user2 <user2@email.test>, hereby add my Signed-off-by to this commit: COMMIT1_SHA
-On behalf of User1 <user1@email.test>, I, user2 <user2@email.test>, hereby add my Signed-off-by to this commit: COMMIT2_SHA
+On behalf of User1 <user1@email.test>, I, user2 <user2@email.test>, hereby add my Signed-off-by to this commit: <COMMIT1_SHA>
+On behalf of User1 <user1@email.test>, I, user2 <user2@email.test>, hereby add my Signed-off-by to this commit: <COMMIT2_SHA>
 
 Signed-off-by: User2 <user2@email.test>
 ```
