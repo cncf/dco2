@@ -7,3 +7,5 @@ There is at least one commit incorrectly signed off. This means that the author 
 {% if commits|contains_error([CommitError::SignOffNotFound, CommitError::SignOffMismatch]) %}
 Tada!
 {% endif %}
+
+{% let x = "hello".to_string()|truncate_no_dots(2) %}
