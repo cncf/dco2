@@ -8,6 +8,12 @@ pub(crate) fn contains_error(commits: &[CommitCheckOutput], errors: &[CommitErro
     Ok(commits.iter().any(|c| c.errors.iter().any(|e| errors.contains(e))))
 }
 
+/// Template filter to truncate a string to the specified length without adding
+/// dots at the end.
+pub(crate) fn truncate_no_dots(s: String, length: usize) -> askama::Result<String> {
+    Ok(s.chars().take(length).collect::<String>())
+}
+
 #[cfg(test)]
 mod tests {
     use crate::dco::check::{filters::contains_error, CommitCheckOutput, CommitError};
@@ -76,5 +82,17 @@ mod tests {
             &[CommitError::SignOffNotFound, CommitError::SignOffMismatch]
         )
         .unwrap());
+    }
+
+    #[test]
+    fn truncate_no_dots_works() {
+        assert_eq!(
+            "Hello".to_string(),
+            super::truncate_no_dots("Hello".to_string(), 10).unwrap()
+        );
+        assert_eq!(
+            "Hello".to_string(),
+            super::truncate_no_dots("Hello, World!".to_string(), 5).unwrap()
+        );
     }
 }
