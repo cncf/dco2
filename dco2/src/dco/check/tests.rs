@@ -32,6 +32,7 @@ fn single_commit_no_signoff_is_merge_commit() {
             config: Default::default(),
             head_ref: "main".to_string(),
             num_commits_with_errors: 0,
+            only_last_commit_contains_errors: false,
         }
     );
 }
@@ -65,6 +66,7 @@ fn single_commit_no_signoff_author_is_bot() {
             config: Default::default(),
             head_ref: "main".to_string(),
             num_commits_with_errors: 0,
+            only_last_commit_contains_errors: false,
         }
     );
 }
@@ -110,6 +112,7 @@ fn single_commit_valid_signoff_author_match() {
             config: Default::default(),
             head_ref: "main".to_string(),
             num_commits_with_errors: 0,
+            only_last_commit_contains_errors: false,
         }
     );
 }
@@ -155,6 +158,7 @@ fn single_commit_valid_signoff_committer_match() {
             config: Default::default(),
             head_ref: "main".to_string(),
             num_commits_with_errors: 0,
+            only_last_commit_contains_errors: false,
         }
     );
 }
@@ -202,6 +206,7 @@ fn single_commit_valid_signoff_multiple_signoffs() {
             config: Default::default(),
             head_ref: "main".to_string(),
             num_commits_with_errors: 0,
+            only_last_commit_contains_errors: false,
         }
     );
 }
@@ -247,6 +252,7 @@ fn single_commit_valid_signoff_signoff_case_insensitive() {
             config: Default::default(),
             head_ref: "main".to_string(),
             num_commits_with_errors: 0,
+            only_last_commit_contains_errors: false,
         }
     );
 }
@@ -287,6 +293,7 @@ fn single_commit_valid_signoff_signoff_trailing_whitespace() {
             config: Default::default(),
             head_ref: "main".to_string(),
             num_commits_with_errors: 0,
+            only_last_commit_contains_errors: false,
         }
     );
 }
@@ -332,6 +339,7 @@ fn single_commit_valid_signoff_email_contains_subdomain() {
             config: Default::default(),
             head_ref: "main".to_string(),
             num_commits_with_errors: 0,
+            only_last_commit_contains_errors: false,
         }
     );
 }
@@ -377,6 +385,7 @@ fn single_commit_valid_signoff_email_contains_plus_alias() {
             config: Default::default(),
             head_ref: "main".to_string(),
             num_commits_with_errors: 0,
+            only_last_commit_contains_errors: false,
         }
     );
 }
@@ -422,6 +431,7 @@ fn single_commit_invalid_author_email() {
             config: Default::default(),
             head_ref: "main".to_string(),
             num_commits_with_errors: 1,
+            only_last_commit_contains_errors: true,
         }
     );
 }
@@ -462,6 +472,7 @@ fn single_commit_invalid_author_email_and_no_signoff() {
             config: Default::default(),
             head_ref: "main".to_string(),
             num_commits_with_errors: 1,
+            only_last_commit_contains_errors: true,
         }
     );
 }
@@ -507,6 +518,7 @@ fn single_commit_invalid_author_email_also_used_in_signoff() {
             config: Default::default(),
             head_ref: "main".to_string(),
             num_commits_with_errors: 1,
+            only_last_commit_contains_errors: true,
         }
     );
 }
@@ -552,6 +564,7 @@ fn single_commit_invalid_committer_email() {
             config: Default::default(),
             head_ref: "main".to_string(),
             num_commits_with_errors: 1,
+            only_last_commit_contains_errors: true,
         }
     );
 }
@@ -592,6 +605,7 @@ fn single_commit_invalid_committer_email_and_no_signoff() {
             config: Default::default(),
             head_ref: "main".to_string(),
             num_commits_with_errors: 1,
+            only_last_commit_contains_errors: true,
         }
     );
 }
@@ -637,6 +651,7 @@ fn single_commit_invalid_committer_email_also_used_in_signoff() {
             config: Default::default(),
             head_ref: "main".to_string(),
             num_commits_with_errors: 1,
+            only_last_commit_contains_errors: true,
         }
     );
 }
@@ -682,6 +697,7 @@ fn single_commit_invalid_author_and_committer_email_same_email() {
             config: Default::default(),
             head_ref: "main".to_string(),
             num_commits_with_errors: 1,
+            only_last_commit_contains_errors: true,
         }
     );
 }
@@ -730,6 +746,7 @@ fn single_commit_invalid_author_and_committer_email_different_emails() {
             config: Default::default(),
             head_ref: "main".to_string(),
             num_commits_with_errors: 1,
+            only_last_commit_contains_errors: true,
         }
     );
 }
@@ -770,6 +787,7 @@ fn single_commit_signoff_not_found() {
             config: Default::default(),
             head_ref: "main".to_string(),
             num_commits_with_errors: 1,
+            only_last_commit_contains_errors: true,
         }
     );
 }
@@ -817,6 +835,7 @@ fn single_commit_invalid_signoff_multiple_signoffs() {
             config: Default::default(),
             head_ref: "main".to_string(),
             num_commits_with_errors: 1,
+            only_last_commit_contains_errors: true,
         }
     );
 }
@@ -862,6 +881,7 @@ fn single_commit_invalid_signoff_name_mismatch() {
             config: Default::default(),
             head_ref: "main".to_string(),
             num_commits_with_errors: 1,
+            only_last_commit_contains_errors: true,
         }
     );
 }
@@ -907,6 +927,7 @@ fn single_commit_invalid_signoff_email_mismatch() {
             config: Default::default(),
             head_ref: "main".to_string(),
             num_commits_with_errors: 1,
+            only_last_commit_contains_errors: true,
         }
     );
 }
@@ -952,6 +973,7 @@ fn single_commit_invalid_signoff_name_and_email_mismatch() {
             config: Default::default(),
             head_ref: "main".to_string(),
             num_commits_with_errors: 1,
+            only_last_commit_contains_errors: true,
         }
     );
 }
@@ -997,6 +1019,7 @@ fn single_commit_invalid_signoff_extra_whitespace_around_name() {
             config: Default::default(),
             head_ref: "main".to_string(),
             num_commits_with_errors: 1,
+            only_last_commit_contains_errors: true,
         }
     );
 }
@@ -1042,6 +1065,7 @@ fn single_commit_invalid_signoff_extra_whitespace_around_email() {
             config: Default::default(),
             head_ref: "main".to_string(),
             num_commits_with_errors: 1,
+            only_last_commit_contains_errors: true,
         }
     );
 }
@@ -1087,6 +1111,7 @@ fn single_commit_invalid_signoff_missing_name_in_signoff() {
             config: Default::default(),
             head_ref: "main".to_string(),
             num_commits_with_errors: 1,
+            only_last_commit_contains_errors: true,
         }
     );
 }
@@ -1132,6 +1157,7 @@ fn single_commit_invalid_signoff_missing_email_in_signoff() {
             config: Default::default(),
             head_ref: "main".to_string(),
             num_commits_with_errors: 1,
+            only_last_commit_contains_errors: true,
         }
     );
 }
@@ -1177,6 +1203,7 @@ fn single_commit_invalid_signoff_missing_email_brackets_in_signoff() {
             config: Default::default(),
             head_ref: "main".to_string(),
             num_commits_with_errors: 1,
+            only_last_commit_contains_errors: true,
         }
     );
 }
@@ -1222,6 +1249,7 @@ fn single_commit_invalid_signoff_missing_name_and_email_in_signoff() {
             config: Default::default(),
             head_ref: "main".to_string(),
             num_commits_with_errors: 1,
+            only_last_commit_contains_errors: true,
         }
     );
 }
@@ -1267,6 +1295,7 @@ fn single_commit_invalid_signoff_name_and_email_swapped_in_signoff() {
             config: Default::default(),
             head_ref: "main".to_string(),
             num_commits_with_errors: 1,
+            only_last_commit_contains_errors: true,
         }
     );
 }
@@ -1312,6 +1341,7 @@ fn single_commit_invalid_signoff_invalid_email_in_signoff() {
             config: Default::default(),
             head_ref: "main".to_string(),
             num_commits_with_errors: 1,
+            only_last_commit_contains_errors: true,
         }
     );
 }
@@ -1357,6 +1387,7 @@ fn single_commit_invalid_signoff_email_alias_used_in_signoff_but_not_in_author_e
             config: Default::default(),
             head_ref: "main".to_string(),
             num_commits_with_errors: 1,
+            only_last_commit_contains_errors: true,
         }
     );
 }
@@ -1410,6 +1441,7 @@ fn two_commits_valid_signoff_in_both() {
             config: Default::default(),
             head_ref: "main".to_string(),
             num_commits_with_errors: 0,
+            only_last_commit_contains_errors: false,
         }
     );
 }
@@ -1476,6 +1508,7 @@ fn two_commits_no_signoff_in_first_valid_signoff_in_second() {
             config: Default::default(),
             head_ref: "main".to_string(),
             num_commits_with_errors: 1,
+            only_last_commit_contains_errors: false,
         }
     );
 }
@@ -1542,6 +1575,7 @@ fn two_commits_valid_signoff_in_first_no_signoff_in_second() {
             config: Default::default(),
             head_ref: "main".to_string(),
             num_commits_with_errors: 1,
+            only_last_commit_contains_errors: true,
         }
     );
 }
@@ -1613,6 +1647,7 @@ fn two_commits_invalid_signoff_in_first_valid_signoff_in_second() {
             config: Default::default(),
             head_ref: "main".to_string(),
             num_commits_with_errors: 1,
+            only_last_commit_contains_errors: false,
         }
     );
 }
@@ -1684,6 +1719,7 @@ fn two_commits_valid_signoff_in_first_invalid_signoff_in_second() {
             config: Default::default(),
             head_ref: "main".to_string(),
             num_commits_with_errors: 1,
+            only_last_commit_contains_errors: true,
         }
     );
 }
@@ -1750,6 +1786,7 @@ fn two_commits_no_signoff_in_first_invalid_signoff_in_second() {
             config: Default::default(),
             head_ref: "main".to_string(),
             num_commits_with_errors: 2,
+            only_last_commit_contains_errors: false,
         }
     );
 }
@@ -1816,6 +1853,7 @@ fn two_commits_invalid_signoff_in_first_no_signoff_in_second() {
             config: Default::default(),
             head_ref: "main".to_string(),
             num_commits_with_errors: 2,
+            only_last_commit_contains_errors: false,
         }
     );
 }
@@ -1886,6 +1924,7 @@ fn two_commits_no_signoff_in_first_valid_remediation_commit_in_second_but_remedi
             config: Default::default(),
             head_ref: "main".to_string(),
             num_commits_with_errors: 1,
+            only_last_commit_contains_errors: false,
         }
     );
 }
@@ -1962,6 +2001,7 @@ fn two_commits_no_signoff_in_first_valid_remediation_commit_matching_author_in_s
             config,
             head_ref: "main".to_string(),
             num_commits_with_errors: 0,
+            only_last_commit_contains_errors: false,
         }
     );
 }
@@ -2038,6 +2078,7 @@ fn two_commits_no_signoff_in_first_valid_remediation_commit_matching_committer_i
             config,
             head_ref: "main".to_string(),
             num_commits_with_errors: 0,
+            only_last_commit_contains_errors: false,
         }
     );
 }
@@ -2119,6 +2160,7 @@ fn two_commits_invalid_signoff_incorrect_name_in_first_valid_remediation_commit_
             config,
             head_ref: "main".to_string(),
             num_commits_with_errors: 0,
+            only_last_commit_contains_errors: false,
         }
     );
 }
@@ -2200,6 +2242,7 @@ fn two_commits_invalid_signoff_incorrect_email_in_first_valid_remediation_commit
             config,
             head_ref: "main".to_string(),
             num_commits_with_errors: 0,
+            only_last_commit_contains_errors: false,
         }
     );
 }
@@ -2281,6 +2324,7 @@ fn two_commits_valid_signoff_in_first_redundant_remediation_commit_in_second() {
             config,
             head_ref: "main".to_string(),
             num_commits_with_errors: 0,
+            only_last_commit_contains_errors: false,
         }
     );
 }
@@ -2362,6 +2406,7 @@ fn two_commits_valid_signoff_in_first_remediation_commit_non_existent_sha_in_sec
             config,
             head_ref: "main".to_string(),
             num_commits_with_errors: 0,
+            only_last_commit_contains_errors: false,
         }
     );
 }
@@ -2436,6 +2481,7 @@ fn two_commits_no_signoff_in_first_remediation_commit_no_signoff_in_second() {
             config,
             head_ref: "main".to_string(),
             num_commits_with_errors: 1,
+            only_last_commit_contains_errors: true,
         }
     );
 }
@@ -2512,6 +2558,7 @@ fn two_commits_no_signoff_in_first_remediation_commit_different_name_in_second()
             config,
             head_ref: "main".to_string(),
             num_commits_with_errors: 1,
+            only_last_commit_contains_errors: false,
         }
     );
 }
@@ -2588,6 +2635,7 @@ fn two_commits_no_signoff_in_first_remediation_commit_different_email_in_second(
             config,
             head_ref: "main".to_string(),
             num_commits_with_errors: 1,
+            only_last_commit_contains_errors: false,
         }
     );
 }
@@ -2664,6 +2712,7 @@ fn two_commits_no_signoff_in_first_remediation_commit_different_name_and_email_i
             config,
             head_ref: "main".to_string(),
             num_commits_with_errors: 1,
+            only_last_commit_contains_errors: false,
         }
     );
 }
@@ -2740,6 +2789,7 @@ fn two_commits_no_signoff_in_first_remediation_commit_different_name_in_signoff_
             config,
             head_ref: "main".to_string(),
             num_commits_with_errors: 1,
+            only_last_commit_contains_errors: true,
         }
     );
 }
@@ -2816,6 +2866,7 @@ fn two_commits_no_signoff_in_first_remediation_commit_different_email_in_signoff
             config,
             head_ref: "main".to_string(),
             num_commits_with_errors: 1,
+            only_last_commit_contains_errors: true,
         }
     );
 }
@@ -2892,6 +2943,7 @@ fn two_commits_no_signoff_in_first_remediation_commit_different_name_and_email_i
             config,
             head_ref: "main".to_string(),
             num_commits_with_errors: 1,
+            only_last_commit_contains_errors: true,
         }
     );
 }
@@ -2968,6 +3020,7 @@ fn two_commits_no_signoff_in_first_remediation_commit_different_name_in_remediat
             config,
             head_ref: "main".to_string(),
             num_commits_with_errors: 1,
+            only_last_commit_contains_errors: false,
         }
     );
 }
@@ -3044,6 +3097,7 @@ fn two_commits_no_signoff_in_first_remediation_commit_different_email_in_remedia
             config,
             head_ref: "main".to_string(),
             num_commits_with_errors: 1,
+            only_last_commit_contains_errors: false,
         }
     );
 }
@@ -3120,6 +3174,7 @@ fn two_commits_no_signoff_in_first_remediation_commit_different_name_and_email_i
             config,
             head_ref: "main".to_string(),
             num_commits_with_errors: 1,
+            only_last_commit_contains_errors: false,
         }
     );
 }
@@ -3196,6 +3251,7 @@ fn two_commits_no_signoff_in_first_remediation_commit_sha_mismatch_in_second() {
             config,
             head_ref: "main".to_string(),
             num_commits_with_errors: 1,
+            only_last_commit_contains_errors: false,
         }
     );
 }
@@ -3266,6 +3322,7 @@ fn two_commits_no_signoff_in_first_3p_valid_remediation_commit_in_second_but_rem
             config: Default::default(),
             head_ref: "main".to_string(),
             num_commits_with_errors: 1,
+            only_last_commit_contains_errors: false,
         }
     );
 }
@@ -3343,6 +3400,7 @@ fn two_commits_no_signoff_in_first_3p_valid_remediation_commit_in_second_but_3p_
             config,
             head_ref: "main".to_string(),
             num_commits_with_errors: 1,
+            only_last_commit_contains_errors: false,
         }
     );
 }
@@ -3419,6 +3477,7 @@ fn two_commits_no_signoff_in_first_3p_valid_remediation_commit_from_same_author_
             config,
             head_ref: "main".to_string(),
             num_commits_with_errors: 0,
+            only_last_commit_contains_errors: false,
         }
     );
 }
@@ -3496,6 +3555,7 @@ fn two_commits_no_signoff_in_first_3p_valid_remediation_commit_from_different_au
             config,
             head_ref: "main".to_string(),
             num_commits_with_errors: 0,
+            only_last_commit_contains_errors: false,
         }
     );
 }
@@ -3572,6 +3632,7 @@ fn two_commits_no_signoff_in_first_3p_valid_remediation_commit_from_committer_in
             config,
             head_ref: "main".to_string(),
             num_commits_with_errors: 0,
+            only_last_commit_contains_errors: false,
         }
     );
 }
@@ -3648,6 +3709,7 @@ fn two_commits_no_signoff_in_first_3p_valid_remediation_commit_in_second_individ
             config,
             head_ref: "main".to_string(),
             num_commits_with_errors: 1,
+            only_last_commit_contains_errors: false,
         }
     );
 }
@@ -3724,6 +3786,7 @@ fn two_commits_no_signoff_in_first_3p_remediation_commit_declarant_name_mismatch
             config,
             head_ref: "main".to_string(),
             num_commits_with_errors: 1,
+            only_last_commit_contains_errors: false,
         }
     );
 }
@@ -3800,6 +3863,7 @@ fn two_commits_no_signoff_in_first_3p_remediation_commit_declarant_email_mismatc
             config,
             head_ref: "main".to_string(),
             num_commits_with_errors: 1,
+            only_last_commit_contains_errors: false,
         }
     );
 }
@@ -3876,6 +3940,7 @@ fn two_commits_no_signoff_in_first_3p_remediation_commit_sha_mismatch_in_second(
             config,
             head_ref: "main".to_string(),
             num_commits_with_errors: 1,
+            only_last_commit_contains_errors: false,
         }
     );
 }
@@ -3952,6 +4017,7 @@ fn two_commits_no_signoff_in_first_invalid_3p_remediation_commit_in_second() {
             config,
             head_ref: "main".to_string(),
             num_commits_with_errors: 1,
+            only_last_commit_contains_errors: false,
         }
     );
 }
@@ -4028,6 +4094,7 @@ fn two_commits_no_signoff_in_first_3p_remediation_commit_representative_name_mis
             config,
             head_ref: "main".to_string(),
             num_commits_with_errors: 1,
+            only_last_commit_contains_errors: false,
         }
     );
 }
@@ -4104,6 +4171,7 @@ fn two_commits_no_signoff_in_first_3p_remediation_commit_representative_email_mi
             config,
             head_ref: "main".to_string(),
             num_commits_with_errors: 1,
+            only_last_commit_contains_errors: false,
         }
     );
 }
@@ -4178,6 +4246,7 @@ fn two_commits_no_signoff_in_first_3p_remediation_commit_no_signoff_in_second() 
             config,
             head_ref: "main".to_string(),
             num_commits_with_errors: 2,
+            only_last_commit_contains_errors: false,
         }
     );
 }
@@ -4237,6 +4306,7 @@ fn three_commits_valid_signoff_in_all() {
             config: Default::default(),
             head_ref: "main".to_string(),
             num_commits_with_errors: 0,
+            only_last_commit_contains_errors: false,
         }
     );
 }
@@ -4309,6 +4379,7 @@ fn three_commits_valid_signoff_first_and_second_no_signoff_third() {
             config: Default::default(),
             head_ref: "main".to_string(),
             num_commits_with_errors: 1,
+            only_last_commit_contains_errors: true,
         }
     );
 }
@@ -4399,6 +4470,7 @@ fn three_commits_invalid_signoff_first_no_signoff_second_valid_signoff_third() {
             config: Default::default(),
             head_ref: "main".to_string(),
             num_commits_with_errors: 2,
+            only_last_commit_contains_errors: false,
         }
     );
 }
@@ -4476,6 +4548,7 @@ fn three_commits_valid_signoff_first_invalid_signoff_second_valid_signoff_third(
             config: Default::default(),
             head_ref: "main".to_string(),
             num_commits_with_errors: 1,
+            only_last_commit_contains_errors: false,
         }
     );
 }
@@ -4578,6 +4651,7 @@ fn three_commits_no_signoff_in_first_remediation_commit_without_signoff_in_secon
             config,
             head_ref: "main".to_string(),
             num_commits_with_errors: 0,
+            only_last_commit_contains_errors: false,
         }
     );
 }
@@ -4675,6 +4749,7 @@ fn three_commits_no_signoff_in_first_no_signoff_in_second_valid_remediation_comm
             config,
             head_ref: "main".to_string(),
             num_commits_with_errors: 0,
+            only_last_commit_contains_errors: false,
         }
     );
 }
@@ -4784,6 +4859,7 @@ fn three_commits_valid_signoff_in_first_redundant_remediation_commit_in_second_r
             config,
             head_ref: "main".to_string(),
             num_commits_with_errors: 0,
+            only_last_commit_contains_errors: false,
         }
     );
 }
@@ -4888,6 +4964,7 @@ fn three_commits_no_signoff_in_first_valid_remediation_commit_in_second_redundan
             config,
             head_ref: "main".to_string(),
             num_commits_with_errors: 0,
+            only_last_commit_contains_errors: false,
         }
     );
 }
@@ -4990,6 +5067,7 @@ fn three_commits_no_signoff_in_first_remediation_commit_no_signoff_in_second_val
             config,
             head_ref: "main".to_string(),
             num_commits_with_errors: 0,
+            only_last_commit_contains_errors: false,
         }
     );
 }
@@ -5092,6 +5170,7 @@ fn three_commits_no_signoff_in_first_3p_remediation_commit_no_signoff_in_second_
             config,
             head_ref: "main".to_string(),
             num_commits_with_errors: 0,
+            only_last_commit_contains_errors: false,
         }
     );
 }
@@ -5194,6 +5273,7 @@ fn three_commits_no_signoff_in_first_3p_remediation_commit_no_signoff_in_second_
             config,
             head_ref: "main".to_string(),
             num_commits_with_errors: 0,
+            only_last_commit_contains_errors: false,
         }
     );
 }
@@ -5294,6 +5374,7 @@ fn three_commits_no_signoff_in_first_3p_remediation_commit_no_signoff_in_second_
             config,
             head_ref: "main".to_string(),
             num_commits_with_errors: 1,
+            only_last_commit_contains_errors: true,
         }
     );
 }

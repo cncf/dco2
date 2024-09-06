@@ -30,6 +30,7 @@ pub(crate) struct CheckOutput {
     pub config: Config,
     pub head_ref: String,
     pub num_commits_with_errors: usize,
+    pub only_last_commit_contains_errors: bool,
 }
 
 /// Commit check output.
@@ -97,6 +98,7 @@ pub(crate) fn check(input: &CheckInput) -> CheckOutput {
         config: input.config.clone(),
         head_ref: input.head_ref.clone(),
         num_commits_with_errors: 0,
+        only_last_commit_contains_errors: false,
     };
 
     // Get remediations from all commits
@@ -150,6 +152,8 @@ pub(crate) fn check(input: &CheckInput) -> CheckOutput {
 
     // Update output status
     output.num_commits_with_errors = output.commits.iter().filter(|c| !c.errors.is_empty()).count();
+    output.only_last_commit_contains_errors =
+        output.num_commits_with_errors == 1 && output.commits.last().map_or(false, |c| !c.errors.is_empty());
 
     output
 }
