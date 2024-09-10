@@ -185,7 +185,10 @@ async fn collect_members(
                 // Check if the commit's author is a member of the organization
                 if let Some(author_username) = commit.author.as_ref().and_then(|a| a.login.clone()) {
                     if !members.contains(&author_username)
-                        && gh_client.is_organization_member(&ctx, org, &author_username).await?
+                        && gh_client
+                            .is_organization_member(&ctx, org, &author_username)
+                            .await
+                            .context("error checking organization membership")?
                     {
                         members.push(author_username)
                     }
@@ -194,7 +197,10 @@ async fn collect_members(
                 // Check if the commit's committer is a member of the organization
                 if let Some(committer_username) = commit.committer.as_ref().and_then(|c| c.login.clone()) {
                     if !members.contains(&committer_username)
-                        && gh_client.is_organization_member(&ctx, org, &committer_username).await?
+                        && gh_client
+                            .is_organization_member(&ctx, org, &committer_username)
+                            .await
+                            .context("error checking organization membership")?
                     {
                         members.push(committer_username);
                     }
