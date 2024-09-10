@@ -1,7 +1,5 @@
 {% let total_commits = commits.len() %}
 
-### Check result
-
 {%+ if num_commits_with_errors == 0 %}
   All commits are signed off, the check **passed**.
 
