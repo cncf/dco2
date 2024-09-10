@@ -51,7 +51,7 @@ The primary benefit of using remediation commits to fix missing or invalid sign-
 
 Remediation commits can be `individual` or `third-party`, and they **must** be properly signed off.
 
-By default, both are **disabled**, but they can be enabled by placing the following configuration file in `.github/dco.yml` on the default repository's branch:
+By default, both are **disabled**, but they can be enabled in the [configuration file](docs/config/dco.yml):
 
 ```yaml
 allowRemediationCommits:
@@ -60,7 +60,7 @@ allowRemediationCommits:
 ```
 
 > [!NOTE]
-> DCO2 uses the same configuration file as [dcoapp/app](https://github.com/dcoapp/app) for backwards compatibility reasons. Note that third-party remediation requires individual remediation to be enabled in the configuration as well.
+> The DCO2 configuration file is backwards compatible with the [dcoapp/app](https://github.com/dcoapp/app) configuration file. Note that third-party remediation requires individual remediation to be enabled in the configuration as well.
 
 #### Individual
 
@@ -99,7 +99,7 @@ Signed-off-by: User2 <user2@email.test>
 
 It is possible to disable the check for commits authored and [signed](https://help.github.com/articles/signing-commits-using-gpg/) by members of the organization the repository belongs to.
 
-By default, this feature is **disabled**. To enable it, the following section must be added to the configuration file (located at `.github/dco.yml` on the default repository's branch):
+By default, this feature is **disabled**. To enable it, the following section must be added to the [configuration file](docs/config/dco.yml):
 
 ```yaml
 require:
