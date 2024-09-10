@@ -8,13 +8,13 @@ use crate::{
     },
     github::{
         CheckRunAction, CheckRunConclusion, CheckRunEvent, CheckRunEventAction, CheckRunEventCheckRun,
-        CheckRunStatus, Commit, Config, Event, Installation, MergeGroupEvent, MergeGroupEventAction,
-        MergeGroupEventMergeGroup, MergeGroupHeadCommit, MockGHClient, PullRequest, PullRequestBase,
-        PullRequestEvent, PullRequestEventAction, PullRequestHead, Repository, RepositoryOwner,
-        RequestedAction, User,
+        CheckRunStatus, Commit, Config, ConfigRequire, Event, Installation, MergeGroupEvent,
+        MergeGroupEventAction, MergeGroupEventMergeGroup, MergeGroupHeadCommit, MockGHClient, Organization,
+        PullRequest, PullRequestBase, PullRequestEvent, PullRequestEventAction, PullRequestHead, Repository,
+        RepositoryOwner, RequestedAction, User,
     },
 };
-use anyhow::anyhow;
+use anyhow::{anyhow, Ok};
 use indoc::indoc;
 use mockall::predicate::eq;
 use std::{future, sync::Arc};
@@ -372,6 +372,73 @@ async fn pull_request_event_opened_action_error_getting_repository_configuration
 }
 
 #[tokio::test]
+#[should_panic(expected = "error checking organization membership")]
+async fn pull_request_event_opened_action_error_checking_user_organization_membership() {
+    let event = PullRequestEvent {
+        action: PullRequestEventAction::Opened,
+        installation: Installation { id: 1 },
+        organization: Some(Organization {
+            login: "org".to_string(),
+        }),
+        pull_request: PullRequest {
+            base: PullRequestBase {
+                ref_: "base_ref".to_string(),
+                sha: "base_sha".to_string(),
+            },
+            head: PullRequestHead {
+                ref_: "head_ref".to_string(),
+                sha: "head_sha".to_string(),
+            },
+            html_url: "url".to_string(),
+        },
+        repository: Repository {
+            name: "repo".to_string(),
+            owner: RepositoryOwner {
+                login: "owner".to_string(),
+            },
+        },
+    };
+
+    let mut gh_client = MockGHClient::new();
+    gh_client
+        .expect_compare_commits()
+        .with(eq(event.ctx()), eq("base_sha"), eq("head_sha"))
+        .times(1)
+        .returning(|_, _, _| {
+            Box::pin(future::ready(Ok(vec![Commit {
+                author: Some(User {
+                    name: "user1".to_string(),
+                    email: "user1@email.test".to_string(),
+                    login: Some("user1".to_string()),
+                    ..Default::default()
+                }),
+                committer: Some(User {
+                    name: "user1".to_string(),
+                    email: "user1@email.test".to_string(),
+                    login: Some("user1".to_string()),
+                    ..Default::default()
+                }),
+                message: "Test commit message".to_string(),
+                verified: Some(true),
+                ..Default::default()
+            }])))
+        });
+    gh_client.expect_get_config().with(eq(event.ctx())).times(1).returning(|_| {
+        Box::pin(future::ready(Ok(Some(Config {
+            require: Some(ConfigRequire { members: Some(false) }),
+            ..Default::default()
+        }))))
+    });
+    gh_client
+        .expect_is_organization_member()
+        .with(eq(event.ctx()), eq("org"), eq("user1"))
+        .times(1)
+        .returning(|_, _, _| Box::pin(future::ready(Err(anyhow!("test error")))));
+
+    process_event(Arc::new(gh_client), &Event::PullRequest(event)).await.unwrap();
+}
+
+#[tokio::test]
 #[should_panic(expected = "error creating check run")]
 async fn pull_request_event_opened_action_error_creating_check_run() {
     let event = PullRequestEvent {
@@ -502,6 +569,86 @@ async fn pull_request_event_opened_action_success_check_passed() {
         .with(eq(event.ctx()))
         .times(1)
         .returning(|_| Box::pin(future::ready(Ok(Some(Config::default())))));
+    let expected_ctx = event.ctx();
+    gh_client
+        .expect_create_check_run()
+        .withf(move |ctx, check_run| {
+            *ctx == expected_ctx
+                && check_run.actions().is_empty()
+                && check_run.completed_at() >= check_run.started_at()
+                && check_run.conclusion() == &CheckRunConclusion::Success
+                && check_run.head_sha() == "head_sha"
+                && check_run.name() == CHECK_NAME
+                && check_run.status() == &CheckRunStatus::Completed
+        })
+        .times(1)
+        .returning(|_, _| Box::pin(future::ready(Ok(()))));
+
+    process_event(Arc::new(gh_client), &Event::PullRequest(event)).await.unwrap();
+}
+
+#[tokio::test]
+async fn pull_request_event_opened_action_success_check_passed_author_is_member() {
+    let event = PullRequestEvent {
+        action: PullRequestEventAction::Opened,
+        installation: Installation { id: 1 },
+        organization: Some(Organization {
+            login: "org".to_string(),
+        }),
+        pull_request: PullRequest {
+            base: PullRequestBase {
+                ref_: "base_ref".to_string(),
+                sha: "base_sha".to_string(),
+            },
+            head: PullRequestHead {
+                ref_: "head_ref".to_string(),
+                sha: "head_sha".to_string(),
+            },
+            html_url: "url".to_string(),
+        },
+        repository: Repository {
+            name: "repo".to_string(),
+            owner: RepositoryOwner {
+                login: "owner".to_string(),
+            },
+        },
+    };
+
+    let mut gh_client = MockGHClient::new();
+    gh_client
+        .expect_compare_commits()
+        .with(eq(event.ctx()), eq("base_sha"), eq("head_sha"))
+        .times(1)
+        .returning(|_, _, _| {
+            Box::pin(future::ready(Ok(vec![Commit {
+                author: Some(User {
+                    name: "user1".to_string(),
+                    email: "user1@email.test".to_string(),
+                    login: Some("user1".to_string()),
+                    ..Default::default()
+                }),
+                committer: Some(User {
+                    name: "user1".to_string(),
+                    email: "user1@email.test".to_string(),
+                    login: Some("user1".to_string()),
+                    ..Default::default()
+                }),
+                message: "Test commit message".to_string(),
+                verified: Some(true),
+                ..Default::default()
+            }])))
+        });
+    gh_client.expect_get_config().with(eq(event.ctx())).times(1).returning(|_| {
+        Box::pin(future::ready(Ok(Some(Config {
+            require: Some(ConfigRequire { members: Some(false) }),
+            ..Default::default()
+        }))))
+    });
+    gh_client
+        .expect_is_organization_member()
+        .with(eq(event.ctx()), eq("org"), eq("user1"))
+        .times(1)
+        .returning(|_, _, _| Box::pin(future::ready(Ok(true))));
     let expected_ctx = event.ctx();
     gh_client
         .expect_create_check_run()

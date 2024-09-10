@@ -35,6 +35,10 @@ impl TryFrom<(&HeaderMap, &Bytes)> for Event {
                     let event = serde_json::from_slice(body).map_err(|_| EventError::InvalidPayload)?;
                     Ok(Event::CheckRun(event))
                 }
+                b"merge_group" => {
+                    let event = serde_json::from_slice(body).map_err(|_| EventError::InvalidPayload)?;
+                    Ok(Event::MergeGroup(event))
+                }
                 b"pull_request" => {
                     let event = serde_json::from_slice(body).map_err(|_| EventError::InvalidPayload)?;
                     Ok(Event::PullRequest(event))
