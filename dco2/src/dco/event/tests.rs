@@ -1,8 +1,9 @@
 use crate::{
     dco::{
         event::{
-            CHECK_NAME, MERGE_GROUP_CHECKS_REQUESTED_SUMMARY, OVERRIDE_ACTION_DESCRIPTION,
-            OVERRIDE_ACTION_IDENTIFIER, OVERRIDE_ACTION_LABEL, OVERRIDE_ACTION_SUMMARY,
+            CHECK_FAILED_TITLE, CHECK_NAME, CHECK_PASSED_TITLE, MERGE_GROUP_CHECKS_REQUESTED_SUMMARY,
+            OVERRIDE_ACTION_DESCRIPTION, OVERRIDE_ACTION_IDENTIFIER, OVERRIDE_ACTION_LABEL,
+            OVERRIDE_ACTION_SUMMARY,
         },
         process_event,
     },
@@ -98,6 +99,7 @@ async fn check_run_event_requested_action_override_error_creating_check_run() {
                 && check_run.name() == CHECK_NAME
                 && check_run.status() == &CheckRunStatus::Completed
                 && check_run.summary() == OVERRIDE_ACTION_SUMMARY
+                && check_run.title() == OVERRIDE_ACTION_SUMMARY
         })
         .times(1)
         .returning(|_, _| Box::pin(future::ready(Err(anyhow!("test error")))));
@@ -137,6 +139,7 @@ async fn check_run_event_requested_action_override_success() {
                 && check_run.name() == CHECK_NAME
                 && check_run.status() == &CheckRunStatus::Completed
                 && check_run.summary() == OVERRIDE_ACTION_SUMMARY
+                && check_run.title() == OVERRIDE_ACTION_SUMMARY
         })
         .times(1)
         .returning(|_, _| Box::pin(future::ready(Ok(()))));
@@ -199,6 +202,7 @@ async fn merge_group_checks_requested_error_creating_check_run() {
                 && check_run.name() == CHECK_NAME
                 && check_run.status() == &CheckRunStatus::Completed
                 && check_run.summary() == MERGE_GROUP_CHECKS_REQUESTED_SUMMARY
+                && check_run.title() == MERGE_GROUP_CHECKS_REQUESTED_SUMMARY
         })
         .times(1)
         .returning(|_, _| Box::pin(future::ready(Err(anyhow!("test error")))));
@@ -237,6 +241,7 @@ async fn merge_group_checks_requested_success() {
                 && check_run.name() == CHECK_NAME
                 && check_run.status() == &CheckRunStatus::Completed
                 && check_run.summary() == MERGE_GROUP_CHECKS_REQUESTED_SUMMARY
+                && check_run.title() == MERGE_GROUP_CHECKS_REQUESTED_SUMMARY
         })
         .times(1)
         .returning(|_, _| Box::pin(future::ready(Ok(()))));
@@ -506,6 +511,7 @@ async fn pull_request_event_opened_action_error_creating_check_run() {
                 && check_run.head_sha() == "head_sha"
                 && check_run.name() == CHECK_NAME
                 && check_run.status() == &CheckRunStatus::Completed
+                && check_run.title() == CHECK_PASSED_TITLE
         })
         .times(1)
         .returning(|_, _| Box::pin(future::ready(Err(anyhow!("test error")))));
@@ -580,6 +586,7 @@ async fn pull_request_event_opened_action_success_check_passed() {
                 && check_run.head_sha() == "head_sha"
                 && check_run.name() == CHECK_NAME
                 && check_run.status() == &CheckRunStatus::Completed
+                && check_run.title() == CHECK_PASSED_TITLE
         })
         .times(1)
         .returning(|_, _| Box::pin(future::ready(Ok(()))));
@@ -660,6 +667,7 @@ async fn pull_request_event_opened_action_success_check_passed_author_is_member(
                 && check_run.head_sha() == "head_sha"
                 && check_run.name() == CHECK_NAME
                 && check_run.status() == &CheckRunStatus::Completed
+                && check_run.title() == CHECK_PASSED_TITLE
         })
         .times(1)
         .returning(|_, _| Box::pin(future::ready(Ok(()))));
@@ -739,6 +747,7 @@ async fn pull_request_event_opened_action_success_check_failed() {
                 && check_run.head_sha() == "head_sha"
                 && check_run.name() == CHECK_NAME
                 && check_run.status() == &CheckRunStatus::Completed
+                && check_run.title() == CHECK_FAILED_TITLE
         })
         .times(1)
         .returning(|_, _| Box::pin(future::ready(Ok(()))));

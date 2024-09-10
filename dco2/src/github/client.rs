@@ -114,7 +114,7 @@ impl GHClient for GHClientOctorust {
                 images: vec![],
                 summary: check_run.summary.clone(),
                 text: String::new(),
-                title: check_run.name.clone(),
+                title: check_run.title.clone(),
             }),
             started_at: Some(check_run.started_at),
             status: Some(check_run.status.clone().into()),
@@ -197,6 +197,7 @@ pub struct CheckRun {
     started_at: DateTime<Utc>,
     status: CheckRunStatus,
     summary: String,
+    title: String,
 }
 
 impl CheckRun {
@@ -212,6 +213,7 @@ impl CheckRun {
             started_at: input.started_at,
             status: input.status,
             summary: input.summary,
+            title: input.title,
         };
 
         // Make sure the length of some fields is below the maximum allowed by
@@ -289,6 +291,11 @@ impl CheckRun {
     /// Get the summary of the check run.
     pub fn summary(&self) -> &str {
         &self.summary
+    }
+
+    /// Get the title of the check run.
+    pub fn title(&self) -> &str {
+        &self.title
     }
 }
 
@@ -518,4 +525,5 @@ pub struct NewCheckRunInput {
     pub started_at: DateTime<Utc>,
     pub status: CheckRunStatus,
     pub summary: String,
+    pub title: String,
 }

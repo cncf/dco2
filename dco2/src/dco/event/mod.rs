@@ -16,8 +16,14 @@ mod tests;
 /// Name of the check that will be displayed in GitHub.
 const CHECK_NAME: &str = "DCO";
 
+/// Title of the check run when the check fails.
+const CHECK_FAILED_TITLE: &str = "Check failed";
+
+/// Title of the check run when the check passes.
+const CHECK_PASSED_TITLE: &str = "Check passed!";
+
 /// Summary of the check when requested by a merge group.
-const MERGE_GROUP_CHECKS_REQUESTED_SUMMARY: &str = "Check result set to passed for the merge group.";
+const MERGE_GROUP_CHECKS_REQUESTED_SUMMARY: &str = "Check result set to passed for the merge group";
 
 /// Identifier of the override action (set check result to passed).
 const OVERRIDE_ACTION_IDENTIFIER: &str = "override";
@@ -29,7 +35,7 @@ const OVERRIDE_ACTION_LABEL: &str = "Set DCO to pass";
 const OVERRIDE_ACTION_DESCRIPTION: &str = "Manually set DCO check result to passed";
 
 /// Summary of the override action.
-const OVERRIDE_ACTION_SUMMARY: &str = "Check result was manually set to passed.";
+const OVERRIDE_ACTION_SUMMARY: &str = "Check result was manually set to passed";
 
 /// Process the GitHub webhook event provided, taking the appropriate action.
 pub async fn process_event(gh_client: DynGHClient, event: &Event) -> Result<()> {
@@ -62,6 +68,7 @@ async fn process_check_run_event(gh_client: DynGHClient, event: &CheckRunEvent) 
                 started_at,
                 status: CheckRunStatus::Completed,
                 summary: OVERRIDE_ACTION_SUMMARY.to_string(),
+                title: OVERRIDE_ACTION_SUMMARY.to_string(),
             });
             gh_client.create_check_run(&ctx, &check_run).await.context("error creating check run")?;
         }
@@ -90,6 +97,7 @@ async fn process_merge_group_event(gh_client: DynGHClient, event: &MergeGroupEve
         started_at,
         status: CheckRunStatus::Completed,
         summary: MERGE_GROUP_CHECKS_REQUESTED_SUMMARY.to_string(),
+        title: MERGE_GROUP_CHECKS_REQUESTED_SUMMARY.to_string(),
     });
     gh_client.create_check_run(&ctx, &check_run).await.context("error creating check run")?;
 
@@ -142,11 +150,12 @@ async fn process_pull_request_event(gh_client: DynGHClient, event: &PullRequestE
     let output = check(&input);
 
     // Create check run
-    let (conclusion, actions) = if output.num_commits_with_errors == 0 {
-        (CheckRunConclusion::Success, vec![])
+    let (conclusion, title, actions) = if output.num_commits_with_errors == 0 {
+        (CheckRunConclusion::Success, CHECK_PASSED_TITLE, vec![])
     } else {
         (
             CheckRunConclusion::ActionRequired,
+            CHECK_FAILED_TITLE,
             vec![CheckRunAction {
                 label: OVERRIDE_ACTION_LABEL.to_string(),
                 description: OVERRIDE_ACTION_DESCRIPTION.to_string(),
@@ -163,6 +172,7 @@ async fn process_pull_request_event(gh_client: DynGHClient, event: &PullRequestE
         started_at,
         status: CheckRunStatus::Completed,
         summary: output.render().context("error rendering output template")?,
+        title: title.to_string(),
     });
     gh_client.create_check_run(&ctx, &check_run).await.context("error creating check run")?;
 
