@@ -180,13 +180,6 @@ fn should_skip_commit(check_input: &CheckInput, commit: &Commit) -> (bool, Optio
                 return (true, Some(CommitSuccessReason::FromMember));
             }
         }
-
-        // Check if the commit's committer is a member
-        if let Some(committer_username) = &commit.committer.as_ref().and_then(|c| c.login.as_ref()) {
-            if check_input.members.contains(committer_username) {
-                return (true, Some(CommitSuccessReason::FromMember));
-            }
-        }
     }
 
     (false, None)

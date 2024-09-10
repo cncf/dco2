@@ -113,47 +113,6 @@ fn single_commit_no_signoff_author_is_member() {
 }
 
 #[test]
-fn single_commit_no_signoff_committer_is_member() {
-    let commit1 = Commit {
-        committer: Some(User {
-            name: "user1".to_string(),
-            email: "user1@email.test".to_string(),
-            login: Some("user1".to_string()),
-            ..Default::default()
-        }),
-        verified: Some(true),
-        ..Default::default()
-    };
-
-    let config = Config {
-        require: Some(ConfigRequire { members: Some(false) }),
-        ..Default::default()
-    };
-    let input = CheckInput {
-        commits: vec![commit1.clone()],
-        config: config.clone(),
-        head_ref: "main".to_string(),
-        members: vec!["user1".to_string()],
-    };
-    let output = check(&input);
-
-    assert_eq!(
-        output,
-        CheckOutput {
-            commits: vec![CommitCheckOutput {
-                commit: commit1,
-                errors: vec![],
-                success_reason: Some(CommitSuccessReason::FromMember),
-            }],
-            config,
-            head_ref: "main".to_string(),
-            num_commits_with_errors: 0,
-            only_last_commit_contains_errors: false,
-        }
-    );
-}
-
-#[test]
 fn single_commit_no_signoff_author_is_member_but_members_are_required_to_signoff() {
     let commit1 = Commit {
         author: Some(User {
@@ -195,91 +154,9 @@ fn single_commit_no_signoff_author_is_member_but_members_are_required_to_signoff
 }
 
 #[test]
-fn single_commit_no_signoff_committer_is_member_but_members_are_required_to_signoff() {
-    let commit1 = Commit {
-        committer: Some(User {
-            name: "user1".to_string(),
-            email: "user1@email.test".to_string(),
-            login: Some("user1".to_string()),
-            ..Default::default()
-        }),
-        verified: Some(true),
-        ..Default::default()
-    };
-
-    let config = Config {
-        require: Some(ConfigRequire { members: Some(true) }),
-        ..Default::default()
-    };
-    let input = CheckInput {
-        commits: vec![commit1.clone()],
-        config: config.clone(),
-        head_ref: "main".to_string(),
-        members: vec!["user1".to_string()],
-    };
-    let output = check(&input);
-
-    assert_eq!(
-        output,
-        CheckOutput {
-            commits: vec![CommitCheckOutput {
-                commit: commit1,
-                errors: vec![CommitError::SignOffNotFound],
-                success_reason: None,
-            }],
-            config,
-            head_ref: "main".to_string(),
-            num_commits_with_errors: 1,
-            only_last_commit_contains_errors: true,
-        }
-    );
-}
-
-#[test]
 fn single_commit_no_signoff_author_is_member_but_the_commit_is_not_verified() {
     let commit1 = Commit {
         author: Some(User {
-            name: "user1".to_string(),
-            email: "user1@email.test".to_string(),
-            login: Some("user1".to_string()),
-            ..Default::default()
-        }),
-        verified: Some(false),
-        ..Default::default()
-    };
-
-    let config = Config {
-        require: Some(ConfigRequire { members: Some(false) }),
-        ..Default::default()
-    };
-    let input = CheckInput {
-        commits: vec![commit1.clone()],
-        config: config.clone(),
-        head_ref: "main".to_string(),
-        members: vec!["user1".to_string()],
-    };
-    let output = check(&input);
-
-    assert_eq!(
-        output,
-        CheckOutput {
-            commits: vec![CommitCheckOutput {
-                commit: commit1,
-                errors: vec![CommitError::SignOffNotFound],
-                success_reason: None,
-            }],
-            config,
-            head_ref: "main".to_string(),
-            num_commits_with_errors: 1,
-            only_last_commit_contains_errors: true,
-        }
-    );
-}
-
-#[test]
-fn single_commit_no_signoff_committer_is_member_but_the_commit_is_not_verified() {
-    let commit1 = Commit {
-        committer: Some(User {
             name: "user1".to_string(),
             email: "user1@email.test".to_string(),
             login: Some("user1".to_string()),
