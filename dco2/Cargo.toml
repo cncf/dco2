@@ -12,6 +12,7 @@ askama = { workspace = true }
 async-trait = { workspace = true }
 base64 = { workspace = true }
 bytes = { workspace = true }
+cached = { workspace = true }
 chrono = { workspace = true }
 email_address = { workspace = true }
 http = { workspace = true }

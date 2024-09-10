@@ -3,7 +3,8 @@
 use super::check::{check, CheckInput};
 use crate::github::{
     CheckRun, CheckRunAction, CheckRunConclusion, CheckRunEvent, CheckRunEventAction, CheckRunStatus, Commit,
-    DynGHClient, Event, NewCheckRunInput, PullRequestEvent, PullRequestEventAction,
+    DynGHClient, Event, MergeGroupEvent, MergeGroupEventAction, NewCheckRunInput, PullRequestEvent,
+    PullRequestEventAction,
 };
 use anyhow::{Context, Result};
 use askama::Template;
@@ -14,6 +15,9 @@ mod tests;
 
 /// Name of the check that will be displayed in GitHub.
 const CHECK_NAME: &str = "DCO";
+
+/// Summary of the check when requested by a merge group.
+const MERGE_GROUP_CHECKS_REQUESTED_SUMMARY: &str = "Check result set to passed for the merge group.";
 
 /// Identifier of the override action (set check result to passed).
 const OVERRIDE_ACTION_IDENTIFIER: &str = "override";
@@ -31,6 +35,7 @@ const OVERRIDE_ACTION_SUMMARY: &str = "Check result was manually set to passed."
 pub async fn process_event(gh_client: DynGHClient, event: &Event) -> Result<()> {
     match event {
         Event::CheckRun(event) => process_check_run_event(gh_client, event).await,
+        Event::MergeGroup(event) => process_merge_group_event(gh_client, event).await,
         Event::PullRequest(event) => process_pull_request_event(gh_client, event).await,
     }
 }
@@ -61,6 +66,32 @@ async fn process_check_run_event(gh_client: DynGHClient, event: &CheckRunEvent) 
             gh_client.create_check_run(&ctx, &check_run).await.context("error creating check run")?;
         }
     }
+
+    Ok(())
+}
+
+/// Process merge group event.
+async fn process_merge_group_event(gh_client: DynGHClient, event: &MergeGroupEvent) -> Result<()> {
+    let started_at = Utc::now();
+    let ctx = event.ctx();
+
+    // Create a check run with success status when checks are requested for a
+    // merge group. The DCO check must already have passed before the pull
+    // request was added to the merge queue, so there is no need to run it again
+    if event.action != MergeGroupEventAction::ChecksRequested {
+        return Ok(());
+    }
+    let check_run = CheckRun::new(NewCheckRunInput {
+        actions: vec![],
+        completed_at: Utc::now(),
+        conclusion: CheckRunConclusion::Success,
+        head_sha: event.merge_group.head_commit.id.clone(),
+        name: CHECK_NAME.to_string(),
+        started_at,
+        status: CheckRunStatus::Completed,
+        summary: MERGE_GROUP_CHECKS_REQUESTED_SUMMARY.to_string(),
+    });
+    gh_client.create_check_run(&ctx, &check_run).await.context("error creating check run")?;
 
     Ok(())
 }
@@ -153,8 +184,9 @@ async fn collect_members(
             if commit.verified.unwrap_or(false) {
                 // Check if the commit's author is a member of the organization
                 if let Some(author_username) = commit.author.as_ref().and_then(|a| a.login.clone()) {
-                    if !members.contains(&author_username) {
-                        // TODO
+                    if !members.contains(&author_username)
+                        && gh_client.is_organization_member(&ctx, org, &author_username).await?
+                    {
                         members.push(author_username)
                     }
                 }

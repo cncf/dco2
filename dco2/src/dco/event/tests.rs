@@ -1,14 +1,15 @@
 use crate::{
     dco::{
         event::{
-            CHECK_NAME, OVERRIDE_ACTION_DESCRIPTION, OVERRIDE_ACTION_IDENTIFIER, OVERRIDE_ACTION_LABEL,
-            OVERRIDE_ACTION_SUMMARY,
+            CHECK_NAME, MERGE_GROUP_CHECKS_REQUESTED_SUMMARY, OVERRIDE_ACTION_DESCRIPTION,
+            OVERRIDE_ACTION_IDENTIFIER, OVERRIDE_ACTION_LABEL, OVERRIDE_ACTION_SUMMARY,
         },
         process_event,
     },
     github::{
         CheckRunAction, CheckRunConclusion, CheckRunEvent, CheckRunEventAction, CheckRunEventCheckRun,
-        CheckRunStatus, Commit, Config, Event, Installation, MockGHClient, PullRequest, PullRequestBase,
+        CheckRunStatus, Commit, Config, Event, Installation, MergeGroupEvent, MergeGroupEventAction,
+        MergeGroupEventMergeGroup, MergeGroupHeadCommit, MockGHClient, PullRequest, PullRequestBase,
         PullRequestEvent, PullRequestEventAction, PullRequestHead, Repository, RepositoryOwner,
         RequestedAction, User,
     },
@@ -141,6 +142,106 @@ async fn check_run_event_requested_action_override_success() {
         .returning(|_, _| Box::pin(future::ready(Ok(()))));
 
     process_event(Arc::new(gh_client), &Event::CheckRun(event)).await.unwrap();
+}
+
+#[tokio::test]
+async fn merge_group_other_action() {
+    let event = MergeGroupEvent {
+        action: MergeGroupEventAction::Other,
+        merge_group: MergeGroupEventMergeGroup {
+            head_commit: MergeGroupHeadCommit {
+                id: "head_sha".to_string(),
+            },
+        },
+        installation: Installation { id: 1 },
+        repository: Repository {
+            name: "repo".to_string(),
+            owner: RepositoryOwner {
+                login: "owner".to_string(),
+            },
+        },
+    };
+
+    let gh_client = MockGHClient::new();
+
+    process_event(Arc::new(gh_client), &Event::MergeGroup(event)).await.unwrap();
+}
+
+#[tokio::test]
+#[should_panic(expected = "error creating check run")]
+async fn merge_group_checks_requested_error_creating_check_run() {
+    let event = MergeGroupEvent {
+        action: MergeGroupEventAction::ChecksRequested,
+        merge_group: MergeGroupEventMergeGroup {
+            head_commit: MergeGroupHeadCommit {
+                id: "head_sha".to_string(),
+            },
+        },
+        installation: Installation { id: 1 },
+        repository: Repository {
+            name: "repo".to_string(),
+            owner: RepositoryOwner {
+                login: "owner".to_string(),
+            },
+        },
+    };
+
+    let mut gh_client = MockGHClient::new();
+    let expected_ctx = event.ctx();
+    gh_client
+        .expect_create_check_run()
+        .withf(move |ctx, check_run| {
+            *ctx == expected_ctx
+                && check_run.actions().is_empty()
+                && check_run.completed_at() >= check_run.started_at()
+                && check_run.conclusion() == &CheckRunConclusion::Success
+                && check_run.head_sha() == "head_sha"
+                && check_run.name() == CHECK_NAME
+                && check_run.status() == &CheckRunStatus::Completed
+                && check_run.summary() == MERGE_GROUP_CHECKS_REQUESTED_SUMMARY
+        })
+        .times(1)
+        .returning(|_, _| Box::pin(future::ready(Err(anyhow!("test error")))));
+
+    process_event(Arc::new(gh_client), &Event::MergeGroup(event)).await.unwrap();
+}
+
+#[tokio::test]
+async fn merge_group_checks_requested_success() {
+    let event = MergeGroupEvent {
+        action: MergeGroupEventAction::ChecksRequested,
+        merge_group: MergeGroupEventMergeGroup {
+            head_commit: MergeGroupHeadCommit {
+                id: "head_sha".to_string(),
+            },
+        },
+        installation: Installation { id: 1 },
+        repository: Repository {
+            name: "repo".to_string(),
+            owner: RepositoryOwner {
+                login: "owner".to_string(),
+            },
+        },
+    };
+
+    let mut gh_client = MockGHClient::new();
+    let expected_ctx = event.ctx();
+    gh_client
+        .expect_create_check_run()
+        .withf(move |ctx, check_run| {
+            *ctx == expected_ctx
+                && check_run.actions().is_empty()
+                && check_run.completed_at() >= check_run.started_at()
+                && check_run.conclusion() == &CheckRunConclusion::Success
+                && check_run.head_sha() == "head_sha"
+                && check_run.name() == CHECK_NAME
+                && check_run.status() == &CheckRunStatus::Completed
+                && check_run.summary() == MERGE_GROUP_CHECKS_REQUESTED_SUMMARY
+        })
+        .times(1)
+        .returning(|_, _| Box::pin(future::ready(Ok(()))));
+
+    process_event(Arc::new(gh_client), &Event::MergeGroup(event)).await.unwrap();
 }
 
 #[tokio::test]

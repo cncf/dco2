@@ -20,6 +20,7 @@ const EVENT_NAME_HEADER: &str = "X-GitHub-Event";
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum Event {
     CheckRun(CheckRunEvent),
+    MergeGroup(MergeGroupEvent),
     PullRequest(PullRequestEvent),
 }
 
@@ -97,6 +98,47 @@ pub struct CheckRunEventCheckRun {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Installation {
     pub id: i64,
+}
+
+/// Merge group event payload.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct MergeGroupEvent {
+    pub action: MergeGroupEventAction,
+    pub installation: Installation,
+    pub merge_group: MergeGroupEventMergeGroup,
+    pub repository: Repository,
+}
+
+impl MergeGroupEvent {
+    /// Get context information from event details.
+    pub fn ctx(&self) -> Ctx {
+        Ctx {
+            inst_id: self.installation.id,
+            owner: self.repository.owner.login.to_string(),
+            repo: self.repository.name.to_string(),
+        }
+    }
+}
+
+/// Merge group event action.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum MergeGroupEventAction {
+    ChecksRequested,
+    #[serde(other)]
+    Other,
+}
+
+/// Merge group event merge group details.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct MergeGroupEventMergeGroup {
+    pub head_commit: MergeGroupHeadCommit,
+}
+
+/// Merge group head commit information.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct MergeGroupHeadCommit {
+    pub id: String,
 }
 
 /// GitHub organization information.
