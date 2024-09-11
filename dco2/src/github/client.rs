@@ -126,37 +126,51 @@ impl GHClient for GHClientOctorust {
 
     /// [GHClient::get_config]
     async fn get_config(&self, ctx: &Ctx) -> Result<Option<Config>> {
+        #[cached(
+            size = 1000,
+            time = 3600,
+            sync_writes = true,
+            result = true,
+            key = "String",
+            convert = r#"{ format!("{}-{}", ctx.owner, ctx.repo) }"#
+        )]
+        async fn inner(client: &octorust::Client, ctx: &Ctx) -> Result<Option<Config>> {
+            // Get configuration file content
+            let resp =
+                match client.repos().get_content_file(&ctx.owner, &ctx.repo, CONFIG_FILE_PATH, "").await {
+                    Ok(resp) => resp,
+                    Err(octorust::ClientError::HttpError {
+                        status,
+                        headers: _,
+                        error,
+                    }) => {
+                        if status == StatusCode::NOT_FOUND {
+                            return Ok(None);
+                        }
+                        bail!(error);
+                    }
+                    Err(err) => bail!(err),
+                };
+
+            // Decode and parse configuration
+            let mut b64data = resp.body.content.as_bytes().to_owned();
+            b64data.retain(|b| !b" \n\t\r\x0b\x0c".contains(b));
+            let data = String::from_utf8(b64.decode(b64data)?)?;
+            let config = serde_yaml::from_str(&data)?;
+
+            Ok(config)
+        }
+
         // Setup client for installation provided
         let client = self.setup_client(ctx.inst_id)?;
 
-        // Get configuration file content
-        let resp = match client.repos().get_content_file(&ctx.owner, &ctx.repo, CONFIG_FILE_PATH, "").await {
-            Ok(resp) => resp,
-            Err(octorust::ClientError::HttpError {
-                status,
-                headers: _,
-                error,
-            }) => {
-                if status == StatusCode::NOT_FOUND {
-                    return Ok(None);
-                }
-                bail!(error);
-            }
-            Err(err) => bail!(err),
-        };
-
-        // Decode and parse configuration
-        let mut b64data = resp.body.content.as_bytes().to_owned();
-        b64data.retain(|b| !b" \n\t\r\x0b\x0c".contains(b));
-        let data = String::from_utf8(b64.decode(b64data)?)?;
-        let config = serde_yaml::from_str(&data)?;
-
-        Ok(config)
+        inner(&client, ctx).await
     }
 
     /// [GHClient::is_organization_member]
     async fn is_organization_member(&self, ctx: &Ctx, org: &str, username: &str) -> Result<bool> {
         #[cached(
+            size = 1000,
             time = 3600,
             sync_writes = true,
             result = true,
