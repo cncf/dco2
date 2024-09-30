@@ -16,11 +16,11 @@ rust-version = "1.81"
 anyhow = "1.0.89"
 askama = "0.12.1"
 async-trait = "0.1.82"
-axum = { version = "0.7.5", features = ["macros"] }
+axum = { version = "0.7.6", features = ["macros"] }
 base64 = "0.22.1"
-bytes = "1.7.1"
+bytes = "1.7.2"
 cached = { version = "0.53.1", features = ["async"] }
-clap = { version = "4.5.17", features = ["derive"] }
+clap = { version = "4.5.18", features = ["derive"] }
 chrono = "0.4.38"
 email_address = "0.2.9"
 figment = { version = "0.10.19", features = ["yaml", "env"] }
@@ -38,7 +38,7 @@ serde = { version = "1.0.210", features = ["derive"] }
 serde_json = "1.0.128"
 serde_yaml = "0.9.34"
 sha2 = "0.10.8"
-thiserror = "1.0.63"
+thiserror = "1.0.64"
 tokio = { version = "1.40.0", features = [
     "macros",
     "process",
