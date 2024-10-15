@@ -20,7 +20,7 @@ axum = { version = "0.7.7", features = ["macros"] }
 base64 = "0.22.1"
 bytes = "1.7.2"
 cached = { version = "0.53.1", features = ["async"] }
-clap = { version = "4.5.19", features = ["derive"] }
+clap = { version = "4.5.20", features = ["derive"] }
 chrono = "0.4.38"
 email_address = "0.2.9"
 figment = { version = "0.10.19", features = ["yaml", "env"] }
