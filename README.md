@@ -4,9 +4,6 @@
 
 It aims to be a drop-in replacement for [dcoapp/app](https://github.com/dcoapp/app).
 
-> [!WARNING]
-> This application is still in **beta** state. We expect it to be working mostly fine, but it has not been battle tested yet, so it is likely that there are some bugs to be found. If you notice anything that does not work as expected, please report it by creating a [new issue in this repository](https://github.com/cncf/dco2/issues/new).
-
 ## Usage
 
 To start using the DCO2 application, you need to [configure the application](https://github.com/apps/dco-2) for your organization or repositories. To enforce the DCO check, you can enable [required status checks](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-protected-branches/about-protected-branches) in your branch protection settings.
