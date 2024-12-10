@@ -19,7 +19,7 @@ pub(crate) struct Config {
 
 impl Config {
     /// Create a new Config instance.
-    pub(crate) fn new(config_file: &Option<PathBuf>) -> Result<Self> {
+    pub(crate) fn new(config_file: Option<&PathBuf>) -> Result<Self> {
         let mut figment = Figment::new()
             .merge(Serialized::default("log_format", "json"))
             .merge(Serialized::default("server_addr", "localhost:9000"));
