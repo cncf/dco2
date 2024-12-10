@@ -25,7 +25,7 @@ struct Args {
 async fn main() -> Result<()> {
     // Setup configuration
     let args = Args::parse();
-    let cfg = Config::new(&args.config_file).context("error setting up configuration")?;
+    let cfg = Config::new(args.config_file.as_ref()).context("error setting up configuration")?;
 
     // Setup logging
     if std::env::var_os("RUST_LOG").is_none() {
