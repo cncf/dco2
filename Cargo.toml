@@ -13,9 +13,9 @@ license = "Apache-2.0"
 rust-version = "1.83"
 
 [workspace.dependencies]
-anyhow = "1.0.94"
+anyhow = "1.0.95"
 askama = "0.12.1"
-async-trait = "0.1.83"
+async-trait = "0.1.84"
 axum = { version = "0.7.9", features = ["macros"] }
 base64 = "0.22.1"
 bytes = "1.9.0"
@@ -34,11 +34,11 @@ octorust = "0.8.0-rc.1"
 pem = "3.0.4"
 pretty_assertions = "1.4.1"
 regex = "1.11.1"
-serde = { version = "1.0.215", features = ["derive"] }
-serde_json = "1.0.133"
+serde = { version = "1.0.217", features = ["derive"] }
+serde_json = "1.0.134"
 serde_yaml = "0.9.34"
 sha2 = "0.10.8"
-thiserror = "2.0.6"
+thiserror = "2.0.9"
 tokio = { version = "1.42.0", features = [
     "macros",
     "process",
@@ -47,7 +47,7 @@ tokio = { version = "1.42.0", features = [
     "sync",
     "time",
 ] }
-tower = "0.5.1"
+tower = "0.5.2"
 tower-http = { version = "0.6.2", features = ["auth", "fs", "set-header", "trace"] }
 tracing = "0.1.41"
 tracing-subscriber = { version = "0.3.19", features = ["env-filter", "json"] }
