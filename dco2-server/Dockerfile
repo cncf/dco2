@@ -10,7 +10,7 @@ WORKDIR /dco2/dco2-server
 RUN cargo build --release
 
 # Final stage
-FROM alpine:3.21.0
+FROM alpine:3.21.2
 RUN apk --no-cache add ca-certificates && addgroup -S dco2 && adduser -S dco2 -G dco2
 USER dco2
 WORKDIR /home/dco2
