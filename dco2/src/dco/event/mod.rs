@@ -1,14 +1,17 @@
 //! This module contains the logic to process GitHub webhook events.
 
-use super::check::{check, CheckInput};
-use crate::github::{
-    CheckRun, CheckRunAction, CheckRunConclusion, CheckRunEvent, CheckRunEventAction, CheckRunStatus, Commit,
-    DynGHClient, Event, MergeGroupEvent, MergeGroupEventAction, NewCheckRunInput, PullRequestEvent,
-    PullRequestEventAction,
-};
 use anyhow::{Context, Result};
 use askama::Template;
 use chrono::Utc;
+
+use crate::{
+    dco::check::{check, CheckInput},
+    github::{
+        CheckRun, CheckRunAction, CheckRunConclusion, CheckRunEvent, CheckRunEventAction, CheckRunStatus,
+        Commit, DynGHClient, Event, MergeGroupEvent, MergeGroupEventAction, NewCheckRunInput,
+        PullRequestEvent, PullRequestEventAction,
+    },
+};
 
 #[cfg(test)]
 mod tests;

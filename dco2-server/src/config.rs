@@ -1,13 +1,15 @@
 //! This module defines some types to represent the server configuration.
 
+use std::path::PathBuf;
+
 use anyhow::Result;
-use dco2::github::AppConfig;
 use figment::{
     providers::{Env, Format, Serialized, Yaml},
     Figment,
 };
 use serde::{Deserialize, Serialize};
-use std::path::PathBuf;
+
+use dco2::github::AppConfig;
 
 /// Server configuration.
 #[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]

@@ -1,3 +1,9 @@
+use std::{future, sync::Arc};
+
+use anyhow::{anyhow, Ok};
+use indoc::indoc;
+use mockall::predicate::eq;
+
 use crate::{
     dco::{
         event::{
@@ -15,10 +21,6 @@ use crate::{
         RepositoryOwner, RequestedAction, User,
     },
 };
-use anyhow::{anyhow, Ok};
-use indoc::indoc;
-use mockall::predicate::eq;
-use std::{future, sync::Arc};
 
 #[tokio::test]
 async fn check_run_event_other_action() {

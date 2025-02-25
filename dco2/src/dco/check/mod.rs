@@ -1,13 +1,15 @@
 //! This module contains the DCO check logic.
 
-use crate::github::{Commit, Config, User};
+use std::{fmt::Display, sync::LazyLock};
+
 use anyhow::{bail, Result};
 use askama::Template;
 use email_address::EmailAddress;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
-use std::{fmt::Display, sync::LazyLock};
 use thiserror::Error;
+
+use crate::github::{Commit, Config, User};
 
 mod filters;
 #[cfg(test)]
@@ -153,7 +155,7 @@ pub(crate) fn check(input: &CheckInput) -> CheckOutput {
     // Update output status
     output.num_commits_with_errors = output.commits.iter().filter(|c| !c.errors.is_empty()).count();
     output.only_last_commit_contains_errors =
-        output.num_commits_with_errors == 1 && output.commits.last().map_or(false, |c| !c.errors.is_empty());
+        output.num_commits_with_errors == 1 && output.commits.last().is_some_and(|c| !c.errors.is_empty());
 
     output
 }

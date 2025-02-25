@@ -1,10 +1,12 @@
+use std::vec;
+
+use indoc::indoc;
+use pretty_assertions::assert_eq;
+
 use crate::{
     dco::check::{check, CheckInput, CheckOutput, CommitCheckOutput, CommitError, CommitSuccessReason},
     github::{Commit, Config, ConfigAllowRemediationCommits, ConfigRequire, User},
 };
-use indoc::indoc;
-use pretty_assertions::assert_eq;
-use std::vec;
 
 #[test]
 fn single_commit_no_signoff_is_merge_commit() {
