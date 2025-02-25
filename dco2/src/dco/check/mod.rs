@@ -194,7 +194,7 @@ fn validate_emails(commit: &Commit) -> Result<(), Vec<CommitError>> {
     // Committer
     let committer_email = commit.committer.as_ref().map(|c| &c.email);
     if let Some(committer_email) = committer_email {
-        if !EmailAddress::is_valid(committer_email) {
+        if !is_valid_email(committer_email) {
             errors.push(CommitError::InvalidCommitterEmail);
         }
     }
@@ -202,7 +202,7 @@ fn validate_emails(commit: &Commit) -> Result<(), Vec<CommitError>> {
     // Author
     let author_email = commit.author.as_ref().map(|a| &a.email);
     if let Some(author_email) = author_email {
-        if Some(author_email) != committer_email && !EmailAddress::is_valid(author_email) {
+        if Some(author_email) != committer_email && !is_valid_email(author_email) {
             errors.push(CommitError::InvalidAuthorEmail);
         }
     }
@@ -212,6 +212,16 @@ fn validate_emails(commit: &Commit) -> Result<(), Vec<CommitError>> {
     } else {
         Err(errors)
     }
+}
+
+/// Validate email address.
+fn is_valid_email(email: &str) -> bool {
+    // Exception for GitHub bots noreply email addresses
+    if email.ends_with("[bot]@users.noreply.github.com") {
+        return true;
+    }
+
+    EmailAddress::is_valid(email)
 }
 
 /// Sign-off line regular expression.

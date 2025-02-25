@@ -470,6 +470,52 @@ fn single_commit_valid_signoff_email_contains_subdomain() {
 }
 
 #[test]
+fn single_commit_valid_signoff_github_bot_noreply_email() {
+    let commit1 = Commit {
+        author: Some(User {
+            name: "user1".to_string(),
+            email: "user1@email.test".to_string(),
+            ..Default::default()
+        }),
+        committer: Some(User {
+            name: "github-actions[bot]".to_string(),
+            email: "12345678+github-actions[bot]@users.noreply.github.com".to_string(),
+            ..Default::default()
+        }),
+        message: indoc! {r"
+            Test commit message
+
+            Signed-off-by: github-actions[bot] <12345678+github-actions[bot]@users.noreply.github.com>
+        "}
+        .to_string(),
+        ..Default::default()
+    };
+
+    let input = CheckInput {
+        commits: vec![commit1.clone()],
+        config: Default::default(),
+        head_ref: "main".to_string(),
+        members: vec![],
+    };
+    let output = check(&input);
+
+    assert_eq!(
+        output,
+        CheckOutput {
+            commits: vec![CommitCheckOutput {
+                commit: commit1,
+                errors: vec![],
+                success_reason: Some(CommitSuccessReason::ValidSignOff),
+            }],
+            config: Default::default(),
+            head_ref: "main".to_string(),
+            num_commits_with_errors: 0,
+            only_last_commit_contains_errors: false,
+        }
+    );
+}
+
+#[test]
 fn single_commit_valid_signoff_email_contains_plus_alias() {
     let commit1 = Commit {
         author: Some(User {
