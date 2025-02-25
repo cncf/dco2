@@ -5,7 +5,7 @@ updates:
     schedule:
       interval: "weekly"
     groups:
-      cli:
+      dco2:
         patterns:
           - "*"
         update-types:

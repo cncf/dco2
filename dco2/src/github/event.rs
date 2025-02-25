@@ -1,11 +1,12 @@
 //! This module defines some types and functions to parse and deserialize
 //! GitHub webhook events.
 
-use super::client::Ctx;
 use bytes::Bytes;
 use http::HeaderMap;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
+
+use crate::github::client::Ctx;
 
 /// Header representing the event unique identifier.
 pub const EVENT_ID_HEADER: &str = "X-GitHub-Delivery";

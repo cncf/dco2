@@ -1,5 +1,7 @@
 //! This module defines an abstraction layer over the GitHub API.
 
+use std::sync::Arc;
+
 use anyhow::{bail, Result};
 use async_trait::async_trait;
 use base64::{engine::general_purpose::STANDARD as b64, Engine as _};
@@ -9,7 +11,6 @@ use http::StatusCode;
 #[cfg(test)]
 use mockall::automock;
 use serde::{Deserialize, Serialize};
-use std::sync::Arc;
 use tracing::warn;
 
 /// Path of the configuration file in the repository.
@@ -395,13 +396,13 @@ impl From<octorust::types::CommitDataType> for Commit {
             author: c.commit.author.map(|author| User {
                 name: author.name,
                 email: author.email,
-                is_bot: c.author.as_ref().map_or(false, |a| a.type_ == "Bot"),
+                is_bot: c.author.as_ref().is_some_and(|a| a.type_ == "Bot"),
                 login: c.author.map(|a| a.login),
             }),
             committer: c.commit.committer.map(|committer| User {
                 name: committer.name,
                 email: committer.email,
-                is_bot: c.committer.as_ref().map_or(false, |c| c.type_ == "Bot"),
+                is_bot: c.committer.as_ref().is_some_and(|c| c.type_ == "Bot"),
                 login: c.committer.map(|c| c.login),
             }),
             html_url: c.html_url,

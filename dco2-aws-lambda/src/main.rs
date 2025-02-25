@@ -1,9 +1,11 @@
+use std::{env::set_var, sync::Arc};
+
 use anyhow::Context;
-use dco2::github::{AppConfig, GHClientOctorust};
-use dco2_server::handlers::setup_router;
 use figment::{providers::Env, Figment};
 use lambda_http::{run, tracing, Error};
-use std::{env::set_var, sync::Arc};
+
+use dco2::github::{AppConfig, GHClientOctorust};
+use dco2_server::handlers::setup_router;
 
 #[tokio::main]
 async fn main() -> Result<(), Error> {

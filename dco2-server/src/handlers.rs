@@ -9,15 +9,16 @@ use axum::{
     routing::{get, post},
     Router,
 };
-use dco2::{
-    dco,
-    github::{DynGHClient, Event, EventError, EVENT_ID_HEADER, EVENT_SIGNATURE_HEADER},
-};
 use hmac::{Hmac, Mac};
 use sha2::Sha256;
 use tower::ServiceBuilder;
 use tower_http::trace::TraceLayer;
 use tracing::{error, info, instrument};
+
+use dco2::{
+    dco,
+    github::{DynGHClient, Event, EventError, EVENT_ID_HEADER, EVENT_SIGNATURE_HEADER},
+};
 
 /// Router's state.
 #[derive(Clone, FromRef)]

@@ -1,15 +1,17 @@
 #![warn(clippy::all, clippy::pedantic)]
 #![allow(clippy::doc_markdown, clippy::similar_names)]
 
+use std::{path::PathBuf, sync::Arc};
+
 use anyhow::{Context, Result};
 use clap::Parser;
 use config::{Config, LogFormat};
-use dco2::github::GHClientOctorust;
-use dco2_server::handlers::setup_router;
-use std::{path::PathBuf, sync::Arc};
 use tokio::{net::TcpListener, signal};
 use tracing::{error, info};
 use tracing_subscriber::EnvFilter;
+
+use dco2::github::GHClientOctorust;
+use dco2_server::handlers::setup_router;
 
 mod config;
 
