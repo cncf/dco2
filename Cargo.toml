@@ -13,15 +13,15 @@ license = "Apache-2.0"
 rust-version = "1.85"
 
 [workspace.dependencies]
-anyhow = "1.0.96"
+anyhow = "1.0.97"
 askama = "0.12.1"
-async-trait = "0.1.86"
+async-trait = "0.1.87"
 axum = { version = "0.8.1", features = ["macros"] }
 base64 = "0.22.1"
 bytes = "1.10.0"
 cached = { version = "0.54.0", features = ["async"] }
 clap = { version = "4.5.31", features = ["derive"] }
-chrono = "0.4.39"
+chrono = "0.4.40"
 email_address = "0.2.9"
 figment = { version = "0.10.19", features = ["yaml", "env"] }
 hmac = "0.12.1"
@@ -35,10 +35,10 @@ pem = "3.0.5"
 pretty_assertions = "1.4.1"
 regex = "1.11.1"
 serde = { version = "1.0.218", features = ["derive"] }
-serde_json = "1.0.139"
+serde_json = "1.0.140"
 serde_yaml = "0.9.34"
 sha2 = "0.10.8"
-thiserror = "2.0.11"
+thiserror = "2.0.12"
 tokio = { version = "1.43.0", features = [
     "macros",
     "process",
