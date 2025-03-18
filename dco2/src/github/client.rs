@@ -130,7 +130,7 @@ impl GHClient for GHClientOctorust {
         #[cached(
             size = 1000,
             time = 3600,
-            sync_writes = true,
+            sync_writes = "default",
             result = true,
             key = "String",
             convert = r#"{ format!("{}-{}", ctx.owner, ctx.repo) }"#
@@ -173,7 +173,7 @@ impl GHClient for GHClientOctorust {
         #[cached(
             size = 1000,
             time = 3600,
-            sync_writes = true,
+            sync_writes = "default",
             result = true,
             key = "String",
             convert = r#"{ format!("{}-{}", org, username) }"#
