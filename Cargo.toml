@@ -16,11 +16,11 @@ rust-version = "1.85"
 anyhow = "1.0.97"
 askama = "0.12.1"
 async-trait = "0.1.88"
-axum = { version = "0.8.1", features = ["macros"] }
+axum = { version = "0.8.3", features = ["macros"] }
 base64 = "0.22.1"
 bytes = "1.10.1"
 cached = { version = "0.55.1", features = ["async"] }
-clap = { version = "4.5.32", features = ["derive"] }
+clap = { version = "4.5.34", features = ["derive"] }
 chrono = "0.4.40"
 email_address = "0.2.9"
 figment = { version = "0.10.19", features = ["yaml", "env"] }
