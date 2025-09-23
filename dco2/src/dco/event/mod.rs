@@ -5,7 +5,7 @@ use askama::Template;
 use chrono::Utc;
 
 use crate::{
-    dco::check::{check, CheckInput},
+    dco::check::{CheckInput, check},
     github::{
         CheckRun, CheckRunAction, CheckRunConclusion, CheckRunEvent, CheckRunEventAction, CheckRunStatus,
         Commit, DynGHClient, Event, MergeGroupEvent, MergeGroupEventAction, NewCheckRunInput,
@@ -60,21 +60,21 @@ async fn process_check_run_event(gh_client: DynGHClient, event: &CheckRunEvent) 
     }
 
     // Override: create check run with success status
-    if let Some(requested_action) = &event.requested_action {
-        if requested_action.identifier == OVERRIDE_ACTION_IDENTIFIER {
-            let check_run = CheckRun::new(NewCheckRunInput {
-                actions: vec![],
-                completed_at: Utc::now(),
-                conclusion: CheckRunConclusion::Success,
-                head_sha: event.check_run.head_sha.clone(),
-                name: CHECK_NAME.to_string(),
-                started_at,
-                status: CheckRunStatus::Completed,
-                summary: OVERRIDE_ACTION_SUMMARY.to_string(),
-                title: OVERRIDE_ACTION_SUMMARY.to_string(),
-            });
-            gh_client.create_check_run(&ctx, &check_run).await.context("error creating check run")?;
-        }
+    if let Some(requested_action) = &event.requested_action
+        && requested_action.identifier == OVERRIDE_ACTION_IDENTIFIER
+    {
+        let check_run = CheckRun::new(NewCheckRunInput {
+            actions: vec![],
+            completed_at: Utc::now(),
+            conclusion: CheckRunConclusion::Success,
+            head_sha: event.check_run.head_sha.clone(),
+            name: CHECK_NAME.to_string(),
+            started_at,
+            status: CheckRunStatus::Completed,
+            summary: OVERRIDE_ACTION_SUMMARY.to_string(),
+            title: OVERRIDE_ACTION_SUMMARY.to_string(),
+        });
+        gh_client.create_check_run(&ctx, &check_run).await.context("error creating check run")?;
     }
 
     Ok(())
@@ -196,15 +196,14 @@ async fn collect_members(
         for commit in commits {
             if commit.verified.unwrap_or(false) {
                 // Check if the commit's author is a member of the organization
-                if let Some(author_username) = commit.author.as_ref().and_then(|a| a.login.clone()) {
-                    if !members.contains(&author_username)
-                        && gh_client
-                            .is_organization_member(&ctx, org, &author_username)
-                            .await
-                            .context("error checking organization membership")?
-                    {
-                        members.push(author_username)
-                    }
+                if let Some(author_username) = commit.author.as_ref().and_then(|a| a.login.clone())
+                    && !members.contains(&author_username)
+                    && gh_client
+                        .is_organization_member(&ctx, org, &author_username)
+                        .await
+                        .context("error checking organization membership")?
+                {
+                    members.push(author_username)
                 }
             }
         }

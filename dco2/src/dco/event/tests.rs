@@ -1,6 +1,6 @@
 use std::{future, sync::Arc};
 
-use anyhow::{anyhow, Ok};
+use anyhow::{Ok, anyhow};
 use indoc::indoc;
 use mockall::predicate::eq;
 

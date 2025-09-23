@@ -1,19 +1,21 @@
 use std::{env::set_var, sync::Arc};
 
 use anyhow::Context;
-use figment::{providers::Env, Figment};
-use lambda_http::{run, tracing, Error};
+use figment::{Figment, providers::Env};
+use lambda_http::{Error, run, tracing};
 
 use dco2::github::{AppConfig, GHClientOctorust};
 use dco2_server::handlers::setup_router;
 
 #[tokio::main]
 async fn main() -> Result<(), Error> {
-    // Do not include stage name in path
-    set_var("AWS_LAMBDA_HTTP_IGNORE_STAGE_IN_PATH", "true");
+    unsafe {
+        // Do not include stage name in path
+        set_var("AWS_LAMBDA_HTTP_IGNORE_STAGE_IN_PATH", "true");
 
-    // Setup logging
-    set_var("AWS_LAMBDA_LOG_FORMAT", "json");
+        // Setup logging
+        set_var("AWS_LAMBDA_LOG_FORMAT", "json");
+    }
     tracing::init_default_subscriber();
 
     // Setup GitHub client

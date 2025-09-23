@@ -1,10 +1,10 @@
 //! This module defines an abstraction layer over the GitHub API.
 
-use std::sync::Arc;
+use std::{sync::Arc, time::Duration};
 
-use anyhow::{bail, Result};
+use anyhow::{Result, bail};
 use async_trait::async_trait;
-use base64::{engine::general_purpose::STANDARD as b64, Engine as _};
+use base64::{Engine as _, engine::general_purpose::STANDARD as b64};
 use cached::proc_macro::cached;
 use chrono::{DateTime, Utc};
 use http::StatusCode;

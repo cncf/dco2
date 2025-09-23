@@ -30,14 +30,13 @@ async fn main() -> Result<()> {
     let cfg = Config::new(args.config_file.as_ref()).context("error setting up configuration")?;
 
     // Setup logging
-    if std::env::var_os("RUST_LOG").is_none() {
-        std::env::set_var("RUST_LOG", "dco2_server=debug,dco2=debug");
-    }
-    let ts = tracing_subscriber::fmt().with_env_filter(EnvFilter::from_default_env());
+    let env_filter =
+        EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("dco2_server=debug,dco2=debug"));
+    let ts = tracing_subscriber::fmt().with_env_filter(env_filter);
     match cfg.log_format {
         LogFormat::Json => ts.json().init(),
         LogFormat::Pretty => ts.init(),
-    };
+    }
 
     // Setup GitHub client
     let gh_client = GHClientOctorust::new(&cfg.github_app).context("error setting up github client")?;
