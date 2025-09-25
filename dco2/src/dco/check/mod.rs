@@ -2,7 +2,7 @@
 
 use std::{fmt::Display, sync::LazyLock};
 
-use anyhow::{bail, Result};
+use anyhow::{Result, bail};
 use askama::Template;
 use email_address::EmailAddress;
 use regex::Regex;
@@ -168,19 +168,20 @@ fn should_skip_commit(check_input: &CheckInput, commit: &Commit) -> (bool, Optio
     }
 
     // Skip bots commits
-    if let Some(author) = &commit.author {
-        if author.is_bot {
-            return (true, Some(CommitSuccessReason::FromBot));
-        }
+    if let Some(author) = commit.author.as_ref()
+        && author.is_bot
+    {
+        return (true, Some(CommitSuccessReason::FromBot));
     }
 
     // Skip verified commits from members if the feature is enabled
     if !check_input.config.members_signoff_is_required() && commit.verified.unwrap_or(false) {
         // Check if the commit's author is a member
-        if let Some(author_username) = &commit.author.as_ref().and_then(|a| a.login.as_ref()) {
-            if check_input.members.contains(author_username) {
-                return (true, Some(CommitSuccessReason::FromMember));
-            }
+        if let Some(author) = commit.author.as_ref()
+            && let Some(author_username) = author.login.as_ref()
+            && check_input.members.contains(author_username)
+        {
+            return (true, Some(CommitSuccessReason::FromMember));
         }
     }
 
@@ -193,25 +194,21 @@ fn validate_emails(commit: &Commit) -> Result<(), Vec<CommitError>> {
 
     // Committer
     let committer_email = commit.committer.as_ref().map(|c| &c.email);
-    if let Some(committer_email) = committer_email {
-        if !is_valid_email(committer_email) {
-            errors.push(CommitError::InvalidCommitterEmail);
-        }
+    if let Some(committer_email) = committer_email
+        && !is_valid_email(committer_email)
+    {
+        errors.push(CommitError::InvalidCommitterEmail);
     }
 
     // Author
     let author_email = commit.author.as_ref().map(|a| &a.email);
-    if let Some(author_email) = author_email {
-        if Some(author_email) != committer_email && !is_valid_email(author_email) {
-            errors.push(CommitError::InvalidAuthorEmail);
-        }
+    if let Some(author_email) = author_email
+        && (Some(author_email) != committer_email && !is_valid_email(author_email))
+    {
+        errors.push(CommitError::InvalidAuthorEmail);
     }
 
-    if errors.is_empty() {
-        Ok(())
-    } else {
-        Err(errors)
-    }
+    if errors.is_empty() { Ok(()) } else { Err(errors) }
 }
 
 /// Validate email address.
@@ -372,7 +369,13 @@ fn get_remediations(config: &Config, commits: &[Commit]) -> Vec<Remediation> {
             let captures = THIRD_PARTY_REMEDIATION.captures_iter(&commit.message).map(|c| c.extract());
             for (
                 _,
-                [declarant_name, declarant_email, representative_name, representative_email, target_sha],
+                [
+                    declarant_name,
+                    declarant_email,
+                    representative_name,
+                    representative_email,
+                    target_sha,
+                ],
             ) in captures
             {
                 if let Ok(remediation) = Remediation::new(

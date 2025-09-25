@@ -4,7 +4,7 @@ use indoc::indoc;
 use pretty_assertions::assert_eq;
 
 use crate::{
-    dco::check::{check, CheckInput, CheckOutput, CommitCheckOutput, CommitError, CommitSuccessReason},
+    dco::check::{CheckInput, CheckOutput, CommitCheckOutput, CommitError, CommitSuccessReason, check},
     github::{Commit, Config, ConfigAllowRemediationCommits, ConfigRequire, User},
 };
 
@@ -3428,8 +3428,8 @@ fn two_commits_no_signoff_in_first_remediation_commit_sha_mismatch_in_second() {
 }
 
 #[test]
-fn two_commits_no_signoff_in_first_3p_valid_remediation_commit_in_second_but_remediation_not_enabled_in_config(
-) {
+fn two_commits_no_signoff_in_first_3p_valid_remediation_commit_in_second_but_remediation_not_enabled_in_config()
+ {
     let commit1 = Commit {
         author: Some(User {
             name: "user1".to_string(),
@@ -3499,8 +3499,8 @@ fn two_commits_no_signoff_in_first_3p_valid_remediation_commit_in_second_but_rem
 }
 
 #[test]
-fn two_commits_no_signoff_in_first_3p_valid_remediation_commit_in_second_but_3p_remediation_not_enabled_in_config(
-) {
+fn two_commits_no_signoff_in_first_3p_valid_remediation_commit_in_second_but_3p_remediation_not_enabled_in_config()
+ {
     let commit1 = Commit {
         author: Some(User {
             name: "user1".to_string(),
@@ -4725,8 +4725,8 @@ fn three_commits_valid_signoff_first_invalid_signoff_second_valid_signoff_third(
 }
 
 #[test]
-fn three_commits_no_signoff_in_first_remediation_commit_without_signoff_in_second_valid_remediation_commit_in_third(
-) {
+fn three_commits_no_signoff_in_first_remediation_commit_without_signoff_in_second_valid_remediation_commit_in_third()
+ {
     let commit1 = Commit {
         author: Some(User {
             name: "user1".to_string(),
@@ -4926,8 +4926,8 @@ fn three_commits_no_signoff_in_first_no_signoff_in_second_valid_remediation_comm
 }
 
 #[test]
-fn three_commits_valid_signoff_in_first_redundant_remediation_commit_in_second_redundant_3p_remediation_commit_in_third(
-) {
+fn three_commits_valid_signoff_in_first_redundant_remediation_commit_in_second_redundant_3p_remediation_commit_in_third()
+ {
     let commit1 = Commit {
         author: Some(User {
             name: "user1".to_string(),
@@ -5036,113 +5036,8 @@ fn three_commits_valid_signoff_in_first_redundant_remediation_commit_in_second_r
 }
 
 #[test]
-fn three_commits_no_signoff_in_first_valid_remediation_commit_in_second_redundant_3p_remediation_commit_in_third(
-) {
-    let commit1 = Commit {
-        author: Some(User {
-            name: "user1".to_string(),
-            email: "user1@email.test".to_string(),
-            ..Default::default()
-        }),
-        committer: Some(User {
-            name: "user1".to_string(),
-            email: "user1@email.test".to_string(),
-            ..Default::default()
-        }),
-        message: "Test commit message".to_string(),
-        sha: "sha1".to_string(),
-        ..Default::default()
-    };
-    let commit2 = Commit {
-        author: Some(User {
-            name: "user1".to_string(),
-            email: "user1@email.test".to_string(),
-            ..Default::default()
-        }),
-        committer: Some(User {
-            name: "user1".to_string(),
-            email: "user1@email.test".to_string(),
-            ..Default::default()
-        }),
-        message: indoc! {r"
-            Test commit message
-
-            I, user1 <user1@email.test>, hereby add my Signed-off-by to this commit: sha1
-
-            Signed-off-by: user1 <user1@email.test>
-        "}
-        .to_string(),
-        sha: "sha2".to_string(),
-        ..Default::default()
-    };
-    let commit3 = Commit {
-        author: Some(User {
-            name: "user1".to_string(),
-            email: "user1@email.test".to_string(),
-            ..Default::default()
-        }),
-        committer: Some(User {
-            name: "user1".to_string(),
-            email: "user1@email.test".to_string(),
-            ..Default::default()
-        }),
-        message: indoc! {r"
-            Test commit message
-
-            On behalf of user1 <user1@email.test>, I, user1 <user1@email.test>, hereby add my Signed-off-by to this commit: sha2
-
-            Signed-off-by: user1 <user1@email.test>
-        "}
-        .to_string(),
-        ..Default::default()
-    };
-
-    let config = Config {
-        allow_remediation_commits: Some(ConfigAllowRemediationCommits {
-            individual: Some(true),
-            third_party: Some(true),
-        }),
-        ..Default::default()
-    };
-    let input = CheckInput {
-        commits: vec![commit1.clone(), commit2.clone(), commit3.clone()],
-        config: config.clone(),
-        head_ref: "main".to_string(),
-        members: vec![],
-    };
-    let output = check(&input);
-
-    assert_eq!(
-        output,
-        CheckOutput {
-            commits: vec![
-                CommitCheckOutput {
-                    commit: commit1,
-                    errors: vec![],
-                    success_reason: Some(CommitSuccessReason::ValidSignOffInRemediationCommit),
-                },
-                CommitCheckOutput {
-                    commit: commit2,
-                    errors: vec![],
-                    success_reason: Some(CommitSuccessReason::ValidSignOff),
-                },
-                CommitCheckOutput {
-                    commit: commit3,
-                    errors: vec![],
-                    success_reason: Some(CommitSuccessReason::ValidSignOff),
-                }
-            ],
-            config,
-            head_ref: "main".to_string(),
-            num_commits_with_errors: 0,
-            only_last_commit_contains_errors: false,
-        }
-    );
-}
-
-#[test]
-fn three_commits_no_signoff_in_first_remediation_commit_no_signoff_in_second_valid_3p_remediation_commit_in_third(
-) {
+fn three_commits_no_signoff_in_first_valid_remediation_commit_in_second_redundant_3p_remediation_commit_in_third()
+ {
     let commit1 = Commit {
         author: Some(User {
             name: "user1".to_string(),
@@ -5173,6 +5068,111 @@ fn three_commits_no_signoff_in_first_remediation_commit_no_signoff_in_second_val
             Test commit message
 
             I, user1 <user1@email.test>, hereby add my Signed-off-by to this commit: sha1
+
+            Signed-off-by: user1 <user1@email.test>
+        "}
+        .to_string(),
+        sha: "sha2".to_string(),
+        ..Default::default()
+    };
+    let commit3 = Commit {
+        author: Some(User {
+            name: "user1".to_string(),
+            email: "user1@email.test".to_string(),
+            ..Default::default()
+        }),
+        committer: Some(User {
+            name: "user1".to_string(),
+            email: "user1@email.test".to_string(),
+            ..Default::default()
+        }),
+        message: indoc! {r"
+            Test commit message
+
+            On behalf of user1 <user1@email.test>, I, user1 <user1@email.test>, hereby add my Signed-off-by to this commit: sha2
+
+            Signed-off-by: user1 <user1@email.test>
+        "}
+        .to_string(),
+        ..Default::default()
+    };
+
+    let config = Config {
+        allow_remediation_commits: Some(ConfigAllowRemediationCommits {
+            individual: Some(true),
+            third_party: Some(true),
+        }),
+        ..Default::default()
+    };
+    let input = CheckInput {
+        commits: vec![commit1.clone(), commit2.clone(), commit3.clone()],
+        config: config.clone(),
+        head_ref: "main".to_string(),
+        members: vec![],
+    };
+    let output = check(&input);
+
+    assert_eq!(
+        output,
+        CheckOutput {
+            commits: vec![
+                CommitCheckOutput {
+                    commit: commit1,
+                    errors: vec![],
+                    success_reason: Some(CommitSuccessReason::ValidSignOffInRemediationCommit),
+                },
+                CommitCheckOutput {
+                    commit: commit2,
+                    errors: vec![],
+                    success_reason: Some(CommitSuccessReason::ValidSignOff),
+                },
+                CommitCheckOutput {
+                    commit: commit3,
+                    errors: vec![],
+                    success_reason: Some(CommitSuccessReason::ValidSignOff),
+                }
+            ],
+            config,
+            head_ref: "main".to_string(),
+            num_commits_with_errors: 0,
+            only_last_commit_contains_errors: false,
+        }
+    );
+}
+
+#[test]
+fn three_commits_no_signoff_in_first_remediation_commit_no_signoff_in_second_valid_3p_remediation_commit_in_third()
+ {
+    let commit1 = Commit {
+        author: Some(User {
+            name: "user1".to_string(),
+            email: "user1@email.test".to_string(),
+            ..Default::default()
+        }),
+        committer: Some(User {
+            name: "user1".to_string(),
+            email: "user1@email.test".to_string(),
+            ..Default::default()
+        }),
+        message: "Test commit message".to_string(),
+        sha: "sha1".to_string(),
+        ..Default::default()
+    };
+    let commit2 = Commit {
+        author: Some(User {
+            name: "user1".to_string(),
+            email: "user1@email.test".to_string(),
+            ..Default::default()
+        }),
+        committer: Some(User {
+            name: "user1".to_string(),
+            email: "user1@email.test".to_string(),
+            ..Default::default()
+        }),
+        message: indoc! {r"
+            Test commit message
+
+            I, user1 <user1@email.test>, hereby add my Signed-off-by to this commit: sha1
         "}
         .to_string(),
         sha: "sha2".to_string(),
@@ -5244,8 +5244,8 @@ fn three_commits_no_signoff_in_first_remediation_commit_no_signoff_in_second_val
 }
 
 #[test]
-fn three_commits_no_signoff_in_first_3p_remediation_commit_no_signoff_in_second_valid_remediation_commit_in_third(
-) {
+fn three_commits_no_signoff_in_first_3p_remediation_commit_no_signoff_in_second_valid_remediation_commit_in_third()
+ {
     let commit1 = Commit {
         author: Some(User {
             name: "user1".to_string(),
@@ -5347,8 +5347,8 @@ fn three_commits_no_signoff_in_first_3p_remediation_commit_no_signoff_in_second_
 }
 
 #[test]
-fn three_commits_no_signoff_in_first_3p_remediation_commit_no_signoff_in_second_valid_3p_remediation_commit_in_third(
-) {
+fn three_commits_no_signoff_in_first_3p_remediation_commit_no_signoff_in_second_valid_3p_remediation_commit_in_third()
+ {
     let commit1 = Commit {
         author: Some(User {
             name: "user1".to_string(),
@@ -5450,8 +5450,8 @@ fn three_commits_no_signoff_in_first_3p_remediation_commit_no_signoff_in_second_
 }
 
 #[test]
-fn three_commits_no_signoff_in_first_3p_remediation_commit_no_signoff_in_second_3p_remediation_commit_no_signoff_in_third(
-) {
+fn three_commits_no_signoff_in_first_3p_remediation_commit_no_signoff_in_second_3p_remediation_commit_no_signoff_in_third()
+ {
     let commit1 = Commit {
         author: Some(User {
             name: "user1".to_string(),

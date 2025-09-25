@@ -1,13 +1,13 @@
 //! This module defines the router and handlers used to process HTTP requests.
 
-use anyhow::{format_err, Error, Result};
+use anyhow::{Error, Result, format_err};
 use axum::{
+    Router,
     body::Bytes,
     extract::{FromRef, State},
     http::{HeaderMap, StatusCode},
     response::IntoResponse,
     routing::{get, post},
-    Router,
 };
 use hmac::{Hmac, Mac};
 use sha2::Sha256;
@@ -17,7 +17,7 @@ use tracing::{error, info, instrument};
 
 use dco2::{
     dco,
-    github::{DynGHClient, Event, EventError, EVENT_ID_HEADER, EVENT_SIGNATURE_HEADER},
+    github::{DynGHClient, EVENT_ID_HEADER, EVENT_SIGNATURE_HEADER, Event, EventError},
 };
 
 /// Router's state.
@@ -73,7 +73,7 @@ async fn event(
     let event = match Event::try_from((&headers, &body)) {
         Ok(event) => event,
         Err(err @ (EventError::MissingHeader | EventError::InvalidPayload)) => {
-            return Err((StatusCode::BAD_REQUEST, err.to_string()))
+            return Err((StatusCode::BAD_REQUEST, err.to_string()));
         }
         Err(EventError::UnsupportedEvent) => return Ok(()),
     };
