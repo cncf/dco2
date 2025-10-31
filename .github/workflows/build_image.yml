@@ -1,0 +1,42 @@
+name: Build image
+
+on:
+  push:
+    branches:
+      - main
+
+env:
+  OCI_CLI_FINGERPRINT: ${{ secrets.OCI_CLI_FINGERPRINT }}
+  OCI_CLI_KEY_CONTENT: ${{ secrets.OCI_CLI_KEY_CONTENT }}
+  OCI_CLI_REGION: ${{ secrets.OCI_CLI_REGION }}
+  OCI_CLI_TENANCY: ${{ secrets.OCI_CLI_TENANCY }}
+  OCI_CLI_USER: ${{ secrets.OCI_CLI_USER }}
+
+jobs:
+  build-dco2-server-image:
+    if: github.ref == 'refs/heads/main'
+    runs-on:
+      labels: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+      - name: Login to OCI Registry
+        id: login-ocir
+        uses: oracle-actions/login-ocir@v1.3.0
+        with:
+          auth_token: ${{ secrets.OCI_AUTH_TOKEN }}
+      - name: Get dco2 server OCIR repository
+        id: get-ocir-repository-server
+        uses: oracle-actions/get-ocir-repository@v1.3.0
+        with:
+          name: dco2/server
+          compartment: ${{ secrets.OCI_COMPARTMENT_OCID }}
+      - name: Build and push dco2 server image
+        env:
+          OCIR_REPOSITORY: ${{ steps.get-ocir-repository-server.outputs.repo_path }}
+        run: |
+          docker build \
+            -f dco2-server/Dockerfile \
+            -t $OCIR_REPOSITORY:$GITHUB_SHA \
+            .
+          docker push $OCIR_REPOSITORY:$GITHUB_SHA
