@@ -1,0 +1,19 @@
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app.kubernetes.io/component: server
+    {{- include "dco2.labels" . | nindent 4 }}
+  name: {{ include "dco2.resourceName" (list . "server") }}
+  {{- with .Values.server.service.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  allocateLoadBalancerNodePorts: {{ .Values.server.service.allocateLoadBalancerNodePorts }}
+  ports:
+    {{- toYaml .Values.server.service.ports | nindent 4 }}
+  selector:
+    app.kubernetes.io/component: server
+    {{- include "dco2.selectorLabels" . | nindent 4 }}
+  type: {{ default "ClusterIP" .Values.server.service.type }}
