@@ -1,0 +1,83 @@
+# DCO2 chart default configuration values
+
+# Image pull secrets (if needed)
+imagePullSecrets: []
+
+# Image tag to deploy. Defaults to "latest" when empty.
+imageTag: ""
+
+# Name overrides
+nameOverride: ""
+
+# Image pull policy
+pullPolicy: IfNotPresent
+
+# Overwrite the installation's fullname generation (used for resource naming)
+fullnameOverride: ""
+
+# Enable dynamic resource name prefix
+#
+# When enabled, resources include the Helm installation name as a prefix so multiple
+# installations can share a namespace. Override the prefix with `fullnameOverride`.
+dynamicResourceNamePrefixEnabled: false
+
+# Directory path where the configuration files should be mounted
+configDir: "/home/dco2/.config/dco2"
+
+# Configuration file name mounted for the dco2-server binary
+configFileName: "dco2-server.yml"
+
+# DCO2 server configuration
+server:
+  # Configuration passed to the application via a secret
+  config:
+    # Address to listen on
+    addr: "0.0.0.0:9000"
+
+    # GitHub application configuration
+    githubApp:
+      # Optional GitHub API host override
+      apiHost: ""
+      # GitHub application identifier
+      appId: 0
+      # GitHub application private key
+      privateKey: ""
+      # GitHub webhook secret
+      webhookSecret: ""
+
+    # Log output format [json|pretty]
+    logFormat: json
+
+  # Deployment configuration
+  deploy:
+    containerSecurityContext: {}
+    image:
+      repository: ghcr.io/cncf/dco2/server
+    podAnnotations: {}
+    podSecurityContext: {}
+    readinessProbe:
+      httpGet:
+        path: /health-check
+        port: 9000
+    replicaCount: 1
+    resources: {}
+
+  # Ingress configuration
+  ingress:
+    annotations: {}
+    backendServicePort: 80
+    className: ""
+    enabled: false
+    hosts: []
+    tls: []
+
+  # Service configuration
+  service:
+    allocateLoadBalancerNodePorts: true
+    annotations: {}
+    ports:
+      - name: http
+        port: 80
+        protocol: TCP
+        targetPort: 9000
+    type: ClusterIP

@@ -1,0 +1,15 @@
+apiVersion: v2
+name: dco2
+description: DCO2 GitHub App server
+type: application
+version: 0.1.0
+appVersion: 0.1.0
+kubeVersion: ">= 1.25.0-0"
+keywords:
+  - dco
+  - dco2
+maintainers:
+  - name: Sergio
+    email: tegioz@icloud.com
+  - name: Cintia
+    email: cynthiasg@icloud.com
