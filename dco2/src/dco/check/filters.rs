@@ -4,6 +4,7 @@ use super::{CommitCheckOutput, CommitError};
 
 /// Template filter to check if any of the commits contain any of the
 /// provided errors.
+#[askama::filter_fn]
 pub(crate) fn contains_error(
     commits: &[CommitCheckOutput],
     _: &dyn askama::Values,
@@ -14,6 +15,7 @@ pub(crate) fn contains_error(
 
 /// Template filter to truncate a string to the specified length without adding
 /// dots at the end.
+#[askama::filter_fn]
 pub(crate) fn truncate_no_dots(s: String, _: &dyn askama::Values, length: usize) -> askama::Result<String> {
     Ok(s.chars().take(length).collect::<String>())
 }
@@ -33,7 +35,12 @@ mod tests {
             success_reason: None,
         }];
 
-        assert!(contains_error(&commits, askama::NO_VALUES, &[CommitError::InvalidAuthorEmail],).unwrap());
+        assert!(
+            contains_error::default()
+                .with_errors(&[CommitError::InvalidAuthorEmail])
+                .execute(&commits, askama::NO_VALUES)
+                .unwrap()
+        );
     }
 
     #[test]
@@ -44,7 +51,12 @@ mod tests {
             success_reason: None,
         }];
 
-        assert!(!contains_error(&commits, askama::NO_VALUES, &[CommitError::InvalidCommitterEmail]).unwrap());
+        assert!(
+            !contains_error::default()
+                .with_errors(&[CommitError::InvalidCommitterEmail])
+                .execute(&commits, askama::NO_VALUES)
+                .unwrap()
+        );
     }
 
     #[test]
@@ -63,12 +75,10 @@ mod tests {
         ];
 
         assert!(
-            contains_error(
-                &commits,
-                askama::NO_VALUES,
-                &[CommitError::InvalidAuthorEmail, CommitError::SignOffNotFound],
-            )
-            .unwrap()
+            contains_error::default()
+                .with_errors(&[CommitError::InvalidAuthorEmail, CommitError::SignOffNotFound,])
+                .execute(&commits, askama::NO_VALUES)
+                .unwrap()
         );
     }
 
@@ -88,12 +98,10 @@ mod tests {
         ];
 
         assert!(
-            !contains_error(
-                &commits,
-                askama::NO_VALUES,
-                &[CommitError::SignOffNotFound, CommitError::SignOffMismatch],
-            )
-            .unwrap()
+            !contains_error::default()
+                .with_errors(&[CommitError::SignOffNotFound, CommitError::SignOffMismatch])
+                .execute(&commits, askama::NO_VALUES)
+                .unwrap()
         );
     }
 
@@ -101,11 +109,17 @@ mod tests {
     fn truncate_no_dots_works() {
         assert_eq!(
             "Hello".to_string(),
-            truncate_no_dots("Hello".to_string(), askama::NO_VALUES, 10).unwrap()
+            truncate_no_dots::default()
+                .with_length(10)
+                .execute("Hello".to_string(), askama::NO_VALUES)
+                .unwrap()
         );
         assert_eq!(
             "Hello".to_string(),
-            truncate_no_dots("Hello, World!".to_string(), askama::NO_VALUES, 5).unwrap()
+            truncate_no_dots::default()
+                .with_length(5)
+                .execute("Hello, World!".to_string(), askama::NO_VALUES)
+                .unwrap()
         );
     }
 }
