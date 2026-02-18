@@ -1,32 +1,28 @@
 version: 2
+
+multi-ecosystem-groups:
+  backend:
+    schedule:
+      interval: "monthly"
+  infra:
+    schedule:
+      interval: "monthly"
+
 updates:
   - package-ecosystem: "cargo"
     directory: "/"
-    schedule:
-      interval: "monthly"
-    groups:
-      dco2:
-        patterns:
-          - "*"
-        update-types:
-          - "minor"
-          - "patch"
-
-  - package-ecosystem: "github-actions"
-    directory: "/"
-    schedule:
-      interval: "monthly"
-    groups:
-      github-actions:
-        patterns:
-          - "*"
+    patterns:
+      - "*"
+    multi-ecosystem-group: "backend"
 
   - package-ecosystem: "docker"
     directory: "/dco2-server"
-    schedule:
-      interval: "monthly"
-    groups:
-      docker:
-        patterns:
-          - "*"
+    patterns:
+      - "*"
+    multi-ecosystem-group: "infra"
 
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    patterns:
+      - "*"
+    multi-ecosystem-group: "infra"
