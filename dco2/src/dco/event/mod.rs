@@ -1,5 +1,7 @@
 //! This module contains the logic to process GitHub webhook events.
 
+use std::collections::HashSet;
+
 use anyhow::{Context, Result};
 use askama::Template;
 use chrono::Utc;
@@ -188,22 +190,27 @@ async fn collect_members(
     event: &PullRequestEvent,
     commits: &[Commit],
 ) -> Result<Vec<String>> {
+    let mut checked_authors = HashSet::new();
     let mut members = vec![];
 
     // If the repository belongs to an organization, collect its members
     let ctx = event.ctx();
     if let Some(org) = event.organization.as_ref().map(|o| o.login.as_str()) {
         for commit in commits {
-            if commit.verified.unwrap_or(false) {
-                // Check if the commit's author is a member of the organization
-                if let Some(author_username) = commit.author.as_ref().and_then(|a| a.login.clone())
-                    && !members.contains(&author_username)
-                    && gh_client
-                        .is_organization_member(&ctx, org, &author_username)
-                        .await
-                        .context("error checking organization membership")?
-                {
-                    members.push(author_username)
+            if !commit.verified.unwrap_or(false) {
+                continue;
+            }
+            if let Some(author) = commit.author.as_ref()
+                && !author.is_bot
+                && let Some(author_username) = author.login.as_ref()
+                && checked_authors.insert(author_username.to_string())
+            {
+                let is_member = gh_client
+                    .is_organization_member(&ctx, org, author_username)
+                    .await
+                    .context("error checking organization membership")?;
+                if is_member {
+                    members.push(author_username.to_string());
                 }
             }
         }

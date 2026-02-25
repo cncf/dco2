@@ -180,7 +180,20 @@ impl GHClient for GHClientOctorust {
         )]
         async fn inner(client: &octorust::Client, org: &str, username: &str) -> Result<bool> {
             // Check if user is a member of the organization
-            let resp = client.orgs().check_membership_for_user(org, username).await?;
+            let resp = match client.orgs().check_membership_for_user(org, username).await {
+                Ok(resp) => resp,
+                Err(octorust::ClientError::HttpError {
+                    status,
+                    headers: _,
+                    error,
+                }) => {
+                    if status == StatusCode::NOT_FOUND {
+                        return Ok(false);
+                    }
+                    bail!(error);
+                }
+                Err(err) => bail!(err),
+            };
             Ok(resp.status == StatusCode::NO_CONTENT)
         }
 
