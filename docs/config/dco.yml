@@ -4,6 +4,10 @@
 #
 # This configuration file is backwards compatible with the *dcoapp/app* (https://github.com/dcoapp/app) configuration file.
 
+# Show the "Set DCO to pass" button in failed checks
+# https://github.com/cncf/dco2?#override-action
+allowOverrideAction: true
+
 # https://github.com/cncf/dco2?#remediation-commits
 allowRemediationCommits:
   # Allow individual remediation commits

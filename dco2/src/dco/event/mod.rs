@@ -65,6 +65,16 @@ async fn process_check_run_event(gh_client: DynGHClient, event: &CheckRunEvent) 
     if let Some(requested_action) = &event.requested_action
         && requested_action.identifier == OVERRIDE_ACTION_IDENTIFIER
     {
+        // Ignore override requests when the repository disabled this action
+        let config = gh_client
+            .get_config(&ctx)
+            .await
+            .context("error getting repository configuration")?
+            .unwrap_or_default();
+        if !config.override_action_is_allowed() {
+            return Ok(());
+        }
+
         let check_run = CheckRun::new(NewCheckRunInput {
             actions: vec![],
             completed_at: Utc::now(),
@@ -158,15 +168,17 @@ async fn process_pull_request_event(gh_client: DynGHClient, event: &PullRequestE
     let (conclusion, title, actions) = if output.num_commits_with_errors == 0 {
         (CheckRunConclusion::Success, CHECK_PASSED_TITLE, vec![])
     } else {
-        (
-            CheckRunConclusion::ActionRequired,
-            CHECK_FAILED_TITLE,
+        let actions = if output.config.override_action_is_allowed() {
             vec![CheckRunAction {
                 label: OVERRIDE_ACTION_LABEL.to_string(),
                 description: OVERRIDE_ACTION_DESCRIPTION.to_string(),
                 identifier: OVERRIDE_ACTION_IDENTIFIER.to_string(),
-            }],
-        )
+            }]
+        } else {
+            vec![]
+        };
+
+        (CheckRunConclusion::ActionRequired, CHECK_FAILED_TITLE, actions)
     };
     let check_run = CheckRun::new(NewCheckRunInput {
         actions,
