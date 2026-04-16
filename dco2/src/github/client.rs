@@ -428,14 +428,16 @@ impl From<octorust::types::CommitDataType> for Commit {
 }
 
 /// Default values for the configuration.
+pub const DEFAULT_OVERRIDE_ACTION_ALLOWED: bool = true;
+pub const DEFAULT_MEMBERS_SIGNOFF_REQUIRED: bool = true;
 pub const DEFAULT_INDIVIDUAL_REMEDIATION_COMMITS_ALLOWED: bool = false;
 pub const DEFAULT_THIRD_PARTY_REMEDIATION_COMMITS_ALLOWED: bool = false;
-pub const DEFAULT_MEMBERS_SIGNOFF_REQUIRED: bool = true;
 
 /// Repository configuration.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all(deserialize = "camelCase"))]
 pub struct Config {
+    pub allow_override_action: Option<bool>,
     pub allow_remediation_commits: Option<ConfigAllowRemediationCommits>,
     pub require: Option<ConfigRequire>,
 }
@@ -443,6 +445,7 @@ pub struct Config {
 impl Default for Config {
     fn default() -> Self {
         Self {
+            allow_override_action: Some(DEFAULT_OVERRIDE_ACTION_ALLOWED),
             allow_remediation_commits: Some(ConfigAllowRemediationCommits::default()),
             require: Some(ConfigRequire::default()),
         }
@@ -470,6 +473,11 @@ impl Config {
         } else {
             DEFAULT_THIRD_PARTY_REMEDIATION_COMMITS_ALLOWED
         }
+    }
+
+    /// Check if the override action is allowed.
+    pub fn override_action_is_allowed(&self) -> bool {
+        self.allow_override_action.unwrap_or(DEFAULT_OVERRIDE_ACTION_ALLOWED)
     }
 
     /// Check if the configuration requires members to sign-off commits.

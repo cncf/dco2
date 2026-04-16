@@ -89,6 +89,11 @@ async fn check_run_event_requested_action_override_error_creating_check_run() {
     };
 
     let mut gh_client = MockGHClient::new();
+    gh_client
+        .expect_get_config()
+        .with(eq(event.ctx()))
+        .times(1)
+        .returning(|_| Box::pin(future::ready(Ok(Some(Config::default())))));
     let expected_ctx = event.ctx();
     gh_client
         .expect_create_check_run()
@@ -105,6 +110,36 @@ async fn check_run_event_requested_action_override_error_creating_check_run() {
         })
         .times(1)
         .returning(|_, _| Box::pin(future::ready(Err(anyhow!("test error")))));
+
+    process_event(Arc::new(gh_client), &Event::CheckRun(event)).await.unwrap();
+}
+
+#[tokio::test]
+async fn check_run_event_requested_action_override_ignored_when_disabled() {
+    let event = CheckRunEvent {
+        action: CheckRunEventAction::RequestedAction,
+        check_run: CheckRunEventCheckRun {
+            head_sha: "head_sha".to_string(),
+        },
+        installation: Installation { id: 1 },
+        repository: Repository {
+            name: "repo".to_string(),
+            owner: RepositoryOwner {
+                login: "owner".to_string(),
+            },
+        },
+        requested_action: Some(RequestedAction {
+            identifier: OVERRIDE_ACTION_IDENTIFIER.to_string(),
+        }),
+    };
+
+    let mut gh_client = MockGHClient::new();
+    gh_client.expect_get_config().with(eq(event.ctx())).times(1).returning(|_| {
+        Box::pin(future::ready(Ok(Some(Config {
+            allow_override_action: Some(false),
+            ..Default::default()
+        }))))
+    });
 
     process_event(Arc::new(gh_client), &Event::CheckRun(event)).await.unwrap();
 }
@@ -129,6 +164,11 @@ async fn check_run_event_requested_action_override_success() {
     };
 
     let mut gh_client = MockGHClient::new();
+    gh_client
+        .expect_get_config()
+        .with(eq(event.ctx()))
+        .times(1)
+        .returning(|_| Box::pin(future::ready(Ok(Some(Config::default())))));
     let expected_ctx = event.ctx();
     gh_client
         .expect_create_check_run()
@@ -1007,6 +1047,82 @@ async fn pull_request_event_opened_action_success_check_failed() {
                         description: OVERRIDE_ACTION_DESCRIPTION.to_string(),
                         identifier: OVERRIDE_ACTION_IDENTIFIER.to_string(),
                     }]
+                && check_run.completed_at() >= check_run.started_at()
+                && check_run.conclusion() == &CheckRunConclusion::ActionRequired
+                && check_run.head_sha() == "head_sha"
+                && check_run.name() == CHECK_NAME
+                && check_run.status() == &CheckRunStatus::Completed
+                && check_run.title() == CHECK_FAILED_TITLE
+        })
+        .times(1)
+        .returning(|_, _| Box::pin(future::ready(Ok(()))));
+
+    process_event(Arc::new(gh_client), &Event::PullRequest(event)).await.unwrap();
+}
+
+#[tokio::test]
+async fn pull_request_event_opened_action_success_check_failed_override_action_disabled() {
+    let event = PullRequestEvent {
+        action: PullRequestEventAction::Opened,
+        installation: Installation { id: 1 },
+        organization: None,
+        pull_request: PullRequest {
+            base: PullRequestBase {
+                ref_: "base_ref".to_string(),
+                sha: "base_sha".to_string(),
+            },
+            head: PullRequestHead {
+                ref_: "head_ref".to_string(),
+                sha: "head_sha".to_string(),
+            },
+            html_url: "url".to_string(),
+        },
+        repository: Repository {
+            name: "repo".to_string(),
+            owner: RepositoryOwner {
+                login: "owner".to_string(),
+            },
+        },
+    };
+
+    let mut gh_client = MockGHClient::new();
+    gh_client
+        .expect_compare_commits()
+        .with(eq(event.ctx()), eq("base_sha"), eq("head_sha"))
+        .times(1)
+        .returning(|_, _, _| {
+            Box::pin(future::ready(Ok(vec![Commit {
+                author: Some(User {
+                    name: "user1".to_string(),
+                    email: "user1@email.test".to_string(),
+                    ..Default::default()
+                }),
+                committer: Some(User {
+                    name: "user1".to_string(),
+                    email: "user1@email.test".to_string(),
+                    ..Default::default()
+                }),
+                message: indoc! {r"
+                    Test commit message
+
+                    Signed-off-by: userx <userx@email.test>
+                "}
+                .to_string(),
+                ..Default::default()
+            }])))
+        });
+    gh_client.expect_get_config().with(eq(event.ctx())).times(1).returning(|_| {
+        Box::pin(future::ready(Ok(Some(Config {
+            allow_override_action: Some(false),
+            ..Default::default()
+        }))))
+    });
+    let expected_ctx = event.ctx();
+    gh_client
+        .expect_create_check_run()
+        .withf(move |ctx, check_run| {
+            *ctx == expected_ctx
+                && check_run.actions().is_empty()
                 && check_run.completed_at() >= check_run.started_at()
                 && check_run.conclusion() == &CheckRunConclusion::ActionRequired
                 && check_run.head_sha() == "head_sha"

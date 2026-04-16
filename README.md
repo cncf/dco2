@@ -105,6 +105,21 @@ require:
 
 When this setting is present on a repository that belongs to a single user (instead of an organization), only the repository owner is allowed to push commits without a sign-off.
 
+### Override action
+
+By default, failed DCO checks include a `Set DCO to pass` button in the check details page.
+
+To hide this button, set the following option in the [configuration file](docs/config/dco.yml) (`.github/dco.yml`):
+
+```yaml
+allowOverrideAction: false
+```
+
+> [!NOTE]
+> This option only hides DCO2's own override action. It is not a security
+> boundary because repository maintainers with write access can still change
+> the repository configuration.
+
 ## Deployment
 
 We'll soon provide some documentation about how to deploy your own instance of DCO2.
