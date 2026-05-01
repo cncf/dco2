@@ -14,21 +14,21 @@ rust-version = "1.93.1"
 
 [workspace.dependencies]
 anyhow = "1.0.102"
-askama = "0.15.4"
+askama = "0.15.6"
 async-trait = "0.1.89"
 axum = { version = "0.8.8", features = ["macros"] }
 base64 = "0.22.1"
 bytes = "1.11.1"
-cached = { version = "0.56.0", features = ["async"] }
-clap = { version = "4.5.60", features = ["derive"] }
+cached = { version = "0.59.0", features = ["async"] }
+clap = { version = "4.6.0", features = ["derive"] }
 chrono = "0.4.44"
 email_address = "0.2.9"
 figment = { version = "0.10.19", features = ["yaml", "env"] }
-hmac = "0.12.1"
+hmac = "0.13.0"
 hex = "0.4.3"
 http = "1.4.0"
 indoc = "2.0.7"
-lambda_http = "1.0.2"
+lambda_http = "1.1.2"
 mockall = "0.14.0"
 octorust = "0.10.0"
 pem = "3.0.6"
@@ -37,7 +37,7 @@ regex = "1.12.3"
 serde = { version = "1.0.228", features = ["derive"] }
 serde_json = "1.0.149"
 serde_yaml = "0.9.34"
-sha2 = "0.10.9"
+sha2 = "0.11.0"
 thiserror = "2.0.18"
 tokio = { version = "1.50.0", features = [
     "macros",
@@ -50,4 +50,4 @@ tokio = { version = "1.50.0", features = [
 tower = "0.5.3"
 tower-http = { version = "0.6.8", features = ["auth", "fs", "set-header", "trace"] }
 tracing = "0.1.44"
-tracing-subscriber = { version = "0.3.22", features = ["env-filter", "json"] }
+tracing-subscriber = { version = "0.3.23", features = ["env-filter", "json"] }
