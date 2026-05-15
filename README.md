@@ -94,7 +94,13 @@ Signed-off-by: User2 <user2@email.test>
 
 ### Skipping sign-off for organization members
 
-It is possible to disable the check for commits authored and [signed](https://help.github.com/articles/signing-commits-using-gpg/) by members of the organization the repository belongs to.
+It is possible to disable the check for commits authored and [signed](https://help.github.com/articles/signing-commits-using-gpg/) by members of the organization that owns the repository.
+
+When using the public DCO2 service, _it may fail to detect that an organization member is a member._
+Determining organization membership is only possible if DCO2 is able to confirm the author's membership:
+the author's membership in the organization must be visible to DCO2,
+either because the author has [publicized their membership](https://docs.github.com/en/account-and-profile/how-tos/organization-membership/publicizing-or-hiding-organization-membership)
+or because DCO2 is configured with credentials that allow it to see non-public organization members.
 
 By default, this feature is **disabled**. To enable it, the following section must be added to the [configuration file](docs/config/dco.yml) (`.github/dco.yml`):
 
