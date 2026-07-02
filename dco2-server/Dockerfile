@@ -1,16 +1,16 @@
 # Build dco2-server
-FROM rust:1-alpine3.23 AS builder
+FROM rust:1.96.1-alpine3.24 AS builder
 RUN apk --no-cache add musl-dev perl make
 WORKDIR /dco2
 COPY Cargo.* ./
 COPY dco2 dco2
-COPY dco2-aws-lambda/Cargo.* dco2-aws-lambda
+COPY dco2-aws-lambda dco2-aws-lambda
 COPY dco2-server dco2-server
 WORKDIR /dco2/dco2-server
-RUN cargo build --release
+RUN cargo build --release --locked
 
 # Final stage
-FROM alpine:3.23.3
+FROM alpine:3.24.1
 RUN apk --no-cache add ca-certificates && addgroup -S dco2 && adduser -S dco2 -G dco2
 USER dco2
 WORKDIR /home/dco2

@@ -1,11 +1,11 @@
 //! This module defines an abstraction layer over the GitHub API.
 
-use std::{sync::Arc, time::Duration};
+use std::sync::Arc;
 
 use anyhow::{Result, bail};
 use async_trait::async_trait;
 use base64::{Engine as _, engine::general_purpose::STANDARD as b64};
-use cached::proc_macro::cached;
+use cached::cached;
 use chrono::{DateTime, Utc};
 use http::StatusCode;
 #[cfg(test)]
@@ -128,10 +128,9 @@ impl GHClient for GHClientOctorust {
     /// [GHClient::get_config]
     async fn get_config(&self, ctx: &Ctx) -> Result<Option<Config>> {
         #[cached(
-            size = 1000,
-            time = 3600,
+            max_size = 1000,
+            ttl = 3600,
             sync_writes = "default",
-            result = true,
             key = "String",
             convert = r#"{ format!("{}-{}", ctx.owner, ctx.repo) }"#
         )]
@@ -171,10 +170,9 @@ impl GHClient for GHClientOctorust {
     /// [GHClient::is_organization_member]
     async fn is_organization_member(&self, ctx: &Ctx, org: &str, username: &str) -> Result<bool> {
         #[cached(
-            size = 1000,
-            time = 3600,
+            max_size = 1000,
+            ttl = 3600,
             sync_writes = "default",
-            result = true,
             key = "String",
             convert = r#"{ format!("{}-{}", org, username) }"#
         )]

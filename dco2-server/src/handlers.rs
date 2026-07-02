@@ -9,7 +9,7 @@ use axum::{
     response::IntoResponse,
     routing::{get, post},
 };
-use hmac::{Hmac, Mac};
+use hmac::{Hmac, KeyInit, Mac};
 use sha2::Sha256;
 use tower::ServiceBuilder;
 use tower_http::trace::TraceLayer;
