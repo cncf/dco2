@@ -96,7 +96,29 @@ pub enum CheckRunEventAction {
 /// Check run event check run details.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct CheckRunEventCheckRun {
+    pub external_id: Option<String>,
     pub head_sha: String,
+    #[serde(default)]
+    pub pull_requests: Vec<CheckRunEventPullRequest>,
+}
+
+/// Check run event pull request details.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct CheckRunEventPullRequest {
+    pub base: CheckRunEventPullRequestBase,
+    pub number: i64,
+}
+
+/// Check run event pull request base details.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct CheckRunEventPullRequestBase {
+    pub repo: CheckRunEventPullRequestRepository,
+}
+
+/// Check run event pull request repository details.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct CheckRunEventPullRequestRepository {
+    pub id: i64,
 }
 
 /// GitHub application installation information.
@@ -158,6 +180,8 @@ pub struct PullRequest {
     pub base: PullRequestBase,
     pub head: PullRequestHead,
     pub html_url: String,
+    #[serde(default)]
+    pub labels: Vec<PullRequestLabel>,
 }
 
 /// Pull request base information.
@@ -173,6 +197,7 @@ pub struct PullRequestBase {
 pub struct PullRequestEvent {
     pub action: PullRequestEventAction,
     pub installation: Installation,
+    pub number: i64,
     pub organization: Option<Organization>,
     pub pull_request: PullRequest,
     pub repository: Repository,
@@ -207,9 +232,16 @@ pub struct PullRequestHead {
     pub sha: String,
 }
 
+/// Pull request label information.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct PullRequestLabel {
+    pub name: String,
+}
+
 /// Repository information.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Repository {
+    pub id: i64,
     pub name: String,
     pub owner: RepositoryOwner,
 }
@@ -224,4 +256,114 @@ pub struct RepositoryOwner {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct RequestedAction {
     pub identifier: String,
+}
+
+#[cfg(test)]
+mod tests {
+    use http::HeaderValue;
+
+    use super::*;
+
+    #[test]
+    fn check_run_event_with_external_id_and_pull_requests() {
+        let body = r#"{
+            "action": "requested_action",
+            "check_run": {
+                "external_id": "123",
+                "head_sha": "head_sha",
+                "pull_requests": [{"base": {"repo": {"id": 1}}, "id": 1, "number": 123}]
+            },
+            "installation": {"id": 1},
+            "repository": {"id": 1, "name": "repo", "owner": {"login": "owner"}},
+            "requested_action": {"identifier": "override"}
+        }"#;
+
+        let Event::CheckRun(event) = parse_event("check_run", body) else {
+            panic!("unexpected event type");
+        };
+
+        assert_eq!(event.check_run.external_id.as_deref(), Some("123"));
+        assert_eq!(
+            event.check_run.pull_requests,
+            vec![CheckRunEventPullRequest {
+                base: CheckRunEventPullRequestBase {
+                    repo: CheckRunEventPullRequestRepository { id: 1 },
+                },
+                number: 123,
+            }]
+        );
+    }
+
+    #[test]
+    fn check_run_event_without_external_id_and_pull_requests() {
+        let body = r#"{
+            "action": "requested_action",
+            "check_run": {"external_id": "", "head_sha": "head_sha"},
+            "installation": {"id": 1},
+            "repository": {"id": 1, "name": "repo", "owner": {"login": "owner"}},
+            "requested_action": {"identifier": "override"}
+        }"#;
+
+        let Event::CheckRun(event) = parse_event("check_run", body) else {
+            panic!("unexpected event type");
+        };
+
+        assert_eq!(event.check_run.external_id.as_deref(), Some(""));
+        assert!(event.check_run.pull_requests.is_empty());
+    }
+
+    #[test]
+    fn pull_request_event_with_labels() {
+        let body = r#"{
+            "action": "opened",
+            "installation": {"id": 1},
+            "number": 123,
+            "pull_request": {
+                "base": {"ref": "main", "sha": "base_sha"},
+                "head": {"ref": "feature", "sha": "head_sha"},
+                "html_url": "url",
+                "labels": [{"id": 1, "name": "needs-dco", "color": "d73a4a"}]
+            },
+            "repository": {"id": 1, "name": "repo", "owner": {"login": "owner"}}
+        }"#;
+
+        let Event::PullRequest(event) = parse_event("pull_request", body) else {
+            panic!("unexpected event type");
+        };
+
+        assert_eq!(
+            event.pull_request.labels,
+            vec![PullRequestLabel {
+                name: "needs-dco".to_string()
+            }]
+        );
+    }
+
+    #[test]
+    fn pull_request_event_with_number() {
+        let body = r#"{
+            "action": "opened",
+            "installation": {"id": 1},
+            "number": 123,
+            "pull_request": {
+                "base": {"ref": "main", "sha": "base_sha"},
+                "head": {"ref": "feature", "sha": "head_sha"},
+                "html_url": "url"
+            },
+            "repository": {"id": 1, "name": "repo", "owner": {"login": "owner"}}
+        }"#;
+
+        let Event::PullRequest(event) = parse_event("pull_request", body) else {
+            panic!("unexpected event type");
+        };
+
+        assert_eq!(event.number, 123);
+        assert!(event.pull_request.labels.is_empty());
+    }
+
+    fn parse_event(name: &'static str, body: &str) -> Event {
+        let mut headers = HeaderMap::new();
+        headers.insert(EVENT_NAME_HEADER, HeaderValue::from_static(name));
+        Event::try_from((&headers, &Bytes::from(body.to_string()))).unwrap()
+    }
 }

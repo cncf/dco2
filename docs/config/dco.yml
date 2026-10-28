@@ -17,6 +17,10 @@ allowRemediationCommits:
   # https://github.com/cncf/dco2?#third-party
   thirdParty: false
 
+# Label to add to pull requests with a failing DCO check (disabled by default)
+# https://github.com/cncf/dco2?#labeling-pull-requests
+# label: needs-dco
+
 require:
   # Members are required to sign-off commits
   # https://github.com/cncf/dco2?#skipping-sign-off-for-organization-members

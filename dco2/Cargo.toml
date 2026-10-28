@@ -30,3 +30,4 @@ tracing = { workspace = true }
 indoc = { workspace = true }
 mockall = { workspace = true }
 pretty_assertions = { workspace = true }
+tokio = { workspace = true, features = ["test-util"] }
