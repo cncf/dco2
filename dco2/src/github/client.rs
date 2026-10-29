@@ -1,11 +1,11 @@
 //! This module defines an abstraction layer over the GitHub API.
 
-use std::sync::Arc;
+use std::sync::{Arc, Mutex, PoisonError};
 
 use anyhow::{Result, bail};
 use async_trait::async_trait;
 use base64::{Engine as _, engine::general_purpose::STANDARD as b64};
-use cached::cached;
+use cached::{Cached, LruCache, cached};
 use chrono::{DateTime, Utc};
 use http::StatusCode;
 #[cfg(test)]
@@ -15,6 +15,9 @@ use tracing::warn;
 
 /// Path of the configuration file in the repository.
 const CONFIG_FILE_PATH: &str = ".github/dco.yml";
+
+/// Maximum number of installation clients kept in the clients cache.
+const MAX_CACHED_CLIENTS: usize = 1000;
 
 /// Abstraction layer over a GitHub client. This trait defines the methods that
 /// a GHClient implementation must provide.
@@ -40,8 +43,13 @@ pub type DynGHClient = Arc<dyn GHClient + Send + Sync>;
 /// GHClient implementation powered by octorust.
 #[derive(Clone)]
 pub struct GHClientOctorust {
-    api_host: Option<String>,
+    /// GitHub App credentials used to request installation tokens.
     app_credentials: octorust::auth::JWTCredentials,
+    /// Clients cache, keyed by installation id.
+    clients: Arc<Mutex<LruCache<i64, octorust::Client>>>,
+
+    /// GitHub API host override (e.g. for GitHub Enterprise Server).
+    api_host: Option<String>,
 }
 
 impl GHClientOctorust {
@@ -51,14 +59,30 @@ impl GHClientOctorust {
         let private_key = pem::parse(&cfg.private_key)?.contents().to_owned();
         let app_credentials = octorust::auth::JWTCredentials::new(cfg.app_id, private_key)?;
 
+        // Setup clients cache
+        let clients = LruCache::builder().max_size(MAX_CACHED_CLIENTS).build()?;
+
         Ok(Self {
-            api_host: cfg.api_host.clone(),
             app_credentials,
+            clients: Arc::new(Mutex::new(clients)),
+
+            api_host: cfg.api_host.clone(),
         })
     }
 
-    /// Setup a new GitHub client for the installation id provided.
+    /// Returns the GitHub client for the installation id provided.
+    ///
+    /// Clients are cached per installation so that their access token and HTTP
+    /// connections are reused across requests. octorust refreshes the token
+    /// automatically before it expires.
     fn setup_client(&self, inst_id: i64) -> Result<octorust::Client> {
+        // Reuse the installation's client when available (the cache remains
+        // consistent even if a previous holder of the lock panicked)
+        let mut clients = self.clients.lock().unwrap_or_else(PoisonError::into_inner);
+        if let Some(client) = clients.cache_get(&inst_id) {
+            return Ok(client.clone());
+        }
+
         // Setup credentials
         let user_agent = format!("{}/{}", env!("CARGO_PKG_NAME"), env!("CARGO_PKG_VERSION"));
         let tg = octorust::auth::InstallationTokenGenerator::new(inst_id, self.app_credentials.clone());
@@ -69,6 +93,9 @@ impl GHClientOctorust {
         if let Some(api_host) = &self.api_host {
             client.with_host_override(api_host);
         }
+
+        // Cache client for subsequent requests
+        clients.cache_set(inst_id, client.clone());
 
         Ok(client)
     }
