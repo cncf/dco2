@@ -126,6 +126,41 @@ allowOverrideAction: false
 > boundary because repository maintainers with write access can still change
 > the repository configuration.
 
+### Labeling pull requests
+
+DCO2 can keep a label in sync with the DCO check result. When enabled, the label is added to open pull requests whose DCO check fails, and removed when the check passes (including when it passes thanks to remediation commits or the `Set DCO to pass` action).
+
+By default, this feature is **disabled**. To enable it, set the name of the label to use in the [configuration file](docs/config/dco.yml) (`.github/dco.yml`):
+
+```yaml
+label: needs-dco
+```
+
+The label name can have up to 50 characters. Blank names, names longer than 50 characters, `.` and `..` are ignored, and labeling stays disabled. If the label does not exist in the repository, DCO2 creates it. Existing labels (including their colors and descriptions) are never modified.
+
+Labeling requires the `Pull requests: write` permission (`Issues: write` can be used instead, as it also allows managing labels):
+
+- When using the [public DCO2 application](https://github.com/apps/dco-2), the organization or account owner must approve the updated permissions requested by the application.
+- When running your own instance of DCO2, add this permission to your GitHub App. No changes to the DCO2 server configuration are required.
+
+Approving this permission is optional. DCO checks keep working without it, but DCO2 will not label pull requests. It may take up to about an hour for labeling to start after approving the permission or updating the configuration file.
+
+Labeling is done on a best-effort basis:
+
+- Closed pull requests are never labeled or unlabeled.
+- Disabling the option does not remove labels already applied.
+- When several pull requests from forks share the same head commit, the `Set DCO to pass` action only removes the label from the pull request whose check run was used. The label is removed from the other pull requests on the next push, or it can be removed manually.
+- Pull requests that were already open when labeling was enabled are labeled the next time new commits are pushed to them. To label them right away, you can use the [label-open-prs.sh](docs/scripts/label-open-prs.sh) sample script, which requires bash 4 or later and the [GitHub CLI](https://cli.github.com):
+
+  ```text
+  docs/scripts/label-open-prs.sh --dry-run OWNER/REPO needs-dco
+  ```
+
+  The script labels the open pull requests whose latest DCO2 check failed. Remove `--dry-run` to apply the changes, and use `--app-slug` to set your GitHub App's slug when running your own instance of DCO2. Using the `Set DCO to pass` action on a pull request from a fork labeled by the script may not remove the label if its DCO check run does not reference the pull request; in that case, the label is removed on the next push, or it can be removed manually.
+
+> [!NOTE]
+> When several commits are pushed in very quick succession, a stale label may occasionally remain on a pull request until the next push.
+
 ## Deployment
 
 We'll soon provide some documentation about how to deploy your own instance of DCO2.
