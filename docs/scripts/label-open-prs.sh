@@ -155,17 +155,26 @@ while IFS="$tab" read -r number sha labels <&3; do
 
   # Get the conclusion of the latest DCO check run created by the DCO2 app for
   # this pull request (check runs reference it in their external id, and those
-  # with an empty external id apply to any pull request)
-  if ! conclusion="$(gh api \
-    "repos/$repo/commits/$sha/check-runs?check_name=DCO&filter=latest&per_page=100" \
-    --jq "[.check_runs[] | select(.app.slug == \"$app_slug\")
-      | select((.external_id // \"\") as \$id | \$id == \"\" or \$id == \"$number\")]
-      | max_by(.id) | if . == null then \"none\" else (.conclusion // .status) end" \
+  # with an empty external id apply to any pull request). All check runs are
+  # requested because `filter=latest` only returns the latest one, which may
+  # belong to another pull request with the same head commit, and the latest is
+  # selected after fetching all pages because `--jq` is applied to each page.
+  #
+  # Check runs created by older DCO2 versions have an empty external id, so when
+  # several pull requests share the same head commit and only have those, the
+  # latest one may belong to another pull request
+  if ! runs="$(gh api --paginate \
+    "repos/$repo/commits/$sha/check-runs?check_name=DCO&filter=all&per_page=100" \
+    --jq ".check_runs[] | select(.app.slug == \"$app_slug\")
+      | select((.external_id // \"\") as \$id | \$id == \"\" or \$id == \"$number\")
+      | \"\(.id)\t\(.conclusion // .status)\"" \
     </dev/null)"; then
     echo "#$number: failed to get DCO check run" >&2
     failed=$((failed + 1))
     continue
   fi
+  conclusion="$(sort -n <<<"$runs" | tail -n 1 | cut -f 2)"
+  conclusion="${conclusion:-none}"
   if [[ "$conclusion" != "action_required" ]]; then
     if [[ "$conclusion" == "none" ]]; then
       echo "#$number: skipped (no DCO check run from $app_slug)"
