@@ -13,12 +13,20 @@ use chrono::{DateTime, Utc};
 use http::{StatusCode, header::RETRY_AFTER};
 #[cfg(test)]
 use mockall::automock;
+use reqwest_middleware::reqwest;
+use reqwest_retry::{
+    RetryTransientMiddleware, Retryable, RetryableStrategy, default_on_request_failure,
+    default_on_request_success, policies::ExponentialBackoff,
+};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 use tracing::{debug, warn};
 
 /// Path of the configuration file in the repository.
 const CONFIG_FILE_PATH: &str = ".github/dco.yml";
+
+/// Maximum time to establish a connection with the GitHub API.
+const CONNECT_TIMEOUT: Duration = Duration::from_secs(2);
 
 /// Color used when creating the label applied to pull requests.
 const LABEL_COLOR: &str = "ededed";
@@ -35,11 +43,25 @@ const MAX_CACHED_CLIENTS: usize = 1000;
 /// Maximum number of installations kept in the labels permissions cache.
 const MAX_CACHED_LABELS_PERMISSIONS: usize = 1000;
 
+/// Maximum number of times a request that failed with a transient error is
+/// retried.
+const MAX_RETRIES: u32 = 2;
+
+/// Maximum time to wait before retrying a request.
+const MAX_RETRY_INTERVAL: Duration = Duration::from_secs(2);
+
+/// Minimum time to wait before retrying a request (it can be lower due to the
+/// jitter applied).
+const MIN_RETRY_INTERVAL: Duration = Duration::from_millis(500);
+
 /// Message returned by GitHub when the app lacks the permissions required.
 const PERMISSIONS_NOT_GRANTED_MESSAGE: &str = "Resource not accessible by integration";
 
 /// Header used by GitHub to report the requests remaining in the rate limit.
 const RATE_LIMIT_REMAINING_HEADER: &str = "x-ratelimit-remaining";
+
+/// Maximum time each attempt of a request to the GitHub API can take.
+const REQUEST_TIMEOUT: Duration = Duration::from_secs(5);
 
 /// User agent used in requests to the GitHub API.
 const USER_AGENT: &str = concat!(env!("CARGO_PKG_NAME"), "/", env!("CARGO_PKG_VERSION"));
@@ -105,10 +127,7 @@ impl GHClientOctorust {
 
         // Setup app client
         let credentials = octorust::auth::Credentials::JWT(app_credentials.clone());
-        let mut app_client = octorust::Client::new(USER_AGENT, credentials)?;
-        if let Some(api_host) = &cfg.api_host {
-            app_client.with_host_override(api_host);
-        }
+        let app_client = new_octorust_client(credentials, cfg.api_host.as_deref())?;
 
         // Setup caches
         let clients = LruCache::builder().max_size(MAX_CACHED_CLIENTS).build()?;
@@ -208,10 +227,7 @@ impl GHClientOctorust {
         let credentials = octorust::auth::Credentials::InstallationToken(tg);
 
         // Setup client
-        let mut client = octorust::Client::new(USER_AGENT, credentials)?;
-        if let Some(api_host) = &self.api_host {
-            client.with_host_override(api_host);
-        }
+        let client = new_octorust_client(credentials, self.api_host.as_deref())?;
 
         // Cache client for subsequent requests
         clients.cache_set(inst_id, client.clone());
@@ -834,6 +850,26 @@ pub struct PullRequestState {
     pub labels: Vec<String>,
 }
 
+/// Retry strategy used in requests to the GitHub API.
+///
+/// Rate limited requests (`429 Too Many Requests`) are not retried, as GitHub
+/// asks integrations not to send new requests until the rate limit is reset.
+/// Other results are handled as in the default strategy: server and network
+/// errors are retried, while client errors (including `403 Forbidden` rate
+/// limits) are not.
+struct RetryStrategy;
+
+impl RetryableStrategy for RetryStrategy {
+    /// [RetryableStrategy::handle]
+    fn handle(&self, res: &reqwest_middleware::Result<reqwest::Response>) -> Option<Retryable> {
+        match res {
+            Ok(response) if response.status() == StatusCode::TOO_MANY_REQUESTS => Some(Retryable::Fatal),
+            Ok(response) => default_on_request_success(response),
+            Err(err) => default_on_request_failure(err),
+        }
+    }
+}
+
 /// Check if the error provided was caused by GitHub rate limiting the requests
 /// (primary or secondary rate limits).
 pub fn is_rate_limit_error(err: &anyhow::Error) -> bool {
@@ -879,6 +915,41 @@ fn is_permissions_error(err: &octorust::ClientError) -> bool {
 fn labels_permissions_granted(permissions: &octorust::types::AppPermissions) -> bool {
     let is_write = |p: &Option<octorust::types::Pages>| matches!(p, Some(octorust::types::Pages::Write));
     is_write(&permissions.pull_requests) || is_write(&permissions.issues)
+}
+
+/// Create a new octorust client for the credentials provided.
+///
+/// Requests that fail with transient errors are retried a few times with short
+/// delays, so that the event processing fits within GitHub's webhooks timeout.
+/// Rate limited requests are not retried (see [`RetryStrategy`]), and every
+/// attempt is bounded by a timeout so that a stalled connection cannot hang the
+/// event processing.
+fn new_octorust_client(
+    credentials: octorust::auth::Credentials,
+    api_host: Option<&str>,
+) -> Result<octorust::Client> {
+    // Setup HTTP client (redirects are not followed, like in octorust's client)
+    let http_client = reqwest::Client::builder()
+        .connect_timeout(CONNECT_TIMEOUT)
+        .redirect(reqwest::redirect::Policy::none())
+        .timeout(REQUEST_TIMEOUT)
+        .build()?;
+
+    // Retry requests that fail with transient errors
+    let retry_policy = ExponentialBackoff::builder()
+        .retry_bounds(MIN_RETRY_INTERVAL, MAX_RETRY_INTERVAL)
+        .build_with_max_retries(MAX_RETRIES);
+    let retry_middleware =
+        RetryTransientMiddleware::new_with_policy_and_strategy(retry_policy, RetryStrategy);
+    let http_client = reqwest_middleware::ClientBuilder::new(http_client).with(retry_middleware).build();
+
+    // Setup octorust client
+    let mut client = octorust::Client::custom(USER_AGENT, credentials, http_client);
+    if let Some(api_host) = api_host {
+        client.with_host_override(api_host);
+    }
+
+    Ok(client)
 }
 
 #[cfg(test)]
@@ -1032,6 +1103,30 @@ mod tests {
         assert!(!labels_permissions_granted(&permissions));
     }
 
+    #[test]
+    fn retry_strategy_forbidden_not_retried() {
+        let result = Ok(response(StatusCode::FORBIDDEN));
+        assert!(RetryStrategy.handle(&result) == Some(Retryable::Fatal));
+    }
+
+    #[test]
+    fn retry_strategy_server_error_retried() {
+        let result = Ok(response(StatusCode::BAD_GATEWAY));
+        assert!(RetryStrategy.handle(&result) == Some(Retryable::Transient));
+    }
+
+    #[test]
+    fn retry_strategy_success_not_retried() {
+        let result = Ok(response(StatusCode::OK));
+        assert!(RetryStrategy.handle(&result).is_none());
+    }
+
+    #[test]
+    fn retry_strategy_too_many_requests_not_retried() {
+        let result = Ok(response(StatusCode::TOO_MANY_REQUESTS));
+        assert!(RetryStrategy.handle(&result) == Some(Retryable::Fatal));
+    }
+
     fn app_permissions(json: &str) -> octorust::types::AppPermissions {
         serde_json::from_str(json).unwrap()
     }
@@ -1062,5 +1157,9 @@ mod tests {
             headers,
             error: String::new(),
         }
+    }
+
+    fn response(status: StatusCode) -> reqwest::Response {
+        http::Response::builder().status(status).body("").unwrap().into()
     }
 }
