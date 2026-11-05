@@ -188,12 +188,12 @@ impl GHClientOctorust {
     fn evict_installation(&self, inst_id: i64) {
         // Evict client
         let mut clients = self.clients.lock().unwrap_or_else(PoisonError::into_inner);
-        clients.cache_remove(&inst_id);
+        let _ = clients.cache_remove(&inst_id);
         drop(clients);
 
         // Evict labels permissions
         let mut labels_permissions = self.labels_permissions.lock().unwrap_or_else(PoisonError::into_inner);
-        labels_permissions.cache_remove(&inst_id);
+        let _ = labels_permissions.cache_remove(&inst_id);
     }
 
     /// Convert an error returned by a labels endpoint. When GitHub reports
@@ -346,7 +346,7 @@ impl GHClient for GHClientOctorust {
     async fn get_config(&self, ctx: &Ctx) -> Result<Option<Config>> {
         #[cached(
             max_size = 1000,
-            ttl = 3600,
+            ttl_secs = 3600,
             sync_writes = "default",
             key = "String",
             convert = r#"{ format!("{}-{}", ctx.owner, ctx.repo) }"#
@@ -403,7 +403,7 @@ impl GHClient for GHClientOctorust {
     async fn is_organization_member(&self, ctx: &Ctx, org: &str, username: &str) -> Result<bool> {
         #[cached(
             max_size = 1000,
-            ttl = 3600,
+            ttl_secs = 3600,
             sync_writes = "default",
             key = "String",
             convert = r#"{ format!("{}-{}", org, username) }"#
