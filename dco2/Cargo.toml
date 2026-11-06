@@ -29,7 +29,8 @@ tokio = { workspace = true }
 tracing = { workspace = true }
 
 [dev-dependencies]
+axum = { workspace = true }
 indoc = { workspace = true }
 mockall = { workspace = true }
 pretty_assertions = { workspace = true }
-tokio = { workspace = true, features = ["test-util"] }
+tokio = { workspace = true, features = ["net", "test-util"] }

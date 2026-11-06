@@ -17,7 +17,7 @@ use crate::{
         CheckRun, CheckRunAction, CheckRunConclusion, CheckRunEvent, CheckRunEventAction, CheckRunStatus,
         Commit, Config, Ctx, DynGHClient, Event, LabelsPermissionError, MergeGroupEvent,
         MergeGroupEventAction, NewCheckRunInput, PullRequestEvent, PullRequestEventAction, PullRequestLabel,
-        is_rate_limit_error,
+        TooManyCommitsError, is_rate_limit_error,
     },
 };
 
@@ -183,11 +183,18 @@ async fn process_pull_request_event(gh_client: DynGHClient, event: &PullRequestE
         return Ok(());
     }
 
-    // Get pull request commits
-    let commits: Vec<Commit> = gh_client
+    // Get pull request commits (the check can't be run when there are too
+    // many of them)
+    let commits = match gh_client
         .compare_commits(&ctx, &event.pull_request.base.sha, &event.pull_request.head.sha)
         .await
-        .context("error getting pull request commits")?;
+    {
+        Ok(commits) => Ok(commits),
+        Err(err) => match too_many_commits_error(&err) {
+            Some(too_many_commits_err) => Err(too_many_commits_err.clone()),
+            None => return Err(err).context("error getting pull request commits"),
+        },
+    };
 
     // Get repository configuration
     let config = gh_client
@@ -196,29 +203,44 @@ async fn process_pull_request_event(gh_client: DynGHClient, event: &PullRequestE
         .context("error getting repository configuration")?
         .unwrap_or_default();
 
-    // Create a list of members that are not required to sign-off commits
-    let mut members = vec![];
-    if !config.members_signoff_is_required() {
-        members = collect_members(gh_client.clone(), event, &commits)
-            .await
-            .context("error collecting members")?
-    };
+    // Run DCO check (it fails when there are too many commits to check)
+    let (check_failed, summary) = match commits {
+        Ok(commits) => {
+            // Create a list of members that are not required to sign-off commits
+            let mut members = vec![];
+            if !config.members_signoff_is_required() {
+                members = collect_members(gh_client.clone(), event, &commits)
+                    .await
+                    .context("error collecting members")?
+            };
 
-    // Run DCO check
-    let input = CheckInput {
-        commits,
-        config,
-        head_ref: event.pull_request.head.ref_.clone(),
-        members,
+            // Check the commits and render the output
+            let input = CheckInput {
+                commits,
+                config: config.clone(),
+                head_ref: event.pull_request.head.ref_.clone(),
+                members,
+            };
+            let output = check(&input);
+            let summary = output.render().context("error rendering output template")?;
+            (output.num_commits_with_errors > 0, summary)
+        }
+        Err(err) => {
+            info!(
+                owner = %ctx.owner,
+                repo = %ctx.repo,
+                pr_number = event.number,
+                "too many commits in pull request, check not run"
+            );
+            (true, too_many_commits_summary(err.max))
+        }
     };
-    let output = check(&input);
-    let check_failed = output.num_commits_with_errors > 0;
 
     // Prepare check run
     let (conclusion, title, actions) = if !check_failed {
         (CheckRunConclusion::Success, CHECK_PASSED_TITLE, vec![])
     } else {
-        let actions = if output.config.override_action_is_allowed() {
+        let actions = if config.override_action_is_allowed() {
             vec![CheckRunAction {
                 label: OVERRIDE_ACTION_LABEL.to_string(),
                 description: OVERRIDE_ACTION_DESCRIPTION.to_string(),
@@ -239,7 +261,7 @@ async fn process_pull_request_event(gh_client: DynGHClient, event: &PullRequestE
         name: CHECK_NAME.to_string(),
         started_at,
         status: CheckRunStatus::Completed,
-        summary: output.render().context("error rendering output template")?,
+        summary,
         title: title.to_string(),
     });
 
@@ -252,7 +274,7 @@ async fn process_pull_request_event(gh_client: DynGHClient, event: &PullRequestE
         pr_number: event.number,
         should_be_labeled: check_failed,
     };
-    sync_label(&gh_client, &ctx, &output.config, &input).await;
+    sync_label(&gh_client, &ctx, &config, &input).await;
 
     // Create check run
     gh_client.create_check_run(&ctx, &check_run).await.context("error creating check run")?;
@@ -360,6 +382,20 @@ async fn sync_label(gh_client: &DynGHClient, ctx: &Ctx, config: &Config, input: 
             "error syncing label"
         );
     }
+}
+
+/// Find the error returned when a pull request has too many commits to get
+/// them, if any.
+fn too_many_commits_error(err: &anyhow::Error) -> Option<&TooManyCommitsError> {
+    err.chain().find_map(|cause| cause.downcast_ref::<TooManyCommitsError>())
+}
+
+/// Prepare the summary of the check run created when a pull request has too
+/// many commits to run the check.
+fn too_many_commits_summary(max_commits: usize) -> String {
+    format!(
+        "The check **did not pass**: this pull request contains too many commits to be checked (the maximum supported is {max_commits})."
+    )
 }
 
 /// Synchronize the configured label of a pull request with the result of the

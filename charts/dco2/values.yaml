@@ -42,7 +42,7 @@ server:
       appId: 0
       # GitHub application private key
       privateKey: ""
-      # GitHub webhook secret
+      # GitHub webhook secret (required, it cannot be empty)
       webhookSecret: ""
 
     # Log output format [json|pretty]

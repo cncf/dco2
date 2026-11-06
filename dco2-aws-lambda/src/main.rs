@@ -5,7 +5,10 @@ use figment::{Figment, providers::Env};
 use lambda_http::{Error, run, tracing};
 
 use dco2::github::{AppConfig, GHClientOctorust};
-use dco2_server::handlers::setup_router;
+use dco2_server::{env::env_with_raw_keys, handlers::setup_router};
+
+/// Configuration keys whose environment variables values must not be parsed.
+const RAW_ENV_KEYS: &[&str] = &["webhook_secret"];
 
 #[tokio::main]
 async fn main() -> Result<(), Error> {
@@ -18,11 +21,14 @@ async fn main() -> Result<(), Error> {
     }
     tracing::init_default_subscriber();
 
-    // Setup GitHub client
+    // Setup configuration
     let cfg: AppConfig = Figment::new()
-        .merge(Env::prefixed("DCO2_"))
+        .merge(env_with_raw_keys(&Env::prefixed("DCO2_"), RAW_ENV_KEYS))
         .extract()
         .context("error setting up configuration")?;
+    cfg.validate().context("invalid configuration")?;
+
+    // Setup GitHub client
     let gh_client = Arc::new(GHClientOctorust::new(&cfg).context("error setting up github client")?);
 
     // Start lambda runtime
