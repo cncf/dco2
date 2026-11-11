@@ -20,6 +20,9 @@ use dco2::{
     github::{DynGHClient, EVENT_ID_HEADER, EVENT_SIGNATURE_HEADER, Event, EventError},
 };
 
+#[cfg(test)]
+mod tests;
+
 /// Router's state.
 #[derive(Clone, FromRef)]
 struct RouterState {
