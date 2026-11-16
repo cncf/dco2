@@ -5,7 +5,9 @@ use indoc::indoc;
 use pretty_assertions::assert_eq;
 
 use crate::{
-    dco::check::{CheckInput, CheckOutput, CommitCheckOutput, CommitError, CommitSuccessReason, check},
+    dco::check::{
+        CheckInput, CheckOutput, CommitCheckOutput, CommitError, CommitSuccessReason, SummaryTable, check,
+    },
     github::{Commit, Config, ConfigAllowRemediationCommits, ConfigRequire, User},
 };
 
@@ -6795,6 +6797,171 @@ fn output_how_to_fix_remediation_options_depend_on_config() {
     assert!(!rendered.contains(not_allowed));
     assert!(rendered.contains(individual_link));
     assert!(rendered.contains(third_party_link));
+}
+
+#[test]
+fn output_summary_table_lists_commits_not_displayed() {
+    // Setup a check output with more commits than the summary table displays
+    let mut commits: Vec<_> = (0..998)
+        .map(|i| render_commit_output(&format!("{i:040x}"), "Test commit message", vec![]))
+        .collect();
+    commits.push(render_commit_output(
+        "fedcba9876543210",
+        "Failing commit message",
+        vec![CommitError::SignOffNotFound],
+    ));
+    commits.push(render_commit_output(
+        "abcdef0123456789",
+        "Test commit message",
+        vec![],
+    ));
+    let output = CheckOutput {
+        commits,
+        config: Default::default(),
+        head_ref: "feature".to_string(),
+        num_commits_with_errors: 1,
+        only_last_commit_contains_errors: false,
+    };
+
+    // Render the output
+    let rendered = output.render().unwrap();
+
+    // Check the table is limited and the failing commit is displayed
+    assert_eq!(rendered.matches("| :green_circle: |").count(), 199);
+    assert_eq!(rendered.matches("| :red_circle: |").count(), 1);
+    assert!(rendered.contains(
+        "| :red_circle: | [fedcba9](https://github.com/org/repo/commit/fedcba9876543210) |Failing commit message|`Sign-off not found`|"
+    ));
+    assert!(!rendered.contains("[abcdef0]"));
+
+    // Check the commits not displayed are reported after the table
+    assert!(rendered.contains("|\n\nShowing 200 of 1000 commits (not displayed: 800 passing).\n\n## Errors"));
+
+    // Check the fixing instructions are rendered for the whole branch
+    assert!(rendered.contains("## Errors details"));
+    assert!(rendered.contains("`git rebase HEAD~1000 --signoff`"));
+}
+
+#[test]
+fn output_summary_table_lists_failing_commits_not_displayed() {
+    // Setup a renderer for outputs with the given failing and passing commits
+    let render = |failing: usize, passing: usize| {
+        let failing_commits = (0..failing).map(|i| {
+            render_commit_output(
+                &format!("{i:040x}"),
+                "Test commit message",
+                vec![CommitError::SignOffNotFound],
+            )
+        });
+        let passing_commits = (failing..failing + passing)
+            .map(|i| render_commit_output(&format!("{i:040x}"), "Test commit message", vec![]));
+        CheckOutput {
+            commits: failing_commits.chain(passing_commits).collect(),
+            config: Default::default(),
+            head_ref: "feature".to_string(),
+            num_commits_with_errors: failing,
+            only_last_commit_contains_errors: false,
+        }
+        .render()
+        .unwrap()
+    };
+
+    // Only failing commits not displayed
+    let rendered = render(201, 0);
+    assert_eq!(rendered.matches("| :red_circle: |").count(), 200);
+    assert!(rendered.contains("Showing 200 of 201 commits (not displayed: 1 failing).\n"));
+
+    // Failing and passing commits not displayed
+    let rendered = render(250, 3);
+    assert_eq!(rendered.matches("| :red_circle: |").count(), 200);
+    assert!(!rendered.contains("| :green_circle: |"));
+    assert!(rendered.contains("Showing 200 of 253 commits (not displayed: 50 failing, 3 passing).\n"));
+}
+
+#[test]
+fn summary_table_displays_all_commits_below_limit() {
+    // Setup commits below the limit
+    let commits = vec![
+        render_commit_output("0123456789abcdef", "Test commit message", vec![]),
+        render_commit_output(
+            "fedcba9876543210",
+            "Test commit message",
+            vec![CommitError::SignOffNotFound],
+        ),
+    ];
+
+    // Check all commits are displayed
+    assert_eq!(
+        SummaryTable::new(&commits, 2),
+        SummaryTable {
+            commits: vec![&commits[0], &commits[1]],
+            hidden_failing_commits: 0,
+            hidden_passing_commits: 0,
+        }
+    );
+}
+
+#[test]
+fn summary_table_displays_failing_commits_first() {
+    // Setup failing commits interleaved with passing ones
+    let commits = vec![
+        render_commit_output("0000000000000000", "Test commit message", vec![]),
+        render_commit_output(
+            "1111111111111111",
+            "Test commit message",
+            vec![CommitError::SignOffNotFound],
+        ),
+        render_commit_output("2222222222222222", "Test commit message", vec![]),
+        render_commit_output(
+            "3333333333333333",
+            "Test commit message",
+            vec![CommitError::SignOffMismatch],
+        ),
+        render_commit_output("4444444444444444", "Test commit message", vec![]),
+    ];
+
+    // Check failing commits fill the table first, preserving the original order
+    assert_eq!(
+        SummaryTable::new(&commits, 3),
+        SummaryTable {
+            commits: vec![&commits[0], &commits[1], &commits[3]],
+            hidden_failing_commits: 0,
+            hidden_passing_commits: 2,
+        }
+    );
+}
+
+#[test]
+fn summary_table_limits_failing_commits_above_limit() {
+    // Setup more failing commits than the limit
+    let commits = vec![
+        render_commit_output(
+            "0000000000000000",
+            "Test commit message",
+            vec![CommitError::SignOffNotFound],
+        ),
+        render_commit_output("1111111111111111", "Test commit message", vec![]),
+        render_commit_output(
+            "2222222222222222",
+            "Test commit message",
+            vec![CommitError::SignOffNotFound],
+        ),
+        render_commit_output(
+            "3333333333333333",
+            "Test commit message",
+            vec![CommitError::SignOffNotFound],
+        ),
+    ];
+
+    // Check only the first failing commits are displayed
+    assert_eq!(
+        SummaryTable::new(&commits, 2),
+        SummaryTable {
+            commits: vec![&commits[0], &commits[2]],
+            hidden_failing_commits: 1,
+            hidden_passing_commits: 1,
+        }
+    );
 }
 
 // Helpers.

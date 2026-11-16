@@ -15,6 +15,12 @@ mod filters;
 #[cfg(test)]
 mod tests;
 
+/// Maximum number of commits displayed in the output summary table.
+///
+/// Keeps the rendered output well below the check run summary length limit
+/// enforced by GitHub, so that the sections after the table are not lost.
+const MAX_SUMMARY_TABLE_COMMITS: usize = 200;
+
 /// Check input.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub(crate) struct CheckInput {
@@ -33,6 +39,63 @@ pub(crate) struct CheckOutput {
     pub head_ref: String,
     pub num_commits_with_errors: usize,
     pub only_last_commit_contains_errors: bool,
+}
+
+impl CheckOutput {
+    /// Prepare the summary table displayed in the output template.
+    pub(crate) fn summary_table(&self) -> SummaryTable<'_> {
+        SummaryTable::new(&self.commits, MAX_SUMMARY_TABLE_COMMITS)
+    }
+}
+
+/// Summary table displayed in the check output.
+#[derive(Debug, Clone, PartialEq)]
+pub(crate) struct SummaryTable<'a> {
+    /// Commits displayed in the table, in their original order.
+    pub commits: Vec<&'a CommitCheckOutput>,
+    /// Number of commits with errors not displayed in the table.
+    pub hidden_failing_commits: usize,
+    /// Number of commits without errors not displayed in the table.
+    pub hidden_passing_commits: usize,
+}
+
+impl<'a> SummaryTable<'a> {
+    /// Create a new summary table displaying up to `max_commits` commits.
+    ///
+    /// Commits with errors are displayed before any commit without errors is
+    /// considered, so that all of them are visible whenever possible.
+    fn new(commits: &'a [CommitCheckOutput], max_commits: usize) -> Self {
+        // Decide how many failing and passing commits fit in the table
+        let failing_commits = commits.iter().filter(|c| !c.errors.is_empty()).count();
+        let passing_commits = commits.len() - failing_commits;
+        let displayed_failing_commits = failing_commits.min(max_commits);
+        let displayed_passing_commits = passing_commits.min(max_commits - displayed_failing_commits);
+
+        // Select the commits to display, preserving their original order
+        let mut failing_slots = displayed_failing_commits;
+        let mut passing_slots = displayed_passing_commits;
+        let displayed_commits = commits
+            .iter()
+            .filter(|c| {
+                let slots = if c.errors.is_empty() {
+                    &mut passing_slots
+                } else {
+                    &mut failing_slots
+                };
+                let is_displayed = *slots > 0;
+                if is_displayed {
+                    *slots -= 1;
+                }
+                is_displayed
+            })
+            .collect();
+
+        Self {
+            commits: displayed_commits,
+            hidden_failing_commits: failing_commits - displayed_failing_commits,
+            hidden_passing_commits: passing_commits - displayed_passing_commits,
+        }
+    }
 }
 
 /// Commit check output.
