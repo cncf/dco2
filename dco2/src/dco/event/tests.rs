@@ -1,11 +1,13 @@
 use std::{future, sync::Arc};
 
 use anyhow::{Ok, anyhow};
+use askama::Template;
 use indoc::indoc;
 use mockall::{Sequence, predicate::eq};
 
 use crate::{
     dco::{
+        check::{CheckInput, check},
         event::{
             CHECK_FAILED_TITLE, CHECK_NAME, CHECK_PASSED_TITLE, MERGE_GROUP_CHECKS_REQUESTED_SUMMARY,
             OVERRIDE_ACTION_DESCRIPTION, OVERRIDE_ACTION_IDENTIFIER, OVERRIDE_ACTION_LABEL,
@@ -20,30 +22,23 @@ use crate::{
         MergeGroupEvent, MergeGroupEventAction, MergeGroupEventMergeGroup, MergeGroupHeadCommit,
         MockGHClient, Organization, PullRequest, PullRequestBase, PullRequestEvent, PullRequestEventAction,
         PullRequestHead, PullRequestLabel, PullRequestState, Repository, RepositoryOwner, RequestedAction,
-        User,
+        TooManyCommitsError, User,
     },
 };
 
 const LABEL: &str = "needs-dco";
 
+/// Maximum number of commits reported by the too many commits error.
+const MAX_COMMITS: usize = 1000;
+
+/// Summary of the check run created when there are too many commits.
+const TOO_MANY_COMMITS_SUMMARY: &str = "The check **did not pass**: this pull request contains too many commits to be checked (the maximum supported is 1000).";
+
 #[tokio::test]
 async fn check_run_event_other_action() {
     let event = CheckRunEvent {
         action: CheckRunEventAction::Other,
-        check_run: CheckRunEventCheckRun {
-            external_id: None,
-            head_sha: "head_sha".to_string(),
-            pull_requests: vec![],
-        },
-        installation: Installation { id: 1 },
-        repository: Repository {
-            id: 1,
-            name: "repo".to_string(),
-            owner: RepositoryOwner {
-                login: "owner".to_string(),
-            },
-        },
-        requested_action: None,
+        ..override_event(Some("42"), &[])
     };
 
     let gh_client = MockGHClient::new();
@@ -128,6 +123,21 @@ async fn check_run_event_requested_action_override_error_creating_check_run() {
 }
 
 #[tokio::test]
+#[should_panic(expected = "error getting repository configuration")]
+async fn check_run_event_requested_action_override_error_getting_repository_configuration() {
+    let event = override_event(Some("42"), &[]);
+    let mut gh_client = MockGHClient::new();
+    gh_client
+        .expect_get_config()
+        .with(eq(event.ctx()))
+        .times(1)
+        .returning(|_| Box::pin(future::ready(Err(anyhow!("test error")))));
+    gh_client.expect_create_check_run().never();
+
+    process_event(Arc::new(gh_client), &Event::CheckRun(event)).await.unwrap();
+}
+
+#[tokio::test]
 async fn check_run_event_requested_action_override_ignored_when_disabled() {
     let event = CheckRunEvent {
         action: CheckRunEventAction::RequestedAction,
@@ -202,6 +212,33 @@ async fn check_run_event_requested_action_override_label_ignores_other_repositor
     gh_client.expect_get_pull_request().never();
     gh_client.expect_remove_label().never();
 
+    process_event(Arc::new(gh_client), &Event::CheckRun(event)).await.unwrap();
+}
+
+#[tokio::test]
+#[should_panic(expected = "error creating check run")]
+async fn check_run_event_requested_action_override_label_not_removed_when_check_run_creation_fails() {
+    // Setup labeling enabled and check run creation failing
+    let event = override_event(Some("42"), &[]);
+    let mut gh_client = MockGHClient::new();
+    gh_client
+        .expect_get_config()
+        .with(eq(event.ctx()))
+        .times(1)
+        .returning(|_| Box::pin(future::ready(Ok(Some(config_with_label())))));
+    let expected_ctx = event.ctx();
+    gh_client
+        .expect_create_check_run()
+        .withf(move |ctx, check_run| *ctx == expected_ctx && check_run.external_id() == Some("42"))
+        .times(1)
+        .returning(|_, _| Box::pin(future::ready(Err(anyhow!("test error")))));
+
+    // Setup expectations: the label must not be touched
+    gh_client.expect_can_manage_labels().never();
+    gh_client.expect_get_pull_request().never();
+    gh_client.expect_remove_label().never();
+
+    // Process event
     process_event(Arc::new(gh_client), &Event::CheckRun(event)).await.unwrap();
 }
 
@@ -761,6 +798,38 @@ async fn pull_request_event_other_action() {
 }
 
 #[tokio::test]
+async fn pull_request_event_opened_action_check_run_summary_rendered_from_check_output() {
+    // Setup check input
+    let event = pr_opened_event(&[]);
+    let mut gh_client = MockGHClient::new();
+    let commits = vec![commit_with_signoff(false)];
+    expect_pr_check_input(&mut gh_client, &event, commits.clone(), Config::default());
+
+    // Setup check run expectation, with the summary rendered from the output
+    let expected_summary = check(&CheckInput {
+        commits,
+        config: Config::default(),
+        head_ref: "head_ref".to_string(),
+        members: vec![],
+    })
+    .render()
+    .unwrap();
+    let expected_ctx = event.ctx();
+    gh_client
+        .expect_create_check_run()
+        .withf(move |ctx, check_run| {
+            *ctx == expected_ctx
+                && check_run.conclusion() == &CheckRunConclusion::ActionRequired
+                && check_run.summary() == expected_summary
+        })
+        .times(1)
+        .returning(|_, _| Box::pin(future::ready(Ok(()))));
+
+    // Process event
+    process_event(Arc::new(gh_client), &Event::PullRequest(event)).await.unwrap();
+}
+
+#[tokio::test]
 #[should_panic(expected = "error getting pull request commits")]
 async fn pull_request_event_opened_action_error_getting_pr_commits() {
     let event = PullRequestEvent {
@@ -1013,6 +1082,34 @@ async fn pull_request_event_opened_action_error_creating_check_run() {
 }
 
 #[tokio::test]
+async fn pull_request_event_opened_action_membership_check_skipped_for_unverified_commits() {
+    let event = pr_opened_event_in_org();
+    let mut gh_client = MockGHClient::new();
+    let commits = vec![
+        commit_without_signoff(Some("user1"), None),
+        commit_without_signoff(Some("user2"), Some(false)),
+        commit_without_signoff(None, Some(true)),
+    ];
+    expect_pr_check_input(&mut gh_client, &event, commits, config_without_members_signoff());
+    gh_client.expect_is_organization_member().never();
+    expect_pr_check_run(&mut gh_client, &event, CheckRunConclusion::ActionRequired);
+
+    process_event(Arc::new(gh_client), &Event::PullRequest(event)).await.unwrap();
+}
+
+#[tokio::test]
+async fn pull_request_event_opened_action_membership_check_skipped_when_members_signoff_required() {
+    let event = pr_opened_event_in_org();
+    let mut gh_client = MockGHClient::new();
+    let commits = vec![commit_without_signoff(Some("user1"), Some(true))];
+    expect_pr_check_input(&mut gh_client, &event, commits, Config::default());
+    gh_client.expect_is_organization_member().never();
+    expect_pr_check_run(&mut gh_client, &event, CheckRunConclusion::ActionRequired);
+
+    process_event(Arc::new(gh_client), &Event::PullRequest(event)).await.unwrap();
+}
+
+#[tokio::test]
 async fn pull_request_event_opened_action_success_check_passed() {
     let event = PullRequestEvent {
         action: PullRequestEventAction::Opened,
@@ -1170,6 +1267,18 @@ async fn pull_request_event_opened_action_success_check_passed_author_is_member(
         })
         .times(1)
         .returning(|_, _| Box::pin(future::ready(Ok(()))));
+
+    process_event(Arc::new(gh_client), &Event::PullRequest(event)).await.unwrap();
+}
+
+#[tokio::test]
+async fn pull_request_event_opened_action_success_check_passed_author_is_repository_owner() {
+    let event = pr_opened_event(&[]);
+    let mut gh_client = MockGHClient::new();
+    let commits = vec![commit_without_signoff(Some("owner"), Some(true))];
+    expect_pr_check_input(&mut gh_client, &event, commits, config_without_members_signoff());
+    gh_client.expect_is_organization_member().never();
+    expect_pr_check_run(&mut gh_client, &event, CheckRunConclusion::Success);
 
     process_event(Arc::new(gh_client), &Event::PullRequest(event)).await.unwrap();
 }
@@ -1447,6 +1556,29 @@ async fn pull_request_event_opened_action_success_check_passed_author_membership
 }
 
 #[tokio::test]
+async fn pull_request_event_opened_action_success_check_failed_non_member_membership_checked_once() {
+    // Setup two commits from the same non-member author
+    let event = pr_opened_event_in_org();
+    let mut gh_client = MockGHClient::new();
+    let commits = vec![
+        commit_without_signoff(Some("user1"), Some(true)),
+        commit_without_signoff(Some("user1"), Some(true)),
+    ];
+    expect_pr_check_input(&mut gh_client, &event, commits, config_without_members_signoff());
+
+    // Setup expectations: membership must be checked only once
+    gh_client
+        .expect_is_organization_member()
+        .with(eq(event.ctx()), eq("org"), eq("user1"))
+        .times(1)
+        .returning(|_, _, _| Box::pin(future::ready(Ok(false))));
+    expect_pr_check_run(&mut gh_client, &event, CheckRunConclusion::ActionRequired);
+
+    // Process event
+    process_event(Arc::new(gh_client), &Event::PullRequest(event)).await.unwrap();
+}
+
+#[tokio::test]
 async fn pull_request_event_opened_action_success_check_failed() {
     let event = PullRequestEvent {
         action: PullRequestEventAction::Opened,
@@ -1608,6 +1740,112 @@ async fn pull_request_event_opened_action_success_check_failed_override_action_d
     process_event(Arc::new(gh_client), &Event::PullRequest(event)).await.unwrap();
 }
 
+#[tokio::test]
+async fn pull_request_event_opened_action_too_many_commits_check_failed() {
+    // Setup pull request with too many commits to get them
+    let event = pr_opened_event_in_org();
+    let mut gh_client = MockGHClient::new();
+    expect_pr_too_many_commits(&mut gh_client, &event, config_without_members_signoff());
+    gh_client.expect_is_organization_member().never();
+
+    // Setup check run expectation: it fails explaining why and can be overridden
+    let expected_ctx = event.ctx();
+    gh_client
+        .expect_create_check_run()
+        .withf(move |ctx, check_run| {
+            *ctx == expected_ctx
+                && check_run.actions()
+                    == [CheckRunAction {
+                        label: OVERRIDE_ACTION_LABEL.to_string(),
+                        description: OVERRIDE_ACTION_DESCRIPTION.to_string(),
+                        identifier: OVERRIDE_ACTION_IDENTIFIER.to_string(),
+                    }]
+                && check_run.conclusion() == &CheckRunConclusion::ActionRequired
+                && check_run.external_id() == Some("42")
+                && check_run.head_sha() == "head_sha"
+                && check_run.summary() == TOO_MANY_COMMITS_SUMMARY
+                && check_run.title() == CHECK_FAILED_TITLE
+        })
+        .times(1)
+        .returning(|_, _| Box::pin(future::ready(Ok(()))));
+
+    // Process event
+    process_event(Arc::new(gh_client), &Event::PullRequest(event)).await.unwrap();
+}
+
+#[tokio::test]
+async fn pull_request_event_opened_action_too_many_commits_check_failed_override_action_disabled() {
+    // Setup pull request with too many commits and the override action disabled
+    let event = pr_opened_event(&[]);
+    let mut gh_client = MockGHClient::new();
+    let config = Config {
+        allow_override_action: Some(false),
+        ..Default::default()
+    };
+    expect_pr_too_many_commits(&mut gh_client, &event, config);
+
+    // Setup check run expectation: it fails without offering any action
+    let expected_ctx = event.ctx();
+    gh_client
+        .expect_create_check_run()
+        .withf(move |ctx, check_run| {
+            *ctx == expected_ctx
+                && check_run.actions().is_empty()
+                && check_run.conclusion() == &CheckRunConclusion::ActionRequired
+                && check_run.summary() == TOO_MANY_COMMITS_SUMMARY
+        })
+        .times(1)
+        .returning(|_, _| Box::pin(future::ready(Ok(()))));
+
+    // Process event
+    process_event(Arc::new(gh_client), &Event::PullRequest(event)).await.unwrap();
+}
+
+#[tokio::test]
+async fn pull_request_event_opened_action_too_many_commits_label_added() {
+    // Setup pull request with too many commits and labeling enabled
+    let event = pr_opened_event(&[]);
+    let mut gh_client = MockGHClient::new();
+    expect_pr_too_many_commits(&mut gh_client, &event, config_with_label());
+
+    // Setup expectations: the label is added before creating the check run
+    let mut seq = Sequence::new();
+    expect_can_manage_labels(&mut gh_client, &event.ctx(), true);
+    expect_get_pull_request(&mut gh_client, &event.ctx(), 42, pr_state("head_sha", true, &[]));
+    gh_client
+        .expect_add_label()
+        .with(eq(event.ctx()), eq(42), eq(LABEL))
+        .times(1)
+        .in_sequence(&mut seq)
+        .returning(|_, _, _| Box::pin(future::ready(Ok(()))));
+    let expected_ctx = event.ctx();
+    gh_client
+        .expect_create_check_run()
+        .withf(move |ctx, check_run| {
+            *ctx == expected_ctx && check_run.conclusion() == &CheckRunConclusion::ActionRequired
+        })
+        .times(1)
+        .in_sequence(&mut seq)
+        .returning(|_, _| Box::pin(future::ready(Ok(()))));
+
+    // Process event
+    process_event(Arc::new(gh_client), &Event::PullRequest(event)).await.unwrap();
+}
+
+#[tokio::test]
+async fn pull_request_event_synchronize_action_runs_check() {
+    let event = PullRequestEvent {
+        action: PullRequestEventAction::Synchronize,
+        ..pr_opened_event(&[])
+    };
+    let mut gh_client = MockGHClient::new();
+    expect_pr_check(&mut gh_client, &event, Config::default(), true);
+
+    process_event(Arc::new(gh_client), &Event::PullRequest(event)).await.unwrap();
+}
+
+// Helpers.
+
 fn commit_with_signoff(is_valid: bool) -> Commit {
     let signoff = if is_valid {
         "user1 <user1@email.test>"
@@ -1630,9 +1868,34 @@ fn commit_with_signoff(is_valid: bool) -> Commit {
     }
 }
 
+/// Build a verified or unverified commit without any sign-off in its message.
+fn commit_without_signoff(login: Option<&str>, verified: Option<bool>) -> Commit {
+    let user = User {
+        name: "user1".to_string(),
+        email: "user1@email.test".to_string(),
+        login: login.map(ToString::to_string),
+        ..Default::default()
+    };
+    Commit {
+        author: Some(user.clone()),
+        committer: Some(user),
+        message: "Test commit message".to_string(),
+        verified,
+        ..Default::default()
+    }
+}
+
 fn config_with_label() -> Config {
     Config {
         label: Some(LABEL.to_string()),
+        ..Default::default()
+    }
+}
+
+/// Build a configuration that does not require members to sign-off commits.
+fn config_without_members_signoff() -> Config {
+    Config {
+        require: Some(ConfigRequire { members: Some(false) }),
         ..Default::default()
     }
 }
@@ -1673,33 +1936,69 @@ fn expect_override_check(gh_client: &mut MockGHClient, event: &CheckRunEvent, co
 }
 
 fn expect_pr_check(gh_client: &mut MockGHClient, event: &PullRequestEvent, config: Config, passes: bool) {
-    let commit = commit_with_signoff(passes);
-    gh_client
-        .expect_compare_commits()
-        .with(eq(event.ctx()), eq("base_sha"), eq("head_sha"))
-        .times(1)
-        .returning(move |_, _, _| Box::pin(future::ready(Ok(vec![commit.clone()]))));
-    gh_client
-        .expect_get_config()
-        .with(eq(event.ctx()))
-        .times(1)
-        .returning(move |_| Box::pin(future::ready(Ok(Some(config.clone())))));
+    expect_pr_check_input(gh_client, event, vec![commit_with_signoff(passes)], config);
     let expected_conclusion = if passes {
         CheckRunConclusion::Success
     } else {
         CheckRunConclusion::ActionRequired
     };
+    expect_pr_check_run(gh_client, event, expected_conclusion);
+}
+
+/// Expect the pull request commits and the repository configuration to be fetched.
+fn expect_pr_check_input(
+    gh_client: &mut MockGHClient,
+    event: &PullRequestEvent,
+    commits: Vec<Commit>,
+    config: Config,
+) {
+    gh_client
+        .expect_compare_commits()
+        .with(eq(event.ctx()), eq("base_sha"), eq("head_sha"))
+        .times(1)
+        .returning(move |_, _, _| Box::pin(future::ready(Ok(commits.clone()))));
+    gh_client
+        .expect_get_config()
+        .with(eq(event.ctx()))
+        .times(1)
+        .returning(move |_| Box::pin(future::ready(Ok(Some(config.clone())))));
+}
+
+/// Expect a check run with the conclusion provided for the pull request.
+fn expect_pr_check_run(
+    gh_client: &mut MockGHClient,
+    event: &PullRequestEvent,
+    conclusion: CheckRunConclusion,
+) {
     let expected_ctx = event.ctx();
     let expected_external_id = event.number.to_string();
     gh_client
         .expect_create_check_run()
         .withf(move |ctx, check_run| {
             *ctx == expected_ctx
-                && check_run.conclusion() == &expected_conclusion
+                && check_run.conclusion() == &conclusion
                 && check_run.external_id() == Some(expected_external_id.as_str())
         })
         .times(1)
         .returning(|_, _| Box::pin(future::ready(Ok(()))));
+}
+
+/// Expect the pull request commits not to be fetched because there are too
+/// many of them, and the repository configuration to be fetched.
+fn expect_pr_too_many_commits(gh_client: &mut MockGHClient, event: &PullRequestEvent, config: Config) {
+    gh_client
+        .expect_compare_commits()
+        .with(eq(event.ctx()), eq("base_sha"), eq("head_sha"))
+        .times(1)
+        .returning(|_, _, _| {
+            let err = TooManyCommitsError { max: MAX_COMMITS };
+            Box::pin(future::ready(Err(anyhow::Error::new(err))))
+        });
+    gh_client
+        .expect_get_config()
+        .with(eq(event.ctx()))
+        .times(1)
+        .returning(move |_| Box::pin(future::ready(Ok(Some(config.clone())))));
 }
 
 fn expect_remove_label(gh_client: &mut MockGHClient, ctx: &Ctx, number: i64, name: &'static str) {
@@ -1770,6 +2069,16 @@ fn pr_opened_event(labels: &[&str]) -> PullRequestEvent {
                 login: "owner".to_string(),
             },
         },
+    }
+}
+
+/// Build a pull request opened event for a repository owned by an organization.
+fn pr_opened_event_in_org() -> PullRequestEvent {
+    PullRequestEvent {
+        organization: Some(Organization {
+            login: "org".to_string(),
+        }),
+        ..pr_opened_event(&[])
     }
 }
 

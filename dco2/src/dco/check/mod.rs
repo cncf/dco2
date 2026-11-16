@@ -15,6 +15,12 @@ mod filters;
 #[cfg(test)]
 mod tests;
 
+/// Maximum number of commits displayed in the output summary table.
+///
+/// Keeps the rendered output well below the check run summary length limit
+/// enforced by GitHub, so that the sections after the table are not lost.
+const MAX_SUMMARY_TABLE_COMMITS: usize = 200;
+
 /// Check input.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub(crate) struct CheckInput {
@@ -33,6 +39,63 @@ pub(crate) struct CheckOutput {
     pub head_ref: String,
     pub num_commits_with_errors: usize,
     pub only_last_commit_contains_errors: bool,
+}
+
+impl CheckOutput {
+    /// Prepare the summary table displayed in the output template.
+    pub(crate) fn summary_table(&self) -> SummaryTable<'_> {
+        SummaryTable::new(&self.commits, MAX_SUMMARY_TABLE_COMMITS)
+    }
+}
+
+/// Summary table displayed in the check output.
+#[derive(Debug, Clone, PartialEq)]
+pub(crate) struct SummaryTable<'a> {
+    /// Commits displayed in the table, in their original order.
+    pub commits: Vec<&'a CommitCheckOutput>,
+    /// Number of commits with errors not displayed in the table.
+    pub hidden_failing_commits: usize,
+    /// Number of commits without errors not displayed in the table.
+    pub hidden_passing_commits: usize,
+}
+
+impl<'a> SummaryTable<'a> {
+    /// Create a new summary table displaying up to `max_commits` commits.
+    ///
+    /// Commits with errors are displayed before any commit without errors is
+    /// considered, so that all of them are visible whenever possible.
+    fn new(commits: &'a [CommitCheckOutput], max_commits: usize) -> Self {
+        // Decide how many failing and passing commits fit in the table
+        let failing_commits = commits.iter().filter(|c| !c.errors.is_empty()).count();
+        let passing_commits = commits.len() - failing_commits;
+        let displayed_failing_commits = failing_commits.min(max_commits);
+        let displayed_passing_commits = passing_commits.min(max_commits - displayed_failing_commits);
+
+        // Select the commits to display, preserving their original order
+        let mut failing_slots = displayed_failing_commits;
+        let mut passing_slots = displayed_passing_commits;
+        let displayed_commits = commits
+            .iter()
+            .filter(|c| {
+                let slots = if c.errors.is_empty() {
+                    &mut passing_slots
+                } else {
+                    &mut failing_slots
+                };
+                let is_displayed = *slots > 0;
+                if is_displayed {
+                    *slots -= 1;
+                }
+                is_displayed
+            })
+            .collect();
+
+        Self {
+            commits: displayed_commits,
+            hidden_failing_commits: failing_commits - displayed_failing_commits,
+            hidden_passing_commits: passing_commits - displayed_passing_commits,
+        }
+    }
 }
 
 /// Commit check output.
@@ -103,11 +166,20 @@ pub(crate) fn check(input: &CheckInput) -> CheckOutput {
         only_last_commit_contains_errors: false,
     };
 
-    // Get remediations from all commits
-    let remediations = get_remediations(&input.config, &input.commits);
+    // Validate the emails and sign-off of each commit
+    let validations: Vec<_> = input.commits.iter().map(validate_signoff).collect();
+
+    // Get remediations from properly signed off commits only
+    let signed_off_commits: Vec<&Commit> = input
+        .commits
+        .iter()
+        .zip(&validations)
+        .filter_map(|(commit, validation)| validation.is_ok().then_some(commit))
+        .collect();
+    let remediations = get_remediations(&input.config, &signed_off_commits);
 
     // Check each commit
-    for commit in &input.commits {
+    for (commit, validation) in input.commits.iter().zip(validations) {
         let mut commit_output = CommitCheckOutput::new(commit.clone());
 
         // Check if we should skip this commit
@@ -118,28 +190,10 @@ pub(crate) fn check(input: &CheckInput) -> CheckOutput {
             continue;
         }
 
-        // Validate author and committer emails
-        let emails_are_valid = match validate_emails(commit) {
-            Ok(()) => true,
-            Err(errors) => {
-                commit_output.errors.extend(errors);
-                false
-            }
-        };
-
-        // Check if sign-off is present
-        let signoffs = get_signoffs(commit);
-        if signoffs.is_empty() {
-            commit_output.errors.push(CommitError::SignOffNotFound);
-        }
-
-        // Check if any of the sign-offs matches the author's or committer's email
-        if emails_are_valid && !signoffs.is_empty() {
-            if signoffs_match(&signoffs, commit) {
-                commit_output.success_reason = Some(CommitSuccessReason::ValidSignOff);
-            } else {
-                commit_output.errors.push(CommitError::SignOffMismatch);
-            }
+        // Track the result of the emails and sign-off validation
+        match validation {
+            Ok(()) => commit_output.success_reason = Some(CommitSuccessReason::ValidSignOff),
+            Err(errors) => commit_output.errors = errors,
         }
 
         // Check if the sign-off is present in a remediation commit
@@ -211,6 +265,26 @@ fn validate_emails(commit: &Commit) -> Result<(), Vec<CommitError>> {
     if errors.is_empty() { Ok(()) } else { Err(errors) }
 }
 
+/// Validate the commit's author and committer emails and its sign-off.
+///
+/// Validation passes only when the emails are valid and at least one sign-off
+/// matches the author or committer.
+fn validate_signoff(commit: &Commit) -> Result<(), Vec<CommitError>> {
+    // Validate author and committer emails
+    let mut errors = validate_emails(commit).err().unwrap_or_default();
+    let emails_are_valid = errors.is_empty();
+
+    // Check if sign-off is present and matches the author's or committer's email
+    let signoffs = get_signoffs(commit);
+    if signoffs.is_empty() {
+        errors.push(CommitError::SignOffNotFound);
+    } else if emails_are_valid && !signoffs_match(&signoffs, commit) {
+        errors.push(CommitError::SignOffMismatch);
+    }
+
+    if errors.is_empty() { Ok(()) } else { Err(errors) }
+}
+
 /// Validate email address.
 fn is_valid_email(email: &str) -> bool {
     // Exception for GitHub bots noreply email addresses
@@ -268,13 +342,13 @@ fn signoffs_match(signoffs: &[SignOff], commit: &Commit) -> bool {
 
 /// Individual remediation regular expression.
 static INDIVIDUAL_REMEDIATION: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(r"(?mi)^I, (.*) <(.*)>, hereby add my Signed-off-by to this commit: (.*)\s*$")
+    Regex::new(r"(?mi)^I, (.*) <(.*)>, hereby add my Signed-off-by to this commit: (.*?)\s*$")
         .expect("expr in INDIVIDUAL_REMEDIATION to be valid")
 });
 
 /// Third party remediation regular expression.
 static THIRD_PARTY_REMEDIATION: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(r"(?mi)^On behalf of (.*) <(.*)>, I, (.*) <(.*)>, hereby add my Signed-off-by to this commit: (.*)\s*$")
+    Regex::new(r"(?mi)^On behalf of (.*) <(.*)>, I, (.*) <(.*)>, hereby add my Signed-off-by to this commit: (.*?)\s*$")
         .expect("expr in THIRD_PARTY_REMEDIATION to be valid")
 });
 
@@ -343,8 +417,8 @@ impl Remediation {
     }
 }
 
-/// Get remediations found in the list of commits provided.
-fn get_remediations(config: &Config, commits: &[Commit]) -> Vec<Remediation> {
+/// Get remediations found in the list of properly signed off commits provided.
+fn get_remediations(config: &Config, commits: &[&Commit]) -> Vec<Remediation> {
     let mut remediations = Vec::new();
 
     // Nothing to do if this feature isn't enabled in the config

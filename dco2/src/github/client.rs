@@ -22,6 +22,13 @@ use serde::{Deserialize, Serialize};
 use thiserror::Error;
 use tracing::{debug, warn};
 
+#[cfg(test)]
+mod tests;
+
+/// Number of commits requested per page when comparing commits (maximum
+/// allowed by GitHub).
+const COMPARE_COMMITS_PER_PAGE: i64 = 100;
+
 /// Path of the configuration file in the repository.
 const CONFIG_FILE_PATH: &str = ".github/dco.yml";
 
@@ -42,6 +49,10 @@ const MAX_CACHED_CLIENTS: usize = 1000;
 
 /// Maximum number of installations kept in the labels permissions cache.
 const MAX_CACHED_LABELS_PERMISSIONS: usize = 1000;
+
+/// Maximum number of commits supported when comparing commits, so that the
+/// number of requests needed to fetch them stays bounded.
+const MAX_COMPARE_COMMITS: usize = 1000;
 
 /// Maximum number of times a request that failed with a transient error is
 /// retried.
@@ -79,7 +90,9 @@ pub trait GHClient {
     /// manage labels.
     async fn can_manage_labels(&self, ctx: &Ctx) -> Result<bool>;
 
-    /// Compare two commits.
+    /// Compare two commits, returning all the commits between them in
+    /// chronological order. A [`TooManyCommitsError`] is returned when there
+    /// are more commits than the maximum supported.
     async fn compare_commits(&self, ctx: &Ctx, base_sha: &str, head_sha: &str) -> Result<Vec<Commit>>;
 
     /// Create a check run.
@@ -298,17 +311,37 @@ impl GHClient for GHClientOctorust {
         // Setup client for installation provided
         let client = self.setup_client(ctx.inst_id)?;
 
-        // Compare commits
+        // Compare commits, fetching all pages (without paging parameters,
+        // GitHub only returns the 250 most recent commits). When paging, the
+        // commits of each page are returned in chronological order
         let basehead = format!("{}...{}", base_sha, head_sha);
-        let commits = client
-            .repos()
-            .compare_commits(&ctx.owner, &ctx.repo, 0, 0, &basehead)
-            .await?
-            .body
-            .commits
-            .into_iter()
-            .map(Into::into)
-            .collect();
+        let mut commits = vec![];
+        let mut page = 1;
+        loop {
+            let comparison = client
+                .repos()
+                .compare_commits(&ctx.owner, &ctx.repo, page, COMPARE_COMMITS_PER_PAGE, &basehead)
+                .await?
+                .body;
+            let page_len = comparison.commits.len();
+            commits.extend(comparison.commits.into_iter().map(Commit::from));
+
+            // Reject comparisons with more commits than the maximum supported
+            let total_commits = usize::try_from(comparison.total_commits).unwrap_or_default();
+            if total_commits.max(commits.len()) > MAX_COMPARE_COMMITS {
+                bail!(TooManyCommitsError {
+                    max: MAX_COMPARE_COMMITS
+                });
+            }
+
+            // Stop once the last page or the total number of commits is reached
+            // (the total is only trusted when reported)
+            let all_commits_fetched = total_commits > 0 && commits.len() >= total_commits;
+            if page_len < COMPARE_COMMITS_PER_PAGE as usize || all_commits_fetched {
+                break;
+            }
+            page += 1;
+        }
 
         Ok(commits)
     }
@@ -344,12 +377,14 @@ impl GHClient for GHClientOctorust {
 
     /// [GHClient::get_config]
     async fn get_config(&self, ctx: &Ctx) -> Result<Option<Config>> {
+        // Configuration is cached per repository ('/' can't be part of owner
+        // or repository names, so keys can't collide)
         #[cached(
             max_size = 1000,
             ttl_secs = 3600,
             sync_writes = "default",
             key = "String",
-            convert = r#"{ format!("{}-{}", ctx.owner, ctx.repo) }"#
+            convert = r#"{ format!("{}/{}", ctx.owner, ctx.repo) }"#
         )]
         async fn inner(client: &octorust::Client, ctx: &Ctx) -> Result<Option<Config>> {
             // Get configuration file content
@@ -401,12 +436,14 @@ impl GHClient for GHClientOctorust {
 
     /// [GHClient::is_organization_member]
     async fn is_organization_member(&self, ctx: &Ctx, org: &str, username: &str) -> Result<bool> {
+        // Membership is cached per organization and user ('/' can't be part of
+        // their names, so keys can't collide)
         #[cached(
             max_size = 1000,
             ttl_secs = 3600,
             sync_writes = "default",
             key = "String",
-            convert = r#"{ format!("{}-{}", org, username) }"#
+            convert = r#"{ format!("{}/{}", org, username) }"#
         )]
         async fn inner(client: &octorust::Client, org: &str, username: &str) -> Result<bool> {
             // Check if user is a member of the organization
@@ -461,6 +498,27 @@ pub struct AppConfig {
     pub webhook_secret: String,
 }
 
+impl AppConfig {
+    /// Validate the configuration, returning an error when it is not valid.
+    pub fn validate(&self) -> Result<()> {
+        // Anyone can sign webhook payloads with an empty secret
+        if self.webhook_secret.trim().is_empty() {
+            bail!("github app webhook secret cannot be empty");
+        }
+
+        // Quotes around the secret are most likely a mistake (only the ones
+        // wrapping environment variables values are removed when loading
+        // them), so we fail early instead of rejecting the signature of every
+        // webhook payload
+        let secret = &self.webhook_secret;
+        if secret.len() >= 2 && secret.starts_with('"') && secret.ends_with('"') {
+            bail!("github app webhook secret cannot be wrapped in quotes");
+        }
+
+        Ok(())
+    }
+}
+
 /// Check run information.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct CheckRun {
@@ -494,12 +552,14 @@ impl CheckRun {
         };
 
         // Make sure the length of some fields is below the maximum allowed by
-        // GitHub (we'll truncate them if necessary).
+        // GitHub (we'll truncate them at a char boundary if necessary).
 
         // Output summary
         const MAX_OUTPUT_SUMMARY_LENGTH: usize = 65535;
         if check_run.summary.len() > MAX_OUTPUT_SUMMARY_LENGTH {
-            check_run.summary.truncate(MAX_OUTPUT_SUMMARY_LENGTH);
+            check_run
+                .summary
+                .truncate(check_run.summary.floor_char_boundary(MAX_OUTPUT_SUMMARY_LENGTH));
             warn!("check run summary truncated");
         }
 
@@ -508,21 +568,25 @@ impl CheckRun {
             // Action label
             const MAX_ACTION_LABEL_LENGTH: usize = 20;
             if action.label.len() > MAX_ACTION_LABEL_LENGTH {
-                action.label.truncate(MAX_ACTION_LABEL_LENGTH);
+                action.label.truncate(action.label.floor_char_boundary(MAX_ACTION_LABEL_LENGTH));
                 warn!("check run action label truncated");
             }
 
             // Action description
             const MAX_ACTION_DESCRIPTION_LENGTH: usize = 40;
             if action.description.len() > MAX_ACTION_DESCRIPTION_LENGTH {
-                action.description.truncate(MAX_ACTION_DESCRIPTION_LENGTH);
+                action
+                    .description
+                    .truncate(action.description.floor_char_boundary(MAX_ACTION_DESCRIPTION_LENGTH));
                 warn!("check run action description truncated");
             }
 
             // Action identifier
             const MAX_ACTION_IDENTIFIER_LENGTH: usize = 20;
             if action.identifier.len() > MAX_ACTION_IDENTIFIER_LENGTH {
-                action.identifier.truncate(MAX_ACTION_IDENTIFIER_LENGTH);
+                action
+                    .identifier
+                    .truncate(action.identifier.floor_char_boundary(MAX_ACTION_IDENTIFIER_LENGTH));
                 warn!("check run action identifier truncated");
             }
         }
@@ -870,6 +934,15 @@ impl RetryableStrategy for RetryStrategy {
     }
 }
 
+/// Error returned when a comparison includes more commits than the maximum
+/// supported.
+#[derive(Error, Debug, Clone, PartialEq)]
+#[error("too many commits to compare (maximum supported: {max})")]
+pub struct TooManyCommitsError {
+    /// Maximum number of commits supported.
+    pub max: usize,
+}
+
 /// Check if the error provided was caused by GitHub rate limiting the requests
 /// (primary or secondary rate limits).
 pub fn is_rate_limit_error(err: &anyhow::Error) -> bool {
@@ -950,216 +1023,4 @@ fn new_octorust_client(
     }
 
     Ok(client)
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn config_label_absent() {
-        let config = Config::default();
-        assert_eq!(config.label(), None);
-    }
-
-    #[test]
-    fn config_label_blank() {
-        let config = config_with_label("  ");
-        assert_eq!(config.label(), None);
-    }
-
-    #[test]
-    fn config_label_dot_segment() {
-        assert_eq!(config_with_label(".").label(), None);
-        assert_eq!(config_with_label("..").label(), None);
-    }
-
-    #[test]
-    fn config_label_max_length() {
-        let label = "a".repeat(50);
-        let config = config_with_label(&label);
-        assert_eq!(config.label(), Some(label.as_str()));
-    }
-
-    #[test]
-    fn config_label_too_long() {
-        let config = config_with_label(&"a".repeat(51));
-        assert_eq!(config.label(), None);
-    }
-
-    #[test]
-    fn config_label_trimmed() {
-        let config = config_with_label(" needs-dco ");
-        assert_eq!(config.label(), Some("needs-dco"));
-    }
-
-    #[test]
-    fn config_label_yaml() {
-        let config: Config = serde_yaml::from_str("label: needs-dco").unwrap();
-        assert_eq!(config.label(), Some("needs-dco"));
-    }
-
-    #[test]
-    fn encode_label_name_encodes_path_characters() {
-        assert_eq!(
-            encode_label_name("do-not-merge/dco%\\"),
-            "do-not-merge%2Fdco%25%5C"
-        );
-    }
-
-    #[test]
-    fn encode_label_name_keeps_other_characters() {
-        assert_eq!(encode_label_name("needs dco"), "needs dco");
-    }
-
-    #[test]
-    fn is_permissions_error_not_found() {
-        let err = http_error(StatusCode::NOT_FOUND, "Not Found");
-        assert!(!is_permissions_error(&err));
-    }
-
-    #[test]
-    fn is_permissions_error_permissions_not_granted() {
-        let err = http_error(
-            StatusCode::FORBIDDEN,
-            r#"{"message":"Resource not accessible by integration","status":"403"}"#,
-        );
-        assert!(is_permissions_error(&err));
-    }
-
-    #[test]
-    fn is_permissions_error_secondary_rate_limit() {
-        let err = http_error(
-            StatusCode::FORBIDDEN,
-            r#"{"message":"You have exceeded a secondary rate limit","status":"403"}"#,
-        );
-        assert!(!is_permissions_error(&err));
-    }
-
-    #[test]
-    fn is_rate_limit_error_forbidden_with_rate_limit_message() {
-        let err = http_error(StatusCode::FORBIDDEN, "You have exceeded a secondary rate limit.");
-        assert!(is_rate_limit_error(
-            &anyhow::Error::new(err).context("error adding label")
-        ));
-    }
-
-    #[test]
-    fn is_rate_limit_error_forbidden_with_rate_limit_remaining_zero() {
-        let err = http_error_with_header(StatusCode::FORBIDDEN, RATE_LIMIT_REMAINING_HEADER, "0");
-        assert!(is_rate_limit_error(&anyhow::Error::new(err)));
-    }
-
-    #[test]
-    fn is_rate_limit_error_forbidden_with_retry_after_header() {
-        let err = http_error_with_header(StatusCode::FORBIDDEN, RETRY_AFTER.as_str(), "60");
-        assert!(is_rate_limit_error(&anyhow::Error::new(err)));
-    }
-
-    #[test]
-    fn is_rate_limit_error_forbidden_without_rate_limit_details() {
-        let err = http_error(StatusCode::FORBIDDEN, PERMISSIONS_NOT_GRANTED_MESSAGE);
-        assert!(!is_rate_limit_error(&anyhow::Error::new(err)));
-    }
-
-    #[test]
-    fn is_rate_limit_error_other_error() {
-        assert!(!is_rate_limit_error(&anyhow::anyhow!("test error")));
-    }
-
-    #[test]
-    fn is_rate_limit_error_primary_rate_limit() {
-        let err = octorust::ClientError::RateLimited { duration: 60 };
-        assert!(is_rate_limit_error(&anyhow::Error::new(err)));
-    }
-
-    #[test]
-    fn is_rate_limit_error_too_many_requests() {
-        let err = http_error(StatusCode::TOO_MANY_REQUESTS, "");
-        assert!(is_rate_limit_error(&anyhow::Error::new(err)));
-    }
-
-    #[test]
-    fn labels_permissions_granted_issues_write() {
-        let permissions = app_permissions(r#"{"issues": "write", "metadata": "read"}"#);
-        assert!(labels_permissions_granted(&permissions));
-    }
-
-    #[test]
-    fn labels_permissions_granted_not_granted() {
-        let permissions = app_permissions(r#"{"checks": "write", "metadata": "read"}"#);
-        assert!(!labels_permissions_granted(&permissions));
-    }
-
-    #[test]
-    fn labels_permissions_granted_pull_requests_write() {
-        let permissions = app_permissions(r#"{"metadata": "read", "pull_requests": "write"}"#);
-        assert!(labels_permissions_granted(&permissions));
-    }
-
-    #[test]
-    fn labels_permissions_granted_read_only() {
-        let permissions = app_permissions(r#"{"issues": "read", "pull_requests": "read"}"#);
-        assert!(!labels_permissions_granted(&permissions));
-    }
-
-    #[test]
-    fn retry_strategy_forbidden_not_retried() {
-        let result = Ok(response(StatusCode::FORBIDDEN));
-        assert!(RetryStrategy.handle(&result) == Some(Retryable::Fatal));
-    }
-
-    #[test]
-    fn retry_strategy_server_error_retried() {
-        let result = Ok(response(StatusCode::BAD_GATEWAY));
-        assert!(RetryStrategy.handle(&result) == Some(Retryable::Transient));
-    }
-
-    #[test]
-    fn retry_strategy_success_not_retried() {
-        let result = Ok(response(StatusCode::OK));
-        assert!(RetryStrategy.handle(&result).is_none());
-    }
-
-    #[test]
-    fn retry_strategy_too_many_requests_not_retried() {
-        let result = Ok(response(StatusCode::TOO_MANY_REQUESTS));
-        assert!(RetryStrategy.handle(&result) == Some(Retryable::Fatal));
-    }
-
-    fn app_permissions(json: &str) -> octorust::types::AppPermissions {
-        serde_json::from_str(json).unwrap()
-    }
-
-    fn config_with_label(label: &str) -> Config {
-        Config {
-            label: Some(label.to_string()),
-            ..Default::default()
-        }
-    }
-
-    fn http_error(status: StatusCode, error: &str) -> octorust::ClientError {
-        octorust::ClientError::HttpError {
-            status,
-            headers: http::HeaderMap::new(),
-            error: error.to_string(),
-        }
-    }
-    fn http_error_with_header(
-        status: StatusCode,
-        name: &'static str,
-        value: &'static str,
-    ) -> octorust::ClientError {
-        let mut headers = http::HeaderMap::new();
-        headers.insert(name, http::HeaderValue::from_static(value));
-        octorust::ClientError::HttpError {
-            status,
-            headers,
-            error: String::new(),
-        }
-    }
-
-    fn response(status: StatusCode) -> reqwest::Response {
-        http::Response::builder().status(status).body("").unwrap().into()
-    }
 }

@@ -28,6 +28,9 @@ git commit -s -m 'Commit message'
 
 Once installed, this application will create a check indicating whether or not all commits in a Pull Request contain a valid `Signed-off-by` line.
 
+> [!NOTE]
+> Pull requests containing more than 1000 commits are not checked: the check fails with a message explaining why.
+
 ![check-passed](docs/screenshots/check-passed.png)
 
 More information about the check result is available on the check details page. This information includes a full list of the commits checked (including the reason why each of them passed or failed the check), some additional details about each error found and some instructions on how to fix them.
