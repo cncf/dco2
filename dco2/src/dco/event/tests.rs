@@ -1846,6 +1846,52 @@ async fn pull_request_event_opened_action_too_many_commits_label_added() {
 }
 
 #[tokio::test]
+async fn pull_request_event_synchronize_action_compares_against_current_base_ref_when_retargeted() {
+    // Setup pull request event whose base branch has since been retargeted
+    let event = PullRequestEvent {
+        action: PullRequestEventAction::Synchronize,
+        ..pr_opened_event(&[])
+    };
+
+    // Setup expectations: empty ref compare checks PR state and re-compares
+    // against the current base branch ref
+    let mut seq = Sequence::new();
+    let mut gh_client = MockGHClient::new();
+    gh_client
+        .expect_compare_commits()
+        .with(eq(event.ctx()), eq("refs/heads/base_ref"), eq("head_sha"))
+        .times(1)
+        .in_sequence(&mut seq)
+        .returning(|_, _, _| Box::pin(future::ready(Ok(vec![]))));
+    gh_client
+        .expect_get_pull_request()
+        .with(eq(event.ctx()), eq(42))
+        .times(1)
+        .in_sequence(&mut seq)
+        .returning(|_, _| {
+            Box::pin(future::ready(Ok(PullRequestState {
+                base_ref: "main".to_string(),
+                ..pr_state("head_sha", true, &[])
+            })))
+        });
+    gh_client
+        .expect_compare_commits()
+        .with(eq(event.ctx()), eq("refs/heads/main"), eq("head_sha"))
+        .times(1)
+        .in_sequence(&mut seq)
+        .returning(|_, _, _| Box::pin(future::ready(Ok(vec![commit_with_signoff(false)]))));
+    gh_client
+        .expect_get_config()
+        .with(eq(event.ctx()))
+        .times(1)
+        .returning(|_| Box::pin(future::ready(Ok(Some(Config::default())))));
+    expect_pr_check_run(&mut gh_client, &event, CheckRunConclusion::ActionRequired);
+
+    // Process event
+    process_event(Arc::new(gh_client), &Event::PullRequest(event)).await.unwrap();
+}
+
+#[tokio::test]
 async fn pull_request_event_synchronize_action_falls_back_to_base_sha_when_empty_and_pr_open() {
     // Setup open pull request whose head matches the event
     let event = PullRequestEvent {
@@ -2003,42 +2049,6 @@ async fn pull_request_event_synchronize_action_runs_check() {
 }
 
 #[tokio::test]
-async fn pull_request_event_synchronize_action_skips_when_empty_and_base_retargeted() {
-    // Setup pull request event whose base branch has since been retargeted
-    let event = PullRequestEvent {
-        action: PullRequestEventAction::Synchronize,
-        ..pr_opened_event(&[])
-    };
-
-    // Setup expectations: empty ref compare checks PR state and skips because
-    // the base branch ref no longer matches
-    let mut seq = Sequence::new();
-    let mut gh_client = MockGHClient::new();
-    gh_client
-        .expect_compare_commits()
-        .with(eq(event.ctx()), eq("refs/heads/base_ref"), eq("head_sha"))
-        .times(1)
-        .in_sequence(&mut seq)
-        .returning(|_, _, _| Box::pin(future::ready(Ok(vec![]))));
-    gh_client
-        .expect_get_pull_request()
-        .with(eq(event.ctx()), eq(42))
-        .times(1)
-        .in_sequence(&mut seq)
-        .returning(|_, _| {
-            Box::pin(future::ready(Ok(PullRequestState {
-                base_ref: "main".to_string(),
-                ..pr_state("head_sha", true, &[])
-            })))
-        });
-    gh_client.expect_get_config().never();
-    gh_client.expect_create_check_run().never();
-
-    // Process event
-    process_event(Arc::new(gh_client), &Event::PullRequest(event)).await.unwrap();
-}
-
-#[tokio::test]
 async fn pull_request_event_synchronize_action_skips_when_empty_and_head_moved() {
     // Setup pull request event whose head SHA has since moved
     let event = PullRequestEvent {
@@ -2160,6 +2170,49 @@ async fn pull_request_event_synchronize_action_skips_when_ref_not_found_and_fall
         .in_sequence(&mut seq)
         .returning(|_, _, _| Box::pin(future::ready(Ok(vec![]))));
     gh_client.expect_get_pull_request().never();
+    gh_client.expect_get_config().never();
+    gh_client.expect_create_check_run().never();
+
+    // Process event
+    process_event(Arc::new(gh_client), &Event::PullRequest(event)).await.unwrap();
+}
+
+#[tokio::test]
+async fn pull_request_event_synchronize_action_skips_when_retargeted_and_current_base_empty() {
+    // Setup retargeted pull request whose comparison against the current base
+    // branch is also empty
+    let event = PullRequestEvent {
+        action: PullRequestEventAction::Synchronize,
+        ..pr_opened_event(&[])
+    };
+
+    // Setup expectations: re-compares against the current base branch ref and
+    // skips when empty without falling back to the event base SHA
+    let mut seq = Sequence::new();
+    let mut gh_client = MockGHClient::new();
+    gh_client
+        .expect_compare_commits()
+        .with(eq(event.ctx()), eq("refs/heads/base_ref"), eq("head_sha"))
+        .times(1)
+        .in_sequence(&mut seq)
+        .returning(|_, _, _| Box::pin(future::ready(Ok(vec![]))));
+    gh_client
+        .expect_get_pull_request()
+        .with(eq(event.ctx()), eq(42))
+        .times(1)
+        .in_sequence(&mut seq)
+        .returning(|_, _| {
+            Box::pin(future::ready(Ok(PullRequestState {
+                base_ref: "main".to_string(),
+                ..pr_state("head_sha", true, &[])
+            })))
+        });
+    gh_client
+        .expect_compare_commits()
+        .with(eq(event.ctx()), eq("refs/heads/main"), eq("head_sha"))
+        .times(1)
+        .in_sequence(&mut seq)
+        .returning(|_, _, _| Box::pin(future::ready(Ok(vec![]))));
     gh_client.expect_get_config().never();
     gh_client.expect_create_check_run().never();
 

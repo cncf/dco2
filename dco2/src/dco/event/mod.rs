@@ -339,8 +339,9 @@ fn find_label<'a>(labels: impl IntoIterator<Item = &'a str>, label: &str) -> Opt
 /// when the base branch ref is not found (e.g. after a stacked PR's base
 /// branch is deleted). When comparing against the base branch ref returns no
 /// commits (e.g. after the pull request has already been merged), checks the
-/// current pull request state: skips closed or stale pull requests and falls
-/// back to the base SHA for still-open ones, skipping if still empty.
+/// current pull request state: skips closed pull requests or stale heads,
+/// re-compares against the current base branch ref if retargeted, and falls
+/// back to the event base SHA otherwise, skipping if still empty.
 async fn get_pull_request_commits(
     gh_client: &DynGHClient,
     ctx: &Ctx,
@@ -352,35 +353,46 @@ async fn get_pull_request_commits(
     let result = match gh_client.compare_commits(ctx, &base_ref, &event.pull_request.head.sha).await {
         Ok(commits) if commits.is_empty() => {
             // Check current pull request state before falling back so closed
-            // or stale events (e.g. merged, head moved, or retargeted) are skipped
+            // pull requests and stale heads are skipped
             let pr = gh_client
                 .get_pull_request(ctx, event.number)
                 .await
                 .context("error getting pull request")?;
-            if !pr.is_open
-                || pr.head_sha != event.pull_request.head.sha
-                || pr.base_ref != event.pull_request.base.ref_
-            {
+            if !pr.is_open || pr.head_sha != event.pull_request.head.sha {
                 debug!(
                     owner = %ctx.owner,
                     repo = %ctx.repo,
                     pr_number = event.number,
-                    "pull request closed or stale with no commits against base ref, skipping check"
+                    "pull request closed or head moved with no commits against base ref, skipping check"
                 );
                 return Ok(PullRequestCommits::Skip);
             }
 
-            // Fall back to base commit SHA for a still-open pull request
-            warn!(
-                owner = %ctx.owner,
-                repo = %ctx.repo,
-                pr_number = event.number,
-                base_ref = %event.pull_request.base.ref_,
-                "comparison against base branch ref returned no commits, falling back to base commit sha"
-            );
-            gh_client
-                .compare_commits(ctx, &event.pull_request.base.sha, &event.pull_request.head.sha)
-                .await
+            // Re-compare against the current base branch ref when retargeted;
+            // otherwise fall back to the event base commit SHA
+            if pr.base_ref != event.pull_request.base.ref_ {
+                let current_base_ref = format!("refs/heads/{}", pr.base_ref);
+                debug!(
+                    owner = %ctx.owner,
+                    repo = %ctx.repo,
+                    pr_number = event.number,
+                    event_base_ref = %event.pull_request.base.ref_,
+                    current_base_ref = %pr.base_ref,
+                    "pull request base branch changed, comparing against current base ref"
+                );
+                gh_client.compare_commits(ctx, &current_base_ref, &event.pull_request.head.sha).await
+            } else {
+                warn!(
+                    owner = %ctx.owner,
+                    repo = %ctx.repo,
+                    pr_number = event.number,
+                    base_ref = %event.pull_request.base.ref_,
+                    "comparison against base branch ref returned no commits, falling back to base commit sha"
+                );
+                gh_client
+                    .compare_commits(ctx, &event.pull_request.base.sha, &event.pull_request.head.sha)
+                    .await
+            }
         }
         Err(err) if is_not_found_error(&err) => {
             warn!(
