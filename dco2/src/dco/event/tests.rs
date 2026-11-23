@@ -11,7 +11,7 @@ use crate::{
         event::{
             CHECK_FAILED_TITLE, CHECK_NAME, CHECK_PASSED_TITLE, MERGE_GROUP_CHECKS_REQUESTED_SUMMARY,
             OVERRIDE_ACTION_DESCRIPTION, OVERRIDE_ACTION_IDENTIFIER, OVERRIDE_ACTION_LABEL,
-            OVERRIDE_ACTION_SUMMARY, is_labels_permission_error,
+            OVERRIDE_ACTION_SUMMARY, is_labels_permission_error, is_not_found_error,
         },
         process_event,
     },
@@ -20,9 +20,9 @@ use crate::{
         CheckRunEventPullRequest, CheckRunEventPullRequestBase, CheckRunEventPullRequestRepository,
         CheckRunStatus, Commit, Config, ConfigRequire, Ctx, Event, Installation, LabelsPermissionError,
         MergeGroupEvent, MergeGroupEventAction, MergeGroupEventMergeGroup, MergeGroupHeadCommit,
-        MockGHClient, Organization, PullRequest, PullRequestBase, PullRequestEvent, PullRequestEventAction,
-        PullRequestHead, PullRequestLabel, PullRequestState, Repository, RepositoryOwner, RequestedAction,
-        TooManyCommitsError, User,
+        MockGHClient, NotFoundError, Organization, PullRequest, PullRequestBase, PullRequestEvent,
+        PullRequestEventAction, PullRequestHead, PullRequestLabel, PullRequestState, Repository,
+        RepositoryOwner, RequestedAction, TooManyCommitsError, User,
     },
 };
 
@@ -405,6 +405,19 @@ fn is_labels_permission_error_permission_error_with_context() {
     assert!(is_labels_permission_error(&err));
 }
 
+#[test]
+fn is_not_found_error_not_found_error_with_source_and_context() {
+    let source = std::io::Error::other("404 Not Found");
+    let err = anyhow::Error::new(NotFoundError::with_source(source)).context("error comparing commits");
+    assert!(is_not_found_error(&err));
+}
+
+#[test]
+fn is_not_found_error_other_error() {
+    let err = anyhow!("test error").context("error comparing commits");
+    assert!(!is_not_found_error(&err));
+}
+
 #[tokio::test]
 async fn merge_group_other_action() {
     let event = MergeGroupEvent {
@@ -519,7 +532,7 @@ async fn pull_request_event_label_added_before_check_run_when_check_fails() {
     let commit = commit_with_signoff(false);
     gh_client
         .expect_compare_commits()
-        .with(eq(event.ctx()), eq("base_sha"), eq("head_sha"))
+        .with(eq(event.ctx()), eq("refs/heads/base_ref"), eq("head_sha"))
         .times(1)
         .returning(move |_, _, _| Box::pin(future::ready(Ok(vec![commit.clone()]))));
     gh_client
@@ -861,7 +874,7 @@ async fn pull_request_event_opened_action_error_getting_pr_commits() {
     let mut gh_client = MockGHClient::new();
     gh_client
         .expect_compare_commits()
-        .with(eq(event.ctx()), eq("base_sha"), eq("head_sha"))
+        .with(eq(event.ctx()), eq("refs/heads/base_ref"), eq("head_sha"))
         .times(1)
         .returning(|_, _, _| Box::pin(future::ready(Err(anyhow!("test error")))));
 
@@ -900,7 +913,7 @@ async fn pull_request_event_opened_action_error_getting_repository_configuration
     let mut gh_client = MockGHClient::new();
     gh_client
         .expect_compare_commits()
-        .with(eq(event.ctx()), eq("base_sha"), eq("head_sha"))
+        .with(eq(event.ctx()), eq("refs/heads/base_ref"), eq("head_sha"))
         .times(1)
         .returning(|_, _, _| {
             Box::pin(future::ready(Ok(vec![Commit {
@@ -966,7 +979,7 @@ async fn pull_request_event_opened_action_error_checking_user_organization_membe
     let mut gh_client = MockGHClient::new();
     gh_client
         .expect_compare_commits()
-        .with(eq(event.ctx()), eq("base_sha"), eq("head_sha"))
+        .with(eq(event.ctx()), eq("refs/heads/base_ref"), eq("head_sha"))
         .times(1)
         .returning(|_, _, _| {
             Box::pin(future::ready(Ok(vec![Commit {
@@ -1034,7 +1047,7 @@ async fn pull_request_event_opened_action_error_creating_check_run() {
     let mut gh_client = MockGHClient::new();
     gh_client
         .expect_compare_commits()
-        .with(eq(event.ctx()), eq("base_sha"), eq("head_sha"))
+        .with(eq(event.ctx()), eq("refs/heads/base_ref"), eq("head_sha"))
         .times(1)
         .returning(|_, _, _| {
             Box::pin(future::ready(Ok(vec![Commit {
@@ -1140,7 +1153,7 @@ async fn pull_request_event_opened_action_success_check_passed() {
     let mut gh_client = MockGHClient::new();
     gh_client
         .expect_compare_commits()
-        .with(eq(event.ctx()), eq("base_sha"), eq("head_sha"))
+        .with(eq(event.ctx()), eq("refs/heads/base_ref"), eq("head_sha"))
         .times(1)
         .returning(|_, _, _| {
             Box::pin(future::ready(Ok(vec![Commit {
@@ -1220,7 +1233,7 @@ async fn pull_request_event_opened_action_success_check_passed_author_is_member(
     let mut gh_client = MockGHClient::new();
     gh_client
         .expect_compare_commits()
-        .with(eq(event.ctx()), eq("base_sha"), eq("head_sha"))
+        .with(eq(event.ctx()), eq("refs/heads/base_ref"), eq("head_sha"))
         .times(1)
         .returning(|_, _, _| {
             Box::pin(future::ready(Ok(vec![Commit {
@@ -1316,7 +1329,7 @@ async fn pull_request_event_opened_action_success_check_failed_author_is_not_mem
     let mut gh_client = MockGHClient::new();
     gh_client
         .expect_compare_commits()
-        .with(eq(event.ctx()), eq("base_sha"), eq("head_sha"))
+        .with(eq(event.ctx()), eq("refs/heads/base_ref"), eq("head_sha"))
         .times(1)
         .returning(|_, _, _| {
             Box::pin(future::ready(Ok(vec![Commit {
@@ -1405,7 +1418,7 @@ async fn pull_request_event_opened_action_success_check_passed_author_is_bot_mem
     let mut gh_client = MockGHClient::new();
     gh_client
         .expect_compare_commits()
-        .with(eq(event.ctx()), eq("base_sha"), eq("head_sha"))
+        .with(eq(event.ctx()), eq("refs/heads/base_ref"), eq("head_sha"))
         .times(1)
         .returning(|_, _, _| {
             Box::pin(future::ready(Ok(vec![Commit {
@@ -1485,7 +1498,7 @@ async fn pull_request_event_opened_action_success_check_passed_author_membership
     let mut gh_client = MockGHClient::new();
     gh_client
         .expect_compare_commits()
-        .with(eq(event.ctx()), eq("base_sha"), eq("head_sha"))
+        .with(eq(event.ctx()), eq("refs/heads/base_ref"), eq("head_sha"))
         .times(1)
         .returning(|_, _, _| {
             Box::pin(future::ready(Ok(vec![
@@ -1609,7 +1622,7 @@ async fn pull_request_event_opened_action_success_check_failed() {
     let mut gh_client = MockGHClient::new();
     gh_client
         .expect_compare_commits()
-        .with(eq(event.ctx()), eq("base_sha"), eq("head_sha"))
+        .with(eq(event.ctx()), eq("refs/heads/base_ref"), eq("head_sha"))
         .times(1)
         .returning(|_, _, _| {
             Box::pin(future::ready(Ok(vec![Commit {
@@ -1692,7 +1705,7 @@ async fn pull_request_event_opened_action_success_check_failed_override_action_d
     let mut gh_client = MockGHClient::new();
     gh_client
         .expect_compare_commits()
-        .with(eq(event.ctx()), eq("base_sha"), eq("head_sha"))
+        .with(eq(event.ctx()), eq("refs/heads/base_ref"), eq("head_sha"))
         .times(1)
         .returning(|_, _, _| {
             Box::pin(future::ready(Ok(vec![Commit {
@@ -1833,6 +1846,76 @@ async fn pull_request_event_opened_action_too_many_commits_label_added() {
 }
 
 #[tokio::test]
+async fn pull_request_event_synchronize_action_falls_back_to_base_sha_when_ref_not_found() {
+    // Setup pull request targeting a deleted base branch
+    let event = PullRequestEvent {
+        action: PullRequestEventAction::Synchronize,
+        ..pr_opened_event(&[])
+    };
+
+    // Setup expectations: the ref lookup fails with 404 and falls back to base SHA
+    let mut seq = Sequence::new();
+    let mut gh_client = MockGHClient::new();
+    gh_client
+        .expect_compare_commits()
+        .with(eq(event.ctx()), eq("refs/heads/base_ref"), eq("head_sha"))
+        .times(1)
+        .in_sequence(&mut seq)
+        .returning(|_, _, _| {
+            let source = std::io::Error::other("404 Not Found");
+            Box::pin(future::ready(Err(anyhow::Error::new(
+                NotFoundError::with_source(source),
+            ))))
+        });
+    gh_client
+        .expect_compare_commits()
+        .with(eq(event.ctx()), eq("base_sha"), eq("head_sha"))
+        .times(1)
+        .in_sequence(&mut seq)
+        .returning(|_, _, _| Box::pin(future::ready(Ok(vec![commit_with_signoff(true)]))));
+    gh_client
+        .expect_get_config()
+        .with(eq(event.ctx()))
+        .times(1)
+        .returning(|_| Box::pin(future::ready(Ok(Some(Config::default())))));
+    expect_pr_check_run(&mut gh_client, &event, CheckRunConclusion::Success);
+
+    // Process event
+    process_event(Arc::new(gh_client), &Event::PullRequest(event)).await.unwrap();
+}
+
+#[tokio::test]
+#[should_panic(expected = "error getting pull request commits")]
+async fn pull_request_event_synchronize_action_propagates_error_when_fallback_fails() {
+    // Setup pull request whose ref and base SHA comparisons both fail with 404
+    let event = PullRequestEvent {
+        action: PullRequestEventAction::Synchronize,
+        ..pr_opened_event(&[])
+    };
+
+    // Setup expectations: fallback runs once and propagates the error
+    let mut seq = Sequence::new();
+    let mut gh_client = MockGHClient::new();
+    gh_client
+        .expect_compare_commits()
+        .with(eq(event.ctx()), eq("refs/heads/base_ref"), eq("head_sha"))
+        .times(1)
+        .in_sequence(&mut seq)
+        .returning(|_, _, _| Box::pin(future::ready(Err(anyhow::Error::new(NotFoundError::new())))));
+    gh_client
+        .expect_compare_commits()
+        .with(eq(event.ctx()), eq("base_sha"), eq("head_sha"))
+        .times(1)
+        .in_sequence(&mut seq)
+        .returning(|_, _, _| Box::pin(future::ready(Err(anyhow::Error::new(NotFoundError::new())))));
+    gh_client.expect_get_config().never();
+    gh_client.expect_create_check_run().never();
+
+    // Process event
+    process_event(Arc::new(gh_client), &Event::PullRequest(event)).await.unwrap();
+}
+
+#[tokio::test]
 async fn pull_request_event_synchronize_action_runs_check() {
     let event = PullRequestEvent {
         action: PullRequestEventAction::Synchronize,
@@ -1841,6 +1924,34 @@ async fn pull_request_event_synchronize_action_runs_check() {
     let mut gh_client = MockGHClient::new();
     expect_pr_check(&mut gh_client, &event, Config::default(), true);
 
+    process_event(Arc::new(gh_client), &Event::PullRequest(event)).await.unwrap();
+}
+
+#[tokio::test]
+async fn pull_request_event_synchronize_action_uses_base_branch_ref() {
+    // Setup pull request targeting a branch whose name includes a slash
+    let mut event = pr_opened_event(&[]);
+    event.action = PullRequestEventAction::Synchronize;
+    event.pull_request.base = PullRequestBase {
+        ref_: "release/1.0".to_string(),
+        sha: "stale_base_sha".to_string(),
+    };
+
+    // Setup expectations: the comparison must use refs/heads/<base.ref>
+    let mut gh_client = MockGHClient::new();
+    gh_client
+        .expect_compare_commits()
+        .with(eq(event.ctx()), eq("refs/heads/release/1.0"), eq("head_sha"))
+        .times(1)
+        .returning(|_, _, _| Box::pin(future::ready(Ok(vec![commit_with_signoff(true)]))));
+    gh_client
+        .expect_get_config()
+        .with(eq(event.ctx()))
+        .times(1)
+        .returning(|_| Box::pin(future::ready(Ok(Some(Config::default())))));
+    expect_pr_check_run(&mut gh_client, &event, CheckRunConclusion::Success);
+
+    // Process event
     process_event(Arc::new(gh_client), &Event::PullRequest(event)).await.unwrap();
 }
 
@@ -1954,7 +2065,7 @@ fn expect_pr_check_input(
 ) {
     gh_client
         .expect_compare_commits()
-        .with(eq(event.ctx()), eq("base_sha"), eq("head_sha"))
+        .with(eq(event.ctx()), eq("refs/heads/base_ref"), eq("head_sha"))
         .times(1)
         .returning(move |_, _, _| Box::pin(future::ready(Ok(commits.clone()))));
     gh_client
@@ -1988,7 +2099,7 @@ fn expect_pr_check_run(
 fn expect_pr_too_many_commits(gh_client: &mut MockGHClient, event: &PullRequestEvent, config: Config) {
     gh_client
         .expect_compare_commits()
-        .with(eq(event.ctx()), eq("base_sha"), eq("head_sha"))
+        .with(eq(event.ctx()), eq("refs/heads/base_ref"), eq("head_sha"))
         .times(1)
         .returning(|_, _, _| {
             let err = TooManyCommitsError { max: MAX_COMMITS };
