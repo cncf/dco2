@@ -1,6 +1,7 @@
 //! This module defines an abstraction layer over the GitHub API.
 
 use std::{
+    error::Error as StdError,
     sync::{Arc, Mutex, PoisonError},
     time::Duration,
 };
@@ -90,10 +91,11 @@ pub trait GHClient {
     /// manage labels.
     async fn can_manage_labels(&self, ctx: &Ctx) -> Result<bool>;
 
-    /// Compare two commits, returning all the commits between them in
-    /// chronological order. A [`TooManyCommitsError`] is returned when there
-    /// are more commits than the maximum supported.
-    async fn compare_commits(&self, ctx: &Ctx, base_sha: &str, head_sha: &str) -> Result<Vec<Commit>>;
+    /// Compare two commits or refs, returning all the commits between them in
+    /// chronological order. A [`NotFoundError`] is returned when the comparison
+    /// is not found, and a [`TooManyCommitsError`] when there are more commits
+    /// than the maximum supported.
+    async fn compare_commits(&self, ctx: &Ctx, base: &str, head: &str) -> Result<Vec<Commit>>;
 
     /// Create a check run.
     async fn create_check_run(&self, ctx: &Ctx, check_run: &CheckRun) -> Result<()>;
@@ -185,7 +187,7 @@ impl GHClientOctorust {
     /// Existing labels are never modified.
     async fn ensure_label(&self, client: &octorust::Client, ctx: &Ctx, name: &str) -> Result<()> {
         // Check if the label exists, creating it when it's not found
-        let encoded_name = encode_label_name(name);
+        let encoded_name = encode_path_segment(name);
         match client.issues().get_label(&ctx.owner, &ctx.repo, &encoded_name).await {
             Ok(_) => Ok(()),
             Err(octorust::ClientError::HttpError { status, .. }) if status == StatusCode::NOT_FOUND => {
@@ -307,22 +309,31 @@ impl GHClient for GHClientOctorust {
     }
 
     /// [GHClient::compare_commits]
-    async fn compare_commits(&self, ctx: &Ctx, base_sha: &str, head_sha: &str) -> Result<Vec<Commit>> {
+    async fn compare_commits(&self, ctx: &Ctx, base: &str, head: &str) -> Result<Vec<Commit>> {
         // Setup client for installation provided
         let client = self.setup_client(ctx.inst_id)?;
 
         // Compare commits, fetching all pages (without paging parameters,
         // GitHub only returns the 250 most recent commits). When paging, the
         // commits of each page are returned in chronological order
-        let basehead = format!("{}...{}", base_sha, head_sha);
+        let encoded_head = encode_path_segment(head);
+        let mut basehead = format!("{}...{}", encode_path_segment(base), encoded_head);
         let mut commits = vec![];
         let mut page = 1;
         loop {
-            let comparison = client
+            let comparison = match client
                 .repos()
                 .compare_commits(&ctx.owner, &ctx.repo, page, COMPARE_COMMITS_PER_PAGE, &basehead)
-                .await?
-                .body;
+                .await
+            {
+                Ok(resp) => resp.body,
+                Err(err @ octorust::ClientError::HttpError { status, .. })
+                    if status == StatusCode::NOT_FOUND =>
+                {
+                    return Err(anyhow::Error::new(NotFoundError::with_source(err)));
+                }
+                Err(err) => return Err(err.into()),
+            };
             let page_len = comparison.commits.len();
             commits.extend(comparison.commits.into_iter().map(Commit::from));
 
@@ -339,6 +350,16 @@ impl GHClient for GHClientOctorust {
             let all_commits_fetched = total_commits > 0 && commits.len() >= total_commits;
             if page_len < COMPARE_COMMITS_PER_PAGE as usize || all_commits_fetched {
                 break;
+            }
+
+            // Pin subsequent pages to the base commit SHA resolved on the first
+            // page so a moving base ref cannot shift commits across pages
+            if page == 1 && !comparison.base_commit.sha.is_empty() {
+                basehead = format!(
+                    "{}...{}",
+                    encode_path_segment(&comparison.base_commit.sha),
+                    encoded_head
+                );
             }
             page += 1;
         }
@@ -428,6 +449,7 @@ impl GHClient for GHClientOctorust {
         let pr = client.pulls().get(&ctx.owner, &ctx.repo, number).await?.body;
 
         Ok(PullRequestState {
+            base_ref: pr.base.ref_,
             head_sha: pr.head.sha,
             is_open: pr.state == octorust::types::State::Open,
             labels: pr.labels.into_iter().map(|label| label.name).collect(),
@@ -476,7 +498,7 @@ impl GHClient for GHClientOctorust {
         let client = self.setup_client(ctx.inst_id)?;
 
         // Remove label from the issue
-        let encoded_name = encode_label_name(name);
+        let encoded_name = encode_path_segment(name);
         match client.issues().remove_label(&ctx.owner, &ctx.repo, issue_number, &encoded_name).await {
             Ok(_) => Ok(()),
             Err(octorust::ClientError::HttpError { status, .. }) if status == StatusCode::NOT_FOUND => {
@@ -906,9 +928,39 @@ pub struct NewCheckRunInput {
     pub title: String,
 }
 
+/// Error returned when a requested GitHub resource is not found.
+#[derive(Error, Debug)]
+#[error("resource not found")]
+pub struct NotFoundError {
+    /// Underlying error returned by the GitHub client, if any.
+    #[source]
+    source: Option<Box<dyn StdError + Send + Sync>>,
+}
+
+impl NotFoundError {
+    /// Create a new not found error without an underlying source.
+    pub fn new() -> Self {
+        Self { source: None }
+    }
+
+    /// Create a new not found error wrapping the underlying error provided.
+    pub fn with_source(source: impl StdError + Send + Sync + 'static) -> Self {
+        Self {
+            source: Some(Box::new(source)),
+        }
+    }
+}
+
+impl Default for NotFoundError {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 /// Current state of a pull request.
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct PullRequestState {
+    pub base_ref: String,
     pub head_sha: String,
     pub is_open: bool,
     pub labels: Vec<String>,
@@ -965,11 +1017,11 @@ pub fn is_rate_limit_error(err: &anyhow::Error) -> bool {
         })
 }
 
-/// Encode the characters of a label name that octorust does not encode when
-/// building path segments and that would change the request path (`%`, `/`
-/// and `\`). Dot segments (`.` and `..`) are rejected by `Config::label`.
-fn encode_label_name(name: &str) -> String {
-    name.replace('%', "%25").replace('/', "%2F").replace('\\', "%5C")
+/// Encode the characters that octorust does not encode when building path
+/// segments and that would change the request path (`%`, `/` and `\`).
+/// Callers must ensure the whole segment is not `.` or `..`.
+fn encode_path_segment(segment: &str) -> String {
+    segment.replace('%', "%25").replace('/', "%2F").replace('\\', "%5C")
 }
 
 /// Check if the error provided was returned because the app lacks the

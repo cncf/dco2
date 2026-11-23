@@ -305,6 +305,36 @@ async fn compare_commits_accepts_max_commits() {
 }
 
 #[tokio::test]
+async fn compare_commits_encodes_ref_path_characters() {
+    // Setup mock GitHub server expecting the encoded base ref and head
+    let server = MockGitHub::start(|req| match (req.method.as_str(), req.path.as_str()) {
+        (
+            "GET",
+            "/repos/owner/compare-encoded-ref/compare/refs%2Fheads%2Frelease%2F1.0%25%23%5C...head_sha",
+        ) => compare_commits_response(&["sha1".to_string()], 1, req),
+        _ => unexpected(req),
+    })
+    .await;
+    let gh = gh_client(Some(&server.url));
+
+    // Compare commits using a base ref containing path-sensitive characters
+    let commits = gh
+        .compare_commits(
+            &ctx("owner", "compare-encoded-ref"),
+            "refs/heads/release/1.0%#\\",
+            "head_sha",
+        )
+        .await
+        .unwrap();
+
+    // Check the comparison succeeded with the encoded path
+    assert_eq!(
+        commits.into_iter().map(|c| c.sha).collect::<Vec<_>>(),
+        vec!["sha1"]
+    );
+}
+
+#[tokio::test]
 async fn compare_commits_fetches_all_pages() {
     // Setup mock GitHub server with a comparison longer than the 250 commits
     // returned when no paging parameters are provided
@@ -378,6 +408,51 @@ async fn compare_commits_fetches_all_pages_when_total_commits_not_reported() {
 }
 
 #[tokio::test]
+async fn compare_commits_pins_base_sha_across_pages() {
+    // Setup mock GitHub server where page 1 resolves refs/heads/main to a
+    // specific base commit SHA and page 2 must use that resolved SHA
+    let shas: Vec<String> = (1..=150).map(|i| format!("sha{i}")).collect();
+    let server = MockGitHub::start({
+        let shas = shas.clone();
+        move |req| match (
+            req.method.as_str(),
+            req.path.as_str(),
+            req.query_param("page").as_deref(),
+        ) {
+            ("GET", "/repos/owner/compare-pinned-base/compare/refs%2Fheads%2Fmain...head_sha", Some("1")) => {
+                compare_commits_response_with_base(&shas, shas.len(), "resolved_base_sha", req)
+            }
+            ("GET", "/repos/owner/compare-pinned-base/compare/resolved_base_sha...head_sha", Some("2")) => {
+                compare_commits_response_with_base(&shas, shas.len(), "resolved_base_sha", req)
+            }
+            _ => unexpected(req),
+        }
+    })
+    .await;
+    let gh = gh_client(Some(&server.url));
+
+    // Compare commits starting from a mutable branch ref
+    let commits = gh
+        .compare_commits(
+            &ctx("owner", "compare-pinned-base"),
+            "refs/heads/main",
+            "head_sha",
+        )
+        .await
+        .unwrap();
+
+    // Check all commits were fetched and page 2 used the resolved base SHA
+    assert_eq!(commits.into_iter().map(|c| c.sha).collect::<Vec<_>>(), shas);
+    assert_eq!(
+        request_lines(&server.requests()),
+        vec![
+            "GET /repos/owner/compare-pinned-base/compare/refs%2Fheads%2Fmain...head_sha",
+            "GET /repos/owner/compare-pinned-base/compare/resolved_base_sha...head_sha",
+        ]
+    );
+}
+
+#[tokio::test]
 async fn compare_commits_rejects_too_many_commits() {
     // Setup mock GitHub server with a comparison exceeding the maximum number
     // of commits supported
@@ -435,6 +510,32 @@ async fn compare_commits_rejects_too_many_commits_when_total_commits_not_reporte
         })
     );
     assert_eq!(server.requests().len(), MAX_COMPARE_COMMITS / 100 + 1);
+}
+
+#[tokio::test]
+async fn compare_commits_returns_not_found_error() {
+    // Setup mock GitHub server returning 404 for the missing base ref
+    let server = MockGitHub::start(|req| match (req.method.as_str(), req.path.as_str()) {
+        ("GET", "/repos/owner/compare-not-found/compare/refs%2Fheads%2Fdeleted...head_sha") => not_found(),
+        _ => unexpected(req),
+    })
+    .await;
+    let gh = gh_client(Some(&server.url));
+
+    // Compare commits
+    let err = gh
+        .compare_commits(
+            &ctx("owner", "compare-not-found"),
+            "refs/heads/deleted",
+            "head_sha",
+        )
+        .await
+        .unwrap_err();
+
+    // Check a NotFoundError is in the error chain and preserves the HTTP cause
+    assert!(err.downcast_ref::<NotFoundError>().is_some());
+    assert!(err.chain().any(|cause| cause.is::<NotFoundError>()));
+    assert!(err.chain().any(|cause| cause.is::<octorust::ClientError>()));
 }
 
 #[tokio::test]
@@ -655,16 +756,16 @@ async fn create_check_run_request_body_success() {
 }
 
 #[test]
-fn encode_label_name_encodes_path_characters() {
+fn encode_path_segment_encodes_path_characters() {
     assert_eq!(
-        encode_label_name("do-not-merge/dco%\\"),
+        encode_path_segment("do-not-merge/dco%\\"),
         "do-not-merge%2Fdco%25%5C"
     );
 }
 
 #[test]
-fn encode_label_name_keeps_other_characters() {
-    assert_eq!(encode_label_name("needs dco"), "needs dco");
+fn encode_path_segment_keeps_other_characters() {
+    assert_eq!(encode_path_segment("needs dco"), "needs dco");
 }
 
 #[tokio::test]
@@ -1088,6 +1189,17 @@ fn commit_data(json: Value) -> octorust::types::CommitDataType {
 /// commits given. Without paging parameters only the 250 most recent commits
 /// are returned.
 fn compare_commits_response(shas: &[String], total_commits: usize, req: &MockRequest) -> Response {
+    compare_commits_response_with_base(shas, total_commits, "base_sha", req)
+}
+
+/// Emulate GitHub's compare commits endpoint with a specific resolved base
+/// commit SHA.
+fn compare_commits_response_with_base(
+    shas: &[String],
+    total_commits: usize,
+    base_sha: &str,
+    req: &MockRequest,
+) -> Response {
     const MAX_COMMITS_WITHOUT_PAGINATION: usize = 250;
 
     // Select the commits of the page requested
@@ -1106,9 +1218,9 @@ fn compare_commits_response(shas: &[String], total_commits: usize, req: &MockReq
     // Prepare comparison
     let commit = |sha: &str| json!({"commit": {"message": "", "tree": {}, "url": ""}, "sha": sha});
     let comparison = json!({
-        "base_commit": commit("base_sha"),
+        "base_commit": commit(base_sha),
         "commits": selected.iter().map(|sha| commit(sha)).collect::<Vec<_>>(),
-        "merge_base_commit": commit("base_sha"),
+        "merge_base_commit": commit(base_sha),
         "status": "ahead",
         "total_commits": total_commits,
     });

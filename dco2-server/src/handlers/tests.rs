@@ -210,7 +210,7 @@ impl GHClient for FakeGHClient {
         panic!("unexpected call to can_manage_labels")
     }
 
-    async fn compare_commits(&self, _ctx: &Ctx, _base_sha: &str, _head_sha: &str) -> Result<Vec<Commit>> {
+    async fn compare_commits(&self, _ctx: &Ctx, _base: &str, _head: &str) -> Result<Vec<Commit>> {
         panic!("unexpected call to compare_commits")
     }
 

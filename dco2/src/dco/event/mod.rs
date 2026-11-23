@@ -16,8 +16,8 @@ use crate::{
     github::{
         CheckRun, CheckRunAction, CheckRunConclusion, CheckRunEvent, CheckRunEventAction, CheckRunStatus,
         Commit, Config, Ctx, DynGHClient, Event, LabelsPermissionError, MergeGroupEvent,
-        MergeGroupEventAction, NewCheckRunInput, PullRequestEvent, PullRequestEventAction, PullRequestLabel,
-        TooManyCommitsError, is_rate_limit_error,
+        MergeGroupEventAction, NewCheckRunInput, NotFoundError, PullRequestEvent, PullRequestEventAction,
+        PullRequestLabel, TooManyCommitsError, is_rate_limit_error,
     },
 };
 
@@ -51,6 +51,16 @@ const OVERRIDE_ACTION_SUMMARY: &str = "Check result was manually set to passed";
 /// Maximum time the synchronization of the label of a pull request can take,
 /// so that it does not delay the check run (e.g. when requests are retried).
 const SYNC_LABEL_TIMEOUT: Duration = Duration::from_secs(3);
+
+/// Result of loading the commits of a pull request for a DCO check.
+enum PullRequestCommits {
+    /// Commits to check.
+    Commits(Vec<Commit>),
+    /// Pull request check should be skipped (closed, stale, or no commits).
+    Skip,
+    /// Pull request has too many commits to check.
+    TooManyCommits(TooManyCommitsError),
+}
 
 /// Input used to synchronize the label of a pull request. When the event
 /// includes the labels of the pull request, they are used to skip the
@@ -183,17 +193,12 @@ async fn process_pull_request_event(gh_client: DynGHClient, event: &PullRequestE
         return Ok(());
     }
 
-    // Get pull request commits (the check can't be run when there are too
-    // many of them)
-    let commits = match gh_client
-        .compare_commits(&ctx, &event.pull_request.base.sha, &event.pull_request.head.sha)
-        .await
-    {
-        Ok(commits) => Ok(commits),
-        Err(err) => match too_many_commits_error(&err) {
-            Some(too_many_commits_err) => Err(too_many_commits_err.clone()),
-            None => return Err(err).context("error getting pull request commits"),
-        },
+    // Get pull request commits (the check is skipped when no commits need
+    // checking, and can't be run when there are too many of them)
+    let commits = match get_pull_request_commits(&gh_client, &ctx, event).await? {
+        PullRequestCommits::Commits(commits) => Ok(commits),
+        PullRequestCommits::Skip => return Ok(()),
+        PullRequestCommits::TooManyCommits(err) => Err(err),
     };
 
     // Get repository configuration
@@ -327,10 +332,115 @@ fn find_label<'a>(labels: impl IntoIterator<Item = &'a str>, label: &str) -> Opt
     labels.into_iter().find(|name| name.to_lowercase() == label_lowercase)
 }
 
+/// Get the commits of the pull request provided.
+///
+/// Compares against the base branch ref so a stale base SHA in the event does
+/// not include commits already on the base branch. Falls back to the base SHA
+/// when the base branch ref is not found (e.g. after a stacked PR's base
+/// branch is deleted). When comparing against the base branch ref returns no
+/// commits (e.g. after the pull request has already been merged), checks the
+/// current pull request state: skips closed pull requests or stale heads,
+/// re-compares against the current base branch ref if retargeted, and falls
+/// back to the event base SHA otherwise, skipping if still empty.
+async fn get_pull_request_commits(
+    gh_client: &DynGHClient,
+    ctx: &Ctx,
+    event: &PullRequestEvent,
+) -> Result<PullRequestCommits> {
+    // Compare against the base branch ref first, handling empty comparisons
+    // and missing refs before checking commits
+    let base_ref = format!("refs/heads/{}", event.pull_request.base.ref_);
+    let result = match gh_client.compare_commits(ctx, &base_ref, &event.pull_request.head.sha).await {
+        Ok(commits) if commits.is_empty() => {
+            // Check current pull request state before falling back so closed
+            // pull requests and stale heads are skipped
+            let pr = gh_client
+                .get_pull_request(ctx, event.number)
+                .await
+                .context("error getting pull request")?;
+            if !pr.is_open || pr.head_sha != event.pull_request.head.sha {
+                debug!(
+                    owner = %ctx.owner,
+                    repo = %ctx.repo,
+                    pr_number = event.number,
+                    "pull request closed or head moved with no commits against base ref, skipping check"
+                );
+                return Ok(PullRequestCommits::Skip);
+            }
+
+            // Re-compare against the current base branch ref when retargeted;
+            // otherwise fall back to the event base commit SHA
+            if pr.base_ref != event.pull_request.base.ref_ {
+                let current_base_ref = format!("refs/heads/{}", pr.base_ref);
+                debug!(
+                    owner = %ctx.owner,
+                    repo = %ctx.repo,
+                    pr_number = event.number,
+                    event_base_ref = %event.pull_request.base.ref_,
+                    current_base_ref = %pr.base_ref,
+                    "pull request base branch changed, comparing against current base ref"
+                );
+                gh_client.compare_commits(ctx, &current_base_ref, &event.pull_request.head.sha).await
+            } else {
+                warn!(
+                    owner = %ctx.owner,
+                    repo = %ctx.repo,
+                    pr_number = event.number,
+                    base_ref = %event.pull_request.base.ref_,
+                    "comparison against base branch ref returned no commits, falling back to base commit sha"
+                );
+                gh_client
+                    .compare_commits(ctx, &event.pull_request.base.sha, &event.pull_request.head.sha)
+                    .await
+            }
+        }
+        Err(err) if is_not_found_error(&err) => {
+            warn!(
+                ?err,
+                owner = %ctx.owner,
+                repo = %ctx.repo,
+                pr_number = event.number,
+                base_ref = %event.pull_request.base.ref_,
+                "comparison against base branch ref not found, falling back to base commit sha"
+            );
+            gh_client
+                .compare_commits(ctx, &event.pull_request.base.sha, &event.pull_request.head.sha)
+                .await
+        }
+        result => result,
+    };
+
+    // Map comparison result: skip empty comparisons and treat too many commits
+    // errors as a check failure instead of a request error
+    match result {
+        Ok(commits) if commits.is_empty() => {
+            debug!(
+                owner = %ctx.owner,
+                repo = %ctx.repo,
+                pr_number = event.number,
+                "no commits to check in pull request, skipping check"
+            );
+            Ok(PullRequestCommits::Skip)
+        }
+        Ok(commits) => Ok(PullRequestCommits::Commits(commits)),
+        Err(err) => match too_many_commits_error(&err) {
+            Some(too_many_commits_err) => {
+                Ok(PullRequestCommits::TooManyCommits(too_many_commits_err.clone()))
+            }
+            None => Err(err).context("error getting pull request commits"),
+        },
+    }
+}
+
 /// Check if the error provided was caused by the app lacking the permissions
 /// required to manage labels.
 fn is_labels_permission_error(err: &anyhow::Error) -> bool {
     err.chain().any(|cause| cause.is::<LabelsPermissionError>())
+}
+
+/// Check if the error provided was caused by a GitHub resource not being found.
+fn is_not_found_error(err: &anyhow::Error) -> bool {
+    err.chain().any(|cause| cause.is::<NotFoundError>())
 }
 
 /// Synchronize the configured label of a pull request with the result of the
