@@ -449,6 +449,7 @@ impl GHClient for GHClientOctorust {
         let pr = client.pulls().get(&ctx.owner, &ctx.repo, number).await?.body;
 
         Ok(PullRequestState {
+            base_ref: pr.base.ref_,
             head_sha: pr.head.sha,
             is_open: pr.state == octorust::types::State::Open,
             labels: pr.labels.into_iter().map(|label| label.name).collect(),
@@ -959,6 +960,7 @@ impl Default for NotFoundError {
 /// Current state of a pull request.
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct PullRequestState {
+    pub base_ref: String,
     pub head_sha: String,
     pub is_open: bool,
     pub labels: Vec<String>,
